@@ -15,7 +15,13 @@ class Conge extends Model
         'date_debut',
         'date_fin',
         'user_id',
+        'leave_type_id',
+        'days',
+        'reason',
+        'status',
     ];
+
+
 
     protected $casts = [
         'date_debut' => 'date',
@@ -41,6 +47,16 @@ class Conge extends Model
             return $start->diffInDays($end) + 1;
         }
         return 0;
+    }
+
+    public function getDateDebutFormattedAttribute()
+    {
+        return Carbon::parse($this->date_debut)->format('d/m/Y');
+    }
+
+    public function getDateFinFormattedAttribute()
+    {
+        return Carbon::parse($this->date_fin)->format('d/m/Y');
     }
    
 }

@@ -61,6 +61,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/dashboard/export', [DashboardController::class, 'export'])->name('dashboard.export');
     Route::post('/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggleStatus');
 
+    Route::get('/test-leave-mail', [CongeController::class, 'store'])->name('test.leave.mail');
+
     // Notifications
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.mark-as-read');

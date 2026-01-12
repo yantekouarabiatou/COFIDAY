@@ -7,6 +7,9 @@ use App\Models\User;
 use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\LeaveRequestMail;
 
 class CongeController extends Controller
 {
@@ -42,42 +45,113 @@ class CongeController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    // public function store(Request $request)
+    // {
+    //     try {
+    //         // 1. Validation
+    //         $request->validate([
+    //             'type_conge' => 'required|in:MALADIE,MATERNITE,REMUNERE,NON REMUNERE',
+    //             'date_debut' => 'required|date',
+    //             'date_fin'   => 'required|date|after_or_equal:date_debut',
+    //         ], [
+    //             'type_conge.required' => 'Le type de congé est obligatoire.',
+    //             'type_conge.in' => 'Type de congé invalide.',
+    //             'date_debut.required' => 'La date de début est obligatoire.',
+    //             'date_fin.required' => 'La date de fin est obligatoire.',
+    //             'date_fin.after_or_equal' => 'La date de fin doit être supérieure ou égale à la date de début.',
+    //         ]);
+
+    //         // 2. Création du congé
+    //         Conge::create([
+    //             'type_conge' => $request->type_conge,
+    //             'date_debut' => $request->date_debut,
+    //             'date_fin'   => $request->date_fin,
+    //             'user_id'    => Auth::id(),
+    //         ]);
+
+    //         // 3. SweetAlert succès
+    //         Alert::success('Succès', 'Votre congé a été enregistrée avec succès.');
+
+    //         return redirect()->route('conges.index');
+
+    //     } catch (Exception $e) {
+
+    //         // SweetAlert erreur
+    //         Alert::error('Erreur', 'Une erreur est survenue lors de l’enregistrement du congé.');
+
+    //         return back()->withInput();
+    //     }
+    // }
+
+    public function store()
     {
-        try {
-            // 1. Validation
-            $request->validate([
-                'type_conge' => 'required|in:MALADIE,MATERNITE,REMUNERE,NON REMUNERE',
-                'date_debut' => 'required|date',
-                'date_fin'   => 'required|date|after_or_equal:date_debut',
-            ], [
-                'type_conge.required' => 'Le type de congé est obligatoire.',
-                'type_conge.in' => 'Type de congé invalide.',
-                'date_debut.required' => 'La date de début est obligatoire.',
-                'date_fin.required' => 'La date de fin est obligatoire.',
-                'date_fin.after_or_equal' => 'La date de fin doit être supérieure ou égale à la date de début.',
-            ]);
+        /*
+        |----------------------------------------------------
+        | 1. Données statiques (simulation)
+        |----------------------------------------------------
+        */
 
-            // 2. Création du congé
-            Conge::create([
-                'type_conge' => $request->type_conge,
-                'date_debut' => $request->date_debut,
-                'date_fin'   => $request->date_fin,
-                'user_id'    => Auth::id(),
-            ]);
+        $employee = User::first(); // Employé fictif
+        //$validator = User::where('role', 'manager')->first(); // Valideur fictif
 
-            // 3. SweetAlert succès
-            Alert::success('Succès', 'Votre congé a été enregistrée avec succès.');
+        // Faux objet LeaveRequest (non sauvegardé)
+        $leave = new Conge();
+        $leave->id = 1;
+        $leave->user = $employee;
+        $leave->date_debut = '2026-01-20';
+        $leave->date_fin = '2026-01-25';
+        $leave->days = 5;
+        $leave->reason = 'Congé annuel (test envoi mail)';
+        $leave->status = 'pending_manager';
 
-            return redirect()->route('conges.index');
+        // Si tu as une relation type
+        $leave->type = (object) [
+            'name' => 'Congé annuel'
+        ];
 
-        } catch (Exception $e) {
+        /*
+        |----------------------------------------------------
+        | 2. Génération du PDF
+        |----------------------------------------------------
+        */
 
-            // SweetAlert erreur
-            Alert::error('Erreur', 'Une erreur est survenue lors de l’enregistrement du congé.');
+        $pdf = Pdf::loadView('pdfs.leave_request', [
+            'leave' => $leave,
+        ]);
 
-            return back()->withInput();
+        $pdfPath = storage_path('app/temp/test_leave_request.pdf');
+
+        // Créer le dossier s'il n'existe pas
+        if (!is_dir(dirname($pdfPath))) {
+            mkdir(dirname($pdfPath), 0755, true);
         }
+
+        $pdf->save($pdfPath);
+
+        /*
+        |----------------------------------------------------
+        | 3. Envoi du mail
+        |----------------------------------------------------
+        */
+        $validator = 'adisiroko@gmail.com';
+
+        if (!file_exists($pdfPath)) {
+            dd('PDF non généré', $pdfPath);
+        }
+
+        Mail::to($validator)->send(new LeaveRequestMail($leave, $pdfPath));
+
+        /*
+        |----------------------------------------------------
+        | 4. Réponse simple
+        |----------------------------------------------------
+        */
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Email envoyé avec succès (PDF joint)',
+            'sent_to' => $validator,
+        ]);
     }
 
     /**
