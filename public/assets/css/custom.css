@@ -105,3 +105,36 @@
     margin-left: 5px;
     vertical-align: middle;
 }
+/* Styles supplémentaires pour la page de demande */
+.input-group-text {
+    background-color: #f8f9fa;
+    border: 1px solid #e3e6f0;
+}
+
+.preview-card {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    margin: 20px 0;
+}
+
+.preview-card .card-header {
+    background-color: #e3e6f0;
+    border-bottom: 1px solid #d1d3e2;
+}
+
+.preview-card .card-body {
+    background-color: white;
+}
+
+/* Indicateurs de statut */
+.text-success { color: #28a745 !important; }
+.text-warning { color: #ffc107 !important; }
+.text-danger { color: #dc3545 !important; }
+.text-info { color: #17a2b8 !important; }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .preview-card .row > div {
+        margin-bottom: 10px;
+    }
+}

@@ -23,10 +23,10 @@ class DatabaseSeeder extends Seeder
             ClientSeeder::class,
             DossierSeeder::class,
             CompanySettingSeeder::class,
+            TypesCongesSeeder::class,
             ReglesCongesSeeder::class,
-            SoldesCongesSeeder::class,
-            CongesSeeder::class,
             DemandesCongesSeeder::class,
+            SoldesCongesSeeder::class,
             HistoriquesCongesSeeder::class,
         ]);
     }

@@ -13,10 +13,9 @@ return new class extends Migration {
             $table->foreignId('user_id')
                   ->constrained()
                   ->cascadeOnDelete();
-
             $table->foreignId('type_conge_id')
                   ->constrained('types_conges')
-                  ->restrictOnDelete();
+                  ->cascadeOnDelete();
 
             $table->date('date_debut');
             $table->date('date_fin');
