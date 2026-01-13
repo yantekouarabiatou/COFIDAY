@@ -17,6 +17,11 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\LeaveRequestMail;
+use App\Mail\LeaveApprovedMail;
+use App\Mail\LeaveRejectedMail;
+
 
 class CongeController extends Controller
 {
