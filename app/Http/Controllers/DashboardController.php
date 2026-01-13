@@ -7,7 +7,7 @@ use App\Models\User;
 use App\Models\TimeEntry;
 use App\Models\Dossier;
 use App\Models\DailyEntry;
-use App\Models\Conge;
+use App\Models\DemandeConge;
 use App\Models\Client;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -39,7 +39,7 @@ class DashboardController extends Controller
                                       ->whereMonth('created_at', now()->month)
                                       ->whereYear('created_at', now()->year)
                                       ->sum('heures_reelles'),
-            'mes_conges_en_cours' => Conge::where('date_debut', '<=', now())
+            'mes_conges_en_cours' => DemandeConge::where('date_debut', '<=', now())
                                           ->where('date_fin', '>=', now())
                                           ->where('user_id', $user->id)
                                           ->count(),
@@ -82,7 +82,7 @@ class DashboardController extends Controller
                                               ->whereYear('created_at', now()->year)
                                               ->distinct('dossier_id')
                                               ->count('dossier_id'),
-            'conges' => Conge::where('user_id', $user->id)
+            'conges' => DemandeConge::where('user_id', $user->id)
                              ->whereMonth('date_debut', now()->month)
                              ->whereYear('date_debut', now()->year)
                              ->count(),
@@ -134,7 +134,7 @@ class DashboardController extends Controller
             ->get();
 
         // Mes congés par type (année en cours)
-        $mesCongesParType = Conge::where('user_id', $user->id)
+        $mesCongesParType = DemandeConge::where('user_id', $user->id)
             ->whereYear('date_debut', now()->year)
             ->select('type_conge', DB::raw('count(*) as count'))
             ->groupBy('type_conge')
@@ -157,7 +157,7 @@ class DashboardController extends Controller
             });
 
         // Mes congés à venir (prochains 30 jours)
-        $mesCongesAVenir = Conge::where('user_id', $user->id)
+        $mesCongesAVenir = DemandeConge::where('user_id', $user->id)
             ->where('date_debut', '>', now())
             ->where('date_debut', '<=', now()->addDays(30))
             ->orderBy('date_debut')
@@ -243,7 +243,7 @@ class DashboardController extends Controller
         $heuresTotales = TimeEntry::where('user_id', $user->id)->sum('heures_reelles');
 
         // Congés ce mois
-        $congesMois = Conge::where('user_id', $user->id)
+        $congesMois = DemandeConge::where('user_id', $user->id)
             ->where(function($q) {
                 $q->whereMonth('date_debut', now()->month)
                   ->orWhereMonth('date_fin', now()->month);
@@ -365,7 +365,7 @@ class DashboardController extends Controller
         $user = auth()->user();
 
         // Mes congés en cours
-        $congesEnCours = Conge::where('user_id', $user->id)
+        $congesEnCours = DemandeConge::where('user_id', $user->id)
             ->where('date_debut', '<=', now())
             ->where('date_fin', '>=', now())
             ->get()
@@ -379,7 +379,7 @@ class DashboardController extends Controller
             });
 
         // Mes congés à venir (prochains 90 jours)
-        $congesAVenir = Conge::where('user_id', $user->id)
+        $congesAVenir = DemandeConge::where('user_id', $user->id)
             ->where('date_debut', '>', now())
             ->where('date_debut', '<=', now()->addDays(90))
             ->orderBy('date_debut')
@@ -395,14 +395,14 @@ class DashboardController extends Controller
             });
 
         // Mes congés par type (année en cours)
-        $congesParType = Conge::where('user_id', $user->id)
+        $congesParType = DemandeConge::where('user_id', $user->id)
             ->whereYear('date_debut', now()->year)
             ->select('type_conge', DB::raw('count(*) as count'))
             ->groupBy('type_conge')
             ->get();
 
         // Total de jours de congés cette année
-        $totalJoursConges = Conge::where('user_id', $user->id)
+        $totalJoursConges = DemandeConge::where('user_id', $user->id)
             ->whereYear('date_debut', now()->year)
             ->get()
             ->sum(function($conge) {

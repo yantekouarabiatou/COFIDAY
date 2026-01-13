@@ -524,30 +524,27 @@
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-md-3 text-center">
+                            <div class="col-md-4 text-center">
                                 <a href="{{ route('conges.create') }}" class="btn btn-primary btn-lg btn-block mb-3">
                                     <i class="fas fa-plus-circle fa-2x mb-2"></i><br>
                                     Nouvelle demande
                                 </a>
                             </div>
-                            <div class="col-md-3 text-center">
+                            <div class="col-md-4 text-center">
                                 <a href="{{ route('conges.calendrier') }}" class="btn btn-success btn-lg btn-block mb-3">
                                     <i class="fas fa-calendar-alt fa-2x mb-2"></i><br>
                                     Voir calendrier
                                 </a>
                             </div>
-                            <div class="col-md-3 text-center">
-                                <button type="button" class="btn btn-info btn-lg btn-block mb-3" onclick="window.print()">
-                                    <i class="fas fa-print fa-2x mb-2"></i><br>
-                                    Imprimer rapport
-                                </button>
-                            </div>
-                            <div class="col-md-3 text-center">
-                                <button type="button" class="btn btn-warning btn-lg btn-block mb-3" id="export-btn">
-                                    <i class="fas fa-file-export fa-2x mb-2"></i><br>
-                                    Exporter données
-                                </button>
-                            </div>
+
+                            <div class="col-md-4 text-center">
+                            <a href="{{ route('conges.solde') }}"
+                            class="btn btn-warning btn-lg btn-block mb-4 text-center">
+                                <i class="fas fa-file-export fa-2x mb-2"></i><br>
+                                Mes soldes et demandes
+                            </a>
+                        </div>
+
                         </div>
                     </div>
                 </div>

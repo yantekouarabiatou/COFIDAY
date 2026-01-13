@@ -31,11 +31,23 @@
                                 <i class="fas fa-tachometer-alt"></i> Tableau de bord
                             </a>
                             @endrole
-                            <a href="{{ route('conges.solde') }}" class="btn btn-success btn-icon icon-left ml-2">
+                            <a href="{{ route('conges.solde') }}" class="btn btn-warning btn-icon icon-left ml-2">
                                 <i class="fas fa-chart-pie"></i> Mon solde
                             </a>
+
+                            <a href="{{ route('conges.export.excel') }}?annee={{ date('Y') }}"
+                            class="btn btn-success" title="Tous les congés">
+                            <i class="fas fa-file-excel"></i> Tous
+                        </a>
+
+                        <!-- Export mes congés seulement -->
+                        <a href="{{ route('conges.export.excel') }}?annee={{ date('Y') }}&user_id={{ auth()->id() }}"
+                        class="btn btn-info" title="Mes congés seulement">
+                            <i class="fas fa-user"></i> Mes congés
+                        </a>
                         </div>
-                    </div>
+
+                </div>
 
                     <!-- Body -->
                     <div class="card-body">
