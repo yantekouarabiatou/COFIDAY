@@ -5,6 +5,7 @@ use App\Http\Controllers\CadeauInvitationController;
 use App\Http\Controllers\ClientAuditController;
 use App\Http\Controllers\IndependanceController;
 use App\Http\Controllers\ProfileController;
+use App\Mail\LeaveRejectedMail;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\LogActivitesController;
@@ -32,6 +33,7 @@ use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Statistics\PlaintesStatsController;
 use App\Http\Controllers\Statistics\InteretsStatsController;
 use App\Http\Controllers\UserProfileController;
+use App\Mail\LeaveApprovedMail;
 use App\Models\User;
 use Illuminate\Http\Request;
 
@@ -61,6 +63,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard/user-stats/{userId}', [DashboardController::class, 'userStats'])->name('dashboard.user-stats');
     Route::post('/dashboard/export', [DashboardController::class, 'export'])->name('dashboard.export');
     Route::post('/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggleStatus');
+
+    Route::get('/test-leave-mail', [CongeController::class, 'store'])->name('test.leave.mail');
 
     // Notifications
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
@@ -282,14 +286,16 @@ Route::middleware(['auth'])->group(function () {
         });
     });
 
-     Route::resource('conges', CongeController::class)
-            ->parameters(['conges' => 'demande']);
+    Route::resource('conges', CongeController::class)
+        ->parameters(['conges' => 'demande']);
 
-             Route::prefix('export')->group(function () {
+    Route::prefix('export')->group(function () {
         Route::get('/excel', [CongeController::class, 'exportExcel'])->name('conges.export.excel');
         Route::get('/pdf', [CongeController::class, 'exportPdf'])->name('conges.export.pdf');
         Route::get('/csv', [CongeController::class, 'exportCsv'])->name('conges.export.csv');
     });
+
+   
 
 
     Route::middleware(['auth', 'role:admin'])->group(function () {

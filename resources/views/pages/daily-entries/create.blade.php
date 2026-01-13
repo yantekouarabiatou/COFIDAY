@@ -121,7 +121,7 @@
                                                         <label class="font-weight-bold">Heures <span class="text-danger">*</span></label>
                                                         <input type="number" step="0.25" min="0.25"
                                                             name="time_entries[0][heures_reelles]"
-                                                            class="form-control heures-input text-center" value="3" required>
+                                                            class="form-control heures-input text-center" value="3" readonly required>
                                                     </div>
                                                 </div>
 
@@ -187,7 +187,7 @@
                                         </div>
                                     </div>
                                     <div class="col-md-4 text-right">
-                                        <h4 id="total-heures">Total : <span class="text-info">0.00</span>h</h4>
+                                        <h4 id="total-heures">Total : <span class="text-info">0.00</span></h4>
                                     </div>
                                 </div>
                             </div>
@@ -568,7 +568,7 @@
                                     <div class="form-group mb-0">
                                         <label class="font-weight-bold">Heures <span class="text-danger">*</span></label>
                                         <input type="number" step="0.25" min="0.25" name="time_entries[${rowIndex}][heures_reelles]"
-                                            class="form-control heures-input text-center" required>
+                                            class="form-control heures-input text-center" readonly required>
                                     </div>
                                 </div>
 

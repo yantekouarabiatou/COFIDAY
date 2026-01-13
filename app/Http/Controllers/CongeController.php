@@ -17,6 +17,11 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\LeaveRequestMail;
+use App\Mail\LeaveApprovedMail;
+use App\Mail\LeaveRejectedMail;
+
 
 class CongeController extends Controller
 {
@@ -181,6 +186,28 @@ class CongeController extends Controller
                 'commentaire' => 'Demande initiale soumise',
             ]);
 
+                        // -----------------------------
+            // 5. Génération du PDF
+            // -----------------------------
+            $pdf = Pdf::loadView('pdfs.leave_request', [
+                'leave' => $demande,
+            ]);
+
+            $pdfPath = storage_path("app/temp/demande_{$demande->id}.pdf");
+
+            if (!is_dir(dirname($pdfPath))) {
+                mkdir(dirname($pdfPath), 0755, true);
+            }
+
+            $pdf->save($pdfPath);
+
+            // -----------------------------
+            // 6. Envoi du mail
+            // -----------------------------
+            $destinataire = 'adisiroko@gmail.com'; // Remplace par l'email réel du manager
+
+            Mail::to($destinataire)->send(new LeaveRequestMail($demande, $pdfPath));
+
             DB::commit();
 
             Alert::success('Succès', 'Votre demande de congé a été soumise avec succès. En attente de validation.');
@@ -191,6 +218,7 @@ class CongeController extends Controller
             return back()->withInput();
         }
     }
+
     /**
      * Afficher une demande spécifique
      */
@@ -380,7 +408,7 @@ class CongeController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erreur lors de la modification de congé: ' . $e->getMessage());
-            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
             Alert::error('Erreur', 'Une erreur inattendue est survenue : ' . $e->getMessage());
             return back()->withInput();
         }
@@ -466,18 +494,18 @@ class CongeController extends Controller
             ]);
 
             // Si approuvé et congé payé, mettre à jour le solde
-            if ($action === 'approuve' && $demande->typeConge->est_annuel) {
+            // Si approuvé et congé payé, mettre à jour le solde
+            if ($action === 'approuve' && $demande->typeConge->est_paye) {
+
                 $solde = SoldeConge::where('user_id', $demande->user_id)
                     ->where('annee', now()->year)
                     ->firstOrFail();
 
-                // METTRE À JOUR LE SOLDE SEULEMENT ICI, QUAND LE CONGÉ EST APPROUVÉ
                 $solde->update([
                     'jours_pris' => $solde->jours_pris + $demande->nombre_jours,
                     'jours_restants' => $solde->jours_acquis - ($solde->jours_pris + $demande->nombre_jours),
                 ]);
 
-                // Vérifier que le solde ne devient pas négatif
                 if ($solde->jours_restants < 0) {
                     throw new \Exception('Le solde ne peut pas être négatif');
                 }
@@ -486,12 +514,36 @@ class CongeController extends Controller
             // Historique
             HistoriqueConge::create([
                 'demande_conge_id' => $demande->id,
-                'action' => $action === 'approuve' ? 'demande_approuvee' : 'demande_refusee',
+                'action' => $action === 'approuve'
+                    ? 'demande_approuvee'
+                    : 'demande_refusee',
                 'effectue_par' => $user->id,
                 'commentaire' => $request->commentaire,
             ]);
 
             DB::commit();
+
+            /*
+            |----------------------------------------------------
+            | 📧 Envoi des emails
+            |----------------------------------------------------
+            */
+
+            $demandeur = $demande->user; // l’employé qui a demandé le congé
+
+            if ($action === 'approuve') {
+
+                Mail::to($demandeur->email)
+                    ->send(new LeaveApprovedMail($demande));
+
+            } else {
+
+                Mail::to($demandeur->email)
+                    ->send(new LeaveRejectedMail(
+                        $demande,
+                        $request->commentaire
+                    ));
+            }
 
             $message = $action === 'approuve'
                 ? 'La demande a été approuvée avec succès.'

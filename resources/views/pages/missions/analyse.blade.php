@@ -3,6 +3,10 @@
 @section('title', 'Analyse par Mission')
 
 @section('content')
+
+@php
+use App\Helpers\UserHelper;
+@endphp
 <section class="section">
     <div class="section-header">
         <h1><i class="fas fa-chart-pie"></i> Analyse des Personnels par Mission</h1>
@@ -143,7 +147,7 @@
                                     return $p->timeEntries->sum('heures_reelles');
                                 });
                             @endphp
-                            {{ number_format($totalHeures, 2) }}h
+                            {{ UserHelper::hoursToHoursMinutes($totalHeures) }}
                         </div>
                     </div>
                 </div>
@@ -332,12 +336,12 @@
                                             </td>
                                             <td class="text-center">
                                                 <span class="font-weight-bold text-{{ $statut }}">
-                                                    {{ number_format($chargeJour, 2) }}h
+                                                    {{ UserHelper::hoursToHoursMinutes($chargeJour) }}
                                                 </span>
                                             </td>
                                             <td class="text-center">
                                                 <span class="font-weight-bold">
-                                                    {{ number_format($chargeTotal, 2) }}h
+                                                    {{ UserHelper::hoursToHoursMinutes($chargeTotal) }}
                                                 </span>
                                             </td>
                                             <td class="text-center">

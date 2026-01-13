@@ -49,15 +49,14 @@
                         <div class="row mb-4">
                             <div class="col-md-8">
                                 <div class="d-flex align-items-center">
-                                    <div class="mr-3">
-                                        <div class="avatar">
-                                            <div class="avatar-title rounded-circle bg-primary" style="width: 60px; height: 60px; line-height: 60px; font-size: 20px;">
-                                                {{ substr($dailyEntry->user->prenom, 0, 1) }}
-                                            </div>
+                                    <div class="avatar mr-3">
+                                        <div class="avatar-title rounded-circle text-white d-flex align-items-center justify-content-center"
+                                            style="width: 50px; height: 50px; background: linear-gradient(135deg, #667eea, #764ba2); font-weight: bold; font-size: 1.2rem;">
+                                            {{ strtoupper(substr($dailyEntry->user->prenom, 0, 1)) }}
                                         </div>
                                     </div>
                                     <div>
-                                        <h3 class="mb-0">{{ $dailyEntry->user->prenom }}</h3>
+                                        <h4 class="mb-0">{{ $dailyEntry->user->prenom }} {{ $dailyEntry->user->nom }}</h4>
                                         <p class="mb-1">
                                             <strong>{{ $dailyEntry->user->poste->intitule ?? 'Non spécifié' }}</strong>
                                             <span class="mx-2">•</span>

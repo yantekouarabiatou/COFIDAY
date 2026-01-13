@@ -99,10 +99,15 @@ class DossierSeeder extends Seeder
         ];
 
         $prefix = $prefixes[$type] ?? 'DOS';
-        $numero = str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
 
-        return $prefix . '-' . $date->format('Y') . '-' . $numero;
+        do {
+            $numero = str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
+            $reference = $prefix . '-' . $date->format('Y') . '-' . $numero;
+        } while (\App\Models\Dossier::where('reference', $reference)->exists());
+
+        return $reference;
     }
+
 
     private function generateDescription(string $type, string $client): string
     {

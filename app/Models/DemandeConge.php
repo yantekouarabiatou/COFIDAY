@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 class DemandeConge extends Model
 {
@@ -110,5 +111,15 @@ class DemandeConge extends Model
         ];
 
         return $labels[$this->statut] ?? $this->statut;
+    }
+
+    public function getDateDebutFormattedAttribute()
+    {
+        return Carbon::parse($this->date_debut)->format('d/m/Y');
+    }
+
+    public function getDateFinFormattedAttribute()
+    {
+        return Carbon::parse($this->date_fin)->format('d/m/Y');
     }
 }

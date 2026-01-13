@@ -1,3 +1,7 @@
+@php
+use App\Helpers\UserHelper;
+@endphp
+
 @extends('layaout')
 
 @section('title', 'Feuilles de Temps')
@@ -107,8 +111,9 @@
                                             <td>
                                                 <div class="d-flex align-items-center">
                                                     <div class="avatar mr-3">
-                                                        <div class="avatar-title rounded-circle bg-primary">
-                                                            {{ substr($entry->user->prenom, 0, 1) }}
+                                                        <div class="avatar-title rounded-circle text-white d-flex align-items-center justify-content-center"
+                                                            style="width: 45px; height: 45px; background: linear-gradient(135deg, #667eea, #764ba2); font-weight: bold; font-size: 1.1rem;">
+                                                            {{ strtoupper(substr($entry->user->prenom, 0, 1)) }}
                                                         </div>
                                                     </div>
                                                     <div>
@@ -128,7 +133,7 @@
                                                     <div class="progress-bar {{ $bgColor }}" style="width: {{ min($percentage, 100) }}%"></div>
                                                 </div>
                                                 <small class="text-muted d-block mt-1">
-                                                    {{ number_format($entry->heures_reelles, 2) }}h / {{ $entry->heures_theoriques }}h
+                                                    {{ UserHelper::hoursToHoursMinutes($entry->heures_reelles) }} / {{ UserHelper::hoursToHoursMinutes($entry->heures_theoriques) }}
                                                 </small>
                                             </td>
                                             <td>
@@ -228,7 +233,7 @@
                     <div class="card-icon bg-primary"><i class="fas fa-clock"></i></div>
                     <div class="card-wrap">
                         <div class="card-header"><h4>Total Heures</h4></div>
-                        <div class="card-body">{{ number_format($totalHours, 2) }}h</div>
+                        <div class="card-body">{{ UserHelper::hoursToHoursMinutes($totalHours) }}</div>
                     </div>
                 </div>
             </div>

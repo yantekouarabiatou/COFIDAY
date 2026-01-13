@@ -3,6 +3,10 @@
 @section('title', 'Résultats Analyse')
 
 @section('content')
+
+@php
+use App\Helpers\UserHelper;
+@endphp
 <section class="section">
     <div class="section-header">
         <h1><i class="fas fa-chart-bar"></i> Résultats de l'analyse</h1>
@@ -37,8 +41,8 @@
                                 </p>
                             </div>
                             <div class="col-md-6">
-                                <p><strong>Heures théoriques:</strong> {{ $stats['heure_theorique'] }}h</p>
-                                <p><strong>Heures réelles:</strong> {{ $stats['total_heures'] }}h</p>
+                                <p><strong>Heures théoriques:</strong> {{ UserHelper::hoursToHoursMinutes($stats['heure_theorique']) }}</p>
+                                <p><strong>Heures réelles:</strong> {{ UserHelper::hoursToHoursMinutes($stats['total_heures']) }}</p>
                                 <p><strong>Surplus/Déficit:</strong>
                                     <span class="{{ $stats['surplus'] >= 0 ? 'text-danger' : 'text-success' }}">
                                         {{ $stats['surplus'] }}h ({{ $stats['surplus_pourcentage'] }}%)
@@ -71,7 +75,7 @@
                     </div>
                     <div class="card-wrap">
                         <div class="card-header"><h4>Total heures</h4></div>
-                        <div class="card-body">{{ $stats['total_heures'] }}h</div>
+                        <div class="card-body">{{ UserHelper::hoursToHoursMinutes($stats['total_heures']) }}</div>
                     </div>
                 </div>
             </div>
@@ -81,8 +85,8 @@
                         <i class="fas fa-chart-line"></i>
                     </div>
                     <div class="card-wrap">
-                        <div class="card-header"><h4>Surplus</h4></div>
-                        <div class="card-body">{{ $stats['surplus'] }}h</div>
+                        <div class="card-header"><h4>Heures Surplementaires</h4></div>
+                        <div class="card-body">{{ UserHelper::hoursToHoursMinutes($stats['surplus']) }}</div>
                     </div>
                 </div>
             </div>
@@ -93,7 +97,7 @@
                     </div>
                     <div class="card-wrap">
                         <div class="card-header"><h4>Moyenne/pers</h4></div>
-                        <div class="card-body">{{ $stats['moyenne_par_personnel'] }}h</div>
+                        <div class="card-body">{{ UserHelper::hoursToHoursMinutes($stats['moyenne_par_personnel']) }}</div>
                     </div>
                 </div>
             </div>
@@ -157,13 +161,13 @@
                                             </td>
                                             <td>{{ $personnel['user']->poste->intitule ?? 'Non défini' }}</td>
                                             <td>
-                                                <span class="badge badge-info">{{ $personnel['total_heures'] }}h</span>
+                                                <span class="badge badge-info">{{ UserHelper::hoursToHoursMinutes($personnel['total_heures']) }}</span>
                                             </td>
                                             <td>
-                                                {{ $personnel['charge_totale']['heures_reelles'] }}h /
-                                                {{ $personnel['charge_totale']['heures_theoriques'] }}h<br>
+                                                {{ UserHelper::hoursToHoursMinutes($personnel['charge_totale']['heures_reelles']) }} /
+                                                {{ UserHelper::hoursToHoursMinutes($personnel['charge_totale']['heures_theoriques']) }}<br>
                                                 <small class="text-{{ $personnel['charge_totale']['ecart'] >= 0 ? 'danger' : 'success' }}">
-                                                    {{ $personnel['charge_totale']['ecart'] >= 0 ? '+' : '' }}{{ $personnel['charge_totale']['ecart'] }}h
+                                                    {{ $personnel['charge_totale']['ecart'] >= 0 ? '+' : '' }}{{ UserHelper::hoursToHoursMinutes($personnel['charge_totale']['ecart']) }}
                                                 </small>
                                             </td>
                                             <td>
@@ -208,7 +212,7 @@
                                                                         <div class="card-body p-2">
                                                                             <h6 class="mb-1">{{ $dossierMission->nom }}</h6>
                                                                             <small class="text-muted">Réf: {{ $dossierMission->reference }}</small><br>
-                                                                            <span class="badge badge-secondary">{{ $totalHeures }}h</span>
+                                                                            <span class="badge badge-secondary">{{ UserHelper::hoursToHoursMinutes($totalHeures) }}</span>
                                                                         </div>
                                                                     </div>
                                                                 </div>
