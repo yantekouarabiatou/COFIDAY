@@ -280,10 +280,17 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/conges/{demande}/traiter', [CongeController::class, 'traiter'])->name('conges.traiter');
             Route::get('/conges/solde/{user}', [CongeController::class, 'solde'])->name('conges.solde.user');
         });
-
-        Route::resource('conges', CongeController::class)
-            ->parameters(['conges' => 'demande']);
     });
+
+     Route::resource('conges', CongeController::class)
+            ->parameters(['conges' => 'demande']);
+
+             Route::prefix('export')->group(function () {
+        Route::get('/excel', [CongeController::class, 'exportExcel'])->name('conges.export.excel');
+        Route::get('/pdf', [CongeController::class, 'exportPdf'])->name('conges.export.pdf');
+        Route::get('/csv', [CongeController::class, 'exportCsv'])->name('conges.export.csv');
+    });
+
 
     Route::middleware(['auth', 'role:admin'])->group(function () {
         Route::post('/conges/solde/{user}/ajuster', [CongeController::class, 'ajusterSolde'])->name('conges.ajuster-solde');

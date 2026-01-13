@@ -32,26 +32,39 @@ class ActivityNotification extends Notification
 
     public function toArray($notifiable)
     {
-        $causer = auth()->user()?->full_name ?? 'Système';
+        $causer = auth()->user()?->prenom . ' ' . auth()->user()?->nom ?? 'Système';
         $ref = $this->getReference();
 
         $message = $this->customMessage ?? match ($this->action) {
-            'created'  => "$causer a créé $ref",
-            'updated'  => "$causer a modifié $ref",
-            'deleted'  => "$causer a supprimé $ref",
-            'assigned' => "$causer vous a assigné à $ref",
-            default    => "$causer a effectué une action sur $ref",
+            'created'       => "$causer a créé $ref",
+            'updated'       => "$causer a modifié $ref",
+            'deleted'       => "$causer a supprimé $ref",
+            'approuve'      => "$causer a approuvé $ref",
+            'refuse'        => "$causer a refusé $ref",
+            'annule'        => "$causer a annulé $ref",
+            'demande_soumise' => "$causer a soumis $ref",
+            'demande_modifiee' => "$causer a modifié $ref",
+            'solde_ajuste'  => "$causer a ajusté le solde pour $ref",
+            'valide'        => "$causer a validé $ref",
+            'assign'        => "$causer vous a assigné $ref",
+            'unassign'      => "$causer vous a retiré $ref",
+            'replanifie'    => "$causer a replanifié $ref",
+            'cloture'       => "$causer a clôturé $ref",
+            'relance'       => "$causer a relancé $ref",
+            default         => "$causer a effectué une action sur $ref",
         };
 
         // STRUCTURE CRITIQUE : Doit correspondre à ce que la navbar attend
         return [
-            'message'   => $message,
-            'url'       => $this->getUrl(),
-            'icon'      => $this->getIcon(),
-            'color'     => $this->getColor(),
-            'action'    => $this->action,
+            'message'    => $message,
+            'url'        => $this->getUrl(),
+            'icon'       => $this->getIcon(),
+            'color'      => $this->getColor(),
+            'action'     => $this->action,
             'model_type' => class_basename($this->modelClass),
             'model_id'   => $this->modelId,
+            'causer'     => $causer,
+            'created_at' => now()->toDateTimeString(),
         ];
     }
 
@@ -62,9 +75,45 @@ class ActivityNotification extends Notification
             return class_basename($this->modelClass) . ' #' . $this->modelId;
         }
 
+        // Gestion des congés
+        if ($this->model instanceof \App\Models\DemandeConge) {
+            $userName = $this->model->user->prenom . ' ' . $this->model->user->nom ?? 'Utilisateur';
+            $type = $this->model->typeConge->libelle ?? 'Congé';
+            $dates = \Carbon\Carbon::parse($this->model->date_debut)->format('d/m') . ' - ' .
+                    \Carbon\Carbon::parse($this->model->date_fin)->format('d/m');
+            return "demande de $type pour $userName ($dates)";
+        }
+
+        // Gestion des soldes
+        if ($this->model instanceof \App\Models\SoldeConge) {
+            $userName = $this->model->user->prenom . ' ' . $this->model->user->nom ?? 'Utilisateur';
+            return "solde de congés $userName ({$this->model->annee})";
+        }
+
+        // Gestion des types de congés
+        if ($this->model instanceof \App\Models\TypeConge) {
+            return "type de congé '{$this->model->libelle}'";
+        }
+
+        // Gestion des historiques
+        if ($this->model instanceof \App\Models\HistoriqueConge) {
+            return "historique #{$this->model->id}";
+        }
+
+        // Gestion des utilisateurs
+        if ($this->model instanceof \App\Models\User) {
+            return "utilisateur {$this->model->prenom} {$this->model->nom}";
+        }
+
+        // Gestion des paramètres
+        if ($this->model instanceof \App\Models\CompanySetting) {
+            return "paramètre '{$this->model->cle}'";
+        }
+
+        // Fallback générique
         return $this->model->Reference
             ?? $this->model->nom
-            ?? $this->model->nom_client
+            ?? $this->model->libelle
             ?? $this->model->titre
             ?? $this->model->intitule
             ?? class_basename($this->model) . ' #' . $this->model->id;
@@ -73,46 +122,66 @@ class ActivityNotification extends Notification
     private function getUrl(): ?string
     {
         // Pour les modèles supprimés, pas d'URL
-        if (!$this->model || !$this->model->exists || in_array($this->action, ['deleted', 'force_deleted'])) {
+        if (!$this->model || !$this->model->exists || in_array($this->action, ['deleted', 'refuse', 'annule'])) {
             return null;
         }
 
+        // Routes pour la gestion des congés
         return match (true) {
-            $this->model instanceof \App\Models\Plainte        => route('plaintes.show', $this->model),
-            $this->model instanceof \App\Models\Interet        => route('interets.show', $this->model),
-            $this->model instanceof \App\Models\ClientAudit    => route('clients-audit.show', $this->model),
-            $this->model instanceof \App\Models\CadeauInvitation => route('cadeau-invitations.show', $this->model),
-            $this->model instanceof \App\Models\Independance   => route('independances.show', $this->model),
+            // Congés
+            $this->model instanceof \App\Models\DemandeConge => route('conges.show', $this->model),
 
-            // CORRECTION ICI : Assignation → redirige vers la plainte
-            $this->model instanceof \App\Models\Assignation    => $this->model->plainte
-                ? route('plaintes.show', $this->model->plainte)
-                : route('plaintes.index'),
+            // Soldes
+            $this->model instanceof \App\Models\SoldeConge => route('conges.solde.user', $this->model->user),
 
-            $this->model instanceof \App\Models\Poste          => route('postes.show', $this->model),
-            default                                             => null,
+            // Types de congés
+            $this->model instanceof \App\Models\TypeConge => route('types-conges.show', $this->model),
+
+            // Utilisateurs
+            $this->model instanceof \App\Models\User => route('users.show', $this->model),
+
+            // Historiques (redirige vers la demande)
+            $this->model instanceof \App\Models\HistoriqueConge =>
+                $this->model->demandeConge
+                    ? route('conges.show', $this->model->demandeConge)
+                    : route('conges.index'),
+
+            // Paramètres
+            $this->model instanceof \App\Models\CompanySetting => route('settings.index'),
+
+            default => null,
         };
     }
 
     private function getIcon(): string
     {
         return match ($this->action) {
-            'created'  => 'fas fa-plus-circle',
-            'updated'  => 'fas fa-edit',
-            'deleted'  => 'fas fa-trash',
-            'assigned' => 'fas fa-user-tag',
-            default    => 'fas fa-bell',
+            'created', 'demande_soumise'  => 'fas fa-plus-circle',
+            'updated', 'demande_modifiee' => 'fas fa-edit',
+            'deleted', 'refuse'           => 'fas fa-trash',
+            'approuve', 'valide'          => 'fas fa-check-circle',
+            'annule'                      => 'fas fa-ban',
+            'solde_ajuste'                => 'fas fa-wallet',
+            'assign'                      => 'fas fa-user-tag',
+            'unassign'                    => 'fas fa-user-minus',
+            'replanifie'                  => 'fas fa-calendar-alt',
+            'cloture'                     => 'fas fa-lock',
+            'relance'                     => 'fas fa-bell',
+            default                       => 'fas fa-bell',
         };
     }
 
     private function getColor(): string
     {
         return match ($this->action) {
-            'created'  => 'bg-success',
-            'updated'  => 'bg-warning',
-            'deleted'  => 'bg-danger',
-            'assigned' => 'bg-info',
-            default    => 'bg-primary',
+            'created', 'demande_soumise', 'approuve', 'valide' => 'bg-success',
+            'updated', 'demande_modifiee', 'solde_ajuste', 'replanifie' => 'bg-warning',
+            'deleted', 'refuse'   => 'bg-danger',
+            'annule'              => 'bg-secondary',
+            'assign', 'unassign'  => 'bg-info',
+            'cloture'             => 'bg-dark',
+            'relance'             => 'bg-primary',
+            default               => 'bg-primary',
         };
     }
 }

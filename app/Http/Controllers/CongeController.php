@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 
 class CongeController extends Controller
@@ -373,12 +374,12 @@ class CongeController extends Controller
             return back()->withErrors($e->validator)->withInput();
         } catch (\Illuminate\Database\QueryException $e) {
             DB::rollBack();
-            \Log::error('Erreur de base de données lors de la modification de congé: ' . $e->getMessage());
+            Log::error('Erreur de base de données lors de la modification de congé: ' . $e->getMessage());
             Alert::error('Erreur', 'Une erreur de base de données est survenue.');
             return back()->withInput();
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Erreur lors de la modification de congé: ' . $e->getMessage());
+            Log::error('Erreur lors de la modification de congé: ' . $e->getMessage());
             \Log::error('Stack trace: ' . $e->getTraceAsString());
             Alert::error('Erreur', 'Une erreur inattendue est survenue : ' . $e->getMessage());
             return back()->withInput();

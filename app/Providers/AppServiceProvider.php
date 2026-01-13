@@ -19,11 +19,6 @@ class AppServiceProvider extends ServiceProvider
     public function boot()
     {
 
-        Client::observe(UniversalModelObserver::class);
-        Dossier::observe(UniversalModelObserver::class);
-        DailyEntry::observe(UniversalModelObserver::class);
-        TimeEntry::observe(UniversalModelObserver::class);
-
         // Pour les messages flash SweetAlert
         if (session('success')) {
             alert()->success('Succès !', session('success'));

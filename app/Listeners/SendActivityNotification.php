@@ -73,7 +73,7 @@ class SendActivityNotification
     private function getSpecificRecipients($model): Collection
     {
         return match (true) {
-            $model instanceof \App\Models\Conge => $this->getDailyEntryRecipients($model),
+            $model instanceof \App\Models\DemandeConge => $this->getDailyEntryRecipients($model),
             $model instanceof \App\Models\DailyEntry => $this->getDailyEntryRecipients($model),
             $model instanceof \App\Models\TimeEntry  => $this->getTimeEntryRecipients($model),
             $model instanceof \App\Models\Dossier    => $this->getDossierRecipients($model),
