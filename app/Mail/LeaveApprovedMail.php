@@ -8,6 +8,7 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use App\Models\DemandeConge;
 
 class LeaveApprovedMail extends Mailable
 {
@@ -16,9 +17,13 @@ class LeaveApprovedMail extends Mailable
     /**
      * Create a new message instance.
      */
-    public function __construct()
+    public DemandeConge $demande;
+
+    public ?string $commentaire;
+    public function __construct(DemandeConge $demande, ?string $commentaire = null)
     {
-        //
+        $this->demande = $demande;
+        $this->commentaire = $commentaire;
     }
 
     /**
@@ -27,7 +32,7 @@ class LeaveApprovedMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Leave Approved Mail',
+            subject: 'Votre demande de congé a été approuvée'
         );
     }
 
@@ -37,7 +42,10 @@ class LeaveApprovedMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'view.name',
+            view: 'emails.leave_approved',
+            with: [
+                'demande' => $this->demande,
+            ]
         );
     }
 

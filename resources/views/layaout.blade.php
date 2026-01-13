@@ -471,11 +471,21 @@
                                             <a class="nav-link" href="{{ route('conges.create') }}"><i class="fas fa-user-plus"></i> Créer un congé</a>
                                         </li>
                                     @endcan
+                                    
+
                                     @can('voir les congés')
                                         <li class="{{ request()->routeIs('conges.index') ? 'active' : '' }}">
                                             <a class="nav-link" href="{{ route('conges.index') }}"><i class="fas fa-list"></i> Liste des congés</a>
                                         </li>
                                     @endcan
+
+                                    @can('voir les congés')
+                                    <li class="{{ request()->routeIs('conges.calendrier') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('conges.calendrier') }}">
+                                            <i class="fas fa-calendar-alt"></i> <span>Calendrier des congés</span>
+                                        </a>
+                                    </li>
+                                @endcan
                                 </ul>
                             </li>
                             @endcan

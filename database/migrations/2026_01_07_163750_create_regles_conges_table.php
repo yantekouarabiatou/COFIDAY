@@ -9,10 +9,19 @@ return new class extends Migration {
     {
         Schema::create('regles_conges', function (Blueprint $table) {
             $table->id();
+
             $table->decimal('jours_par_mois', 4, 2)->default(2.5);
             $table->boolean('report_autorise')->default(true);
             $table->integer('limite_report')->nullable();
             $table->boolean('validation_multiple')->default(false);
+
+            // Champs ajoutés
+            $table->json('jours_feries')->nullable();
+            $table->json('periodes_bloquees')->nullable();
+            $table->integer('preavis_minimum')->default(0);
+            $table->integer('delai_annulation')->default(0);
+            $table->string('couleur_calendrier')->default('#3788d8');
+
             $table->timestamps();
         });
     }

@@ -1,4 +1,4 @@
-@extends('layaout')
+@extends('layout')
 
 @section('title', 'Détails de la Demande de Congé')
 
@@ -340,15 +340,11 @@
                                             </li>
                                             <li class="list-group-item d-flex justify-content-between align-items-center">
                                                 <span>Soumis le</span>
-                                                <span>
-                                                    {{ optional($demande->created_at)->format('d/m/Y H:i') ?? '—' }}
-                                                </span>
+                                                <span>{{ $demande->created_at->format('d/m/Y H:i') }}</span>
                                             </li>
                                             <li class="list-group-item d-flex justify-content-between align-items-center">
                                                 <span>Dernière mise à jour</span>
-                                                <span>
-                                                    {{ optional($demande->updated_at)->format('d/m/Y H:i') ?? '—' }}
-                                                </span>
+                                                <span>{{ $demande->updated_at->format('d/m/Y H:i') }}</span>
                                             </li>
                                             <li class="list-group-item d-flex justify-content-between align-items-center">
                                                 <span>Statut</span>
@@ -582,19 +578,22 @@
     }
 
     /* Progress circle */
-    .progress-circle {
-        width: 100px;
-        height: 100px;
-        margin: 0 auto;
-        border-radius: 50%;
-        position: relative;
-        background: conic-gradient(
-            #28a745 0% {{ min(100, ($solde->jours_restants / $solde->jours_acquis) * 100) }}%,
-            #e9ecef {{ min(100, ($solde->jours_restants / $solde->jours_acquis) * 100) }}% 100%
-        );
+    .progress-circle-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 20px 0;
     }
 
-    .progress-circle:before {
+    .circular-progress {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        position: relative;
+        background: conic-gradient(#28a745 0% var(--percent, 0%), #e9ecef var(--percent, 0%) 100%);
+    }
+
+    .circular-progress:before {
         content: '';
         position: absolute;
         width: 80px;
@@ -605,21 +604,7 @@
         left: 10px;
     }
 
-    .progress-circle.progress-warning {
-        background: conic-gradient(
-            #ffc107 0% {{ min(100, ($solde->jours_restants / $solde->jours_acquis) * 100) }}%,
-            #e9ecef {{ min(100, ($solde->jours_restants / $solde->jours_acquis) * 100) }}% 100%
-        );
-    }
-
-    .progress-circle.progress-danger {
-        background: conic-gradient(
-            #dc3545 0% {{ min(100, ($solde->jours_restants / $solde->jours_acquis) * 100) }}%,
-            #e9ecef {{ min(100, ($solde->jours_restants / $solde->jours_acquis) * 100) }}% 100%
-        );
-    }
-
-    .progress-circle-value {
+    .progress-value {
         position: absolute;
         top: 50%;
         left: 50%;
@@ -656,145 +641,4 @@
 
     .badge-demande_soumise { background-color: #3b82f6 !important; color: white; }
     .badge-demande_modifiee { background-color: #f59e0b !important; color: white; }
-    .badge-demande_approuvee { background-color: #10b981 !important; color: white; }
-    .badge-demande_refusee { background-color: #ef4444 !important; color: white; }
-    .badge-demande_annulee { background-color: #6b7280 !important; color: white; }
-</style>
-@endpush
-
-@push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script>
-$(document).ready(function() {
-    /* ==========================
-        CONFIRMATION SUPPRESSION
-    =========================== */
-    $('.delete-btn').on('click', function(e) {
-        e.preventDefault();
-        const form = $(this).closest('form');
-
-        Swal.fire({
-            title: 'Confirmer la suppression',
-            text: 'Êtes-vous sûr de vouloir supprimer cette demande ? Cette action est irréversible.',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Oui, supprimer',
-            cancelButtonText: 'Annuler'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                form.submit();
-            }
-        });
-    });
-
-    /* ==========================
-        ANNULATION DE DEMANDE
-    =========================== */
-    $('.cancel-btn').on('click', function(e) {
-        e.preventDefault();
-        const form = $(this).closest('form');
-
-        Swal.fire({
-            title: 'Confirmer l\'annulation',
-            text: 'Êtes-vous sûr de vouloir annuler cette demande ?',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#f39c12',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Oui, annuler',
-            cancelButtonText: 'Annuler'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                form.submit();
-            }
-        });
-    });
-
-    /* ==========================
-        APPROBATION DE DEMANDE
-    =========================== */
-    $('.approve-btn').on('click', function(e) {
-        e.preventDefault();
-        const form = $(this).closest('form');
-
-        Swal.fire({
-            title: 'Confirmer l\'approbation',
-            text: 'Êtes-vous sûr de vouloir approuver cette demande de congé ?',
-            icon: 'question',
-            input: 'textarea',
-            inputLabel: 'Commentaire (optionnel)',
-            inputPlaceholder: 'Ajouter un commentaire...',
-            inputAttributes: {
-                maxlength: 500
-            },
-            showCancelButton: true,
-            confirmButtonColor: '#28a745',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Oui, approuver',
-            cancelButtonText: 'Annuler'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                if (result.value) {
-                    $('<input>').attr({
-                        type: 'hidden',
-                        name: 'commentaire',
-                        value: result.value
-                    }).appendTo(form);
-                }
-                form.submit();
-            }
-        });
-    });
-
-    /* ==========================
-        REFUS DE DEMANDE
-    =========================== */
-    $('.refuse-btn').on('click', function(e) {
-        e.preventDefault();
-        const form = $(this).closest('form');
-
-        Swal.fire({
-            title: 'Confirmer le refus',
-            text: 'Êtes-vous sûr de vouloir refuser cette demande de congé ?',
-            icon: 'question',
-            input: 'textarea',
-            inputLabel: 'Motif du refus (requis)',
-            inputPlaceholder: 'Expliquez le motif du refus...',
-            inputAttributes: {
-                maxlength: 500,
-                required: true
-            },
-            showCancelButton: true,
-            confirmButtonColor: '#dc3545',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Oui, refuser',
-            cancelButtonText: 'Annuler',
-            preConfirm: (value) => {
-                if (!value) {
-                    Swal.showValidationMessage('Veuillez indiquer le motif du refus');
-                }
-                return value;
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                $('<input>').attr({
-                    type: 'hidden',
-                    name: 'commentaire',
-                    value: result.value
-                }).appendTo(form);
-                form.submit();
-            }
-        });
-    });
-
-    /* ==========================
-        IMPRIMER LA DEMANDE
-    =========================== */
-    $('#print-btn').on('click', function() {
-        window.print();
-    });
-});
-</script>
-@endpush
+    .badge-

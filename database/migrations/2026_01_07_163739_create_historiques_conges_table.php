@@ -11,17 +11,20 @@ return new class extends Migration {
             $table->id();
 
             $table->foreignId('demande_conge_id')
-                  ->constrained('demandes_conges')
-                  ->cascadeOnDelete();
+                ->constrained('demandes_conges')
+                ->cascadeOnDelete();
 
             $table->string('action');
             $table->foreignId('effectue_par')
-                  ->references('id')
-                  ->on('users')
-                  ->nullOnDelete();
+                ->nullable()
+                ->references('id')
+                ->on('users')
+                ->nullOnDelete();
+
 
             $table->text('commentaire')->nullable();
             $table->timestamp('date_action')->useCurrent();
+            $table->timestamps();
         });
     }
 

@@ -131,7 +131,7 @@
     <div class="card">
         <div class="content">
 
-            <h2>Bonjour 'Madame / Monsieur',</h2>
+            <h2>Bonjour {{ $validator_name ?? 'Madame / Monsieur' }},</h2>
 
             <p>
                 Par la présente, je souhaite solliciter un congé selon les modalités suivantes :
@@ -140,26 +140,26 @@
             <ul class="info-list">
                 <li>
                     <strong>Type de congé :</strong>
-                    {{ $leave->type->name }}
+                    {{ $leave->typeConge->libelle ?? '—' }}
                 </li>
                 <li>
                     <strong>Date de début :</strong>
-                    {{ $leave->date_debut }}
+                    {{ $leave->date_debut_formatted ?? $leave->date_debut }}
                 </li>
                 <li>
                     <strong>Date de fin :</strong>
-                    {{ $leave->date_fin }}
+                    {{ $leave->date_fin_formatted ?? $leave->date_fin }}
                 </li>
                 <li>
                     <strong>Nombre de jours :</strong>
-                    {{ $leave->days }}
+                    {{ $leave->nombre_jours ?? $leave->days }}
                 </li>
             </ul>
 
-            @if(!empty($leave->reason))
+            @if(!empty($leave->motif))
                 <div class="note">
                     <strong>Motif :</strong><br>
-                    {{ $leave->reason }}
+                    {{ $leave->motif }}
                 </div>
             @endif
 
@@ -168,11 +168,13 @@
                 la continuité des activités durant mon absence.
             </p>
 
-            <div class="btn-container">
-                <a href="{{ $approval_link ?? '#' }}" class="btn">
-                    Examiner la demande
-                </a>
-            </div>
+            @if(!empty($approval_link))
+                <div class="btn-container">
+                    <a href="{{ $approval_link }}" class="btn">
+                        Examiner la demande
+                    </a>
+                </div>
+            @endif
 
             <p style="margin-top:25px; font-size:14px;">
                 Je reste bien entendu disponible pour toute information complémentaire
@@ -181,7 +183,8 @@
 
             <p style="margin-top:20px;">
                 Cordialement,<br>
-                <strong>{{ $leave->user->name }}</strong>
+                <strong>{{ $leave->user->prenom ?? $leave->user->name ?? 'Nom indisponible' }}
+                    {{ $leave->user->nom ?? '' }}</strong>
             </p>
 
         </div>

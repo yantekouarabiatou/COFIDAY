@@ -22,6 +22,7 @@ use App\Http\Controllers\InteretController;
 use App\Http\Controllers\MissionAnalyseController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\RapportController;
+use App\Http\Controllers\RegleCongeController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\Statistics\CadeauInvitationReportController;
 use App\Http\Controllers\Statistics\ClientAuditReportController;
@@ -154,8 +155,6 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('roles', RoleController::class);
     });
 
-    Route::resource('conges', CongeController::class);
-
     Route::get('/statistics/export', [StatisticsController::class, 'export'])->name('statistics.export');
     Route::post('/stats/annual/update', [StatisticsController::class, 'updateCharts'])->name('stats.annual.update');
 
@@ -261,6 +260,31 @@ Route::middleware(['auth'])->group(function () {
 
         // Route pour voir un utilisateur sur un dossier spécifique
         Route::get('/utilisateur/{user}/dossier/{dossier}', [MissionAnalyseController::class, 'vueUtilisateur'])->name('missions.utilisateur.dossier');
+    });
+
+    Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
+        Route::get('/regles-conges', [RegleCongeController::class, 'edit'])->name('regles-conges.edit');
+        Route::put('/regles-conges', [RegleCongeController::class, 'update'])->name('regles-conges.update');
+        Route::get('/api/regles-conges/jours-acquis', [RegleCongeController::class, 'getJoursAcquis']);
+    });
+
+    Route::middleware(['auth'])->group(function () {
+        // Routes pour les employés
+        Route::get('/conges/solde', [CongeController::class, 'solde'])->name('conges.solde');
+        Route::get('/conges/calendrier', [CongeController::class, 'calendrier'])->name('conges.calendrier');
+
+        // Route pour annuler une demande
+        Route::post('/conges/{demande}/annuler', [CongeController::class, 'annuler'])->name('conges.annuler');
+
+        // Routes pour admin/manager
+        Route::middleware(['role:admin|manager'])->group(function () {
+            Route::get('/conges/dashboard', [CongeController::class, 'dashboard'])->name('conges.dashboard');
+            Route::post('/conges/{demande}/traiter', [CongeController::class, 'traiter'])->name('conges.traiter');
+            Route::get('/conges/solde/{user}', [CongeController::class, 'solde'])->name('conges.solde.user');
+        });
+
+        Route::resource('conges', CongeController::class)
+            ->parameters(['conges' => 'demande']);
     });
 
     // Route API à créer dans routes/api.php

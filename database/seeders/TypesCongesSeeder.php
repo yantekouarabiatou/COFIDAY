@@ -1,46 +1,47 @@
 <?php
 
-namespace Database\Seeders;
-
+namespace Database\Seeders; 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-
 class TypesCongesSeeder extends Seeder
 {
     public function run(): void
     {
         DB::table('types_conges')->insert([
             [
-                'libelle' => 'Congé annuel',
+                'libelle' => 'Congés payés',
                 'nombre_jours_max' => 30,
                 'est_paye' => true,
                 'actif' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'couleur' => '#3B82F6',
             ],
             [
-                'libelle' => 'Congé maladie',
-                'nombre_jours_max' => null,
+                'libelle' => 'Congés sans solde',
+                'nombre_jours_max' => 90,
+                'est_paye' => false,
+                'actif' => true,
+                'couleur' => '#6B7280',
+            ],
+            [
+                'libelle' => 'Congés maladie',
+                'nombre_jours_max' => 180,
                 'est_paye' => true,
                 'actif' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'couleur' => '#EF4444',
             ],
             [
-                'libelle' => 'Congé maternité',
+                'libelle' => 'Congés maternité',
                 'nombre_jours_max' => 98,
                 'est_paye' => true,
                 'actif' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'couleur' => '#8B5CF6',
             ],
             [
-                'libelle' => 'Congé sans solde',
-                'nombre_jours_max' => null,
-                'est_paye' => false,
+                'libelle' => 'Congés paternité',
+                'nombre_jours_max' => 25,
+                'est_paye' => true,
                 'actif' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'couleur' => '#10B981',
             ],
         ]);
     }

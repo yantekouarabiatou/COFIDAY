@@ -9,10 +9,11 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Traits\HasRoles;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
-    use HasFactory, Notifiable, HasRoles;
+    use HasFactory, Notifiable, HasRoles,SoftDeletes;
 
     protected $fillable = [
         'nom',
@@ -33,6 +34,9 @@ class User extends Authenticatable implements MustVerifyEmail
         'remember_token',
         'otp_code',
     ];
+
+    protected $dates = ['deleted_at']; // ← Et celle-ci
+
 
     protected function casts(): array
     {
@@ -84,6 +88,6 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function conges()
     {
-        return $this->hasMany(Conge::class);
+        return $this->hasMany(DemandeConge::class, 'user_id');
     }
 }
