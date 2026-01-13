@@ -14,7 +14,8 @@ class SoldeConge extends Model
         'annee',
         'jours_acquis',
         'jours_pris',
-        'jours_restants'
+        'jours_restants',
+        'jours_reportes',
     ];
 
     public function user(): BelongsTo

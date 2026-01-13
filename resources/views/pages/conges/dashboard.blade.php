@@ -1,528 +1,606 @@
-@extends('layout')
+@extends('layaout')
 
-@section('title', 'Détails de la Demande de Congé')
+@section('title', 'Tableau de bord - Gestion des Congés')
 
 @section('content')
 <section class="section">
     <div class="section-header">
-        <h1><i class="fas fa-calendar-alt"></i> Détails de la Demande de Congé</h1>
+        <h1><i class="fas fa-tachometer-alt"></i> Tableau de bord - Congés</h1>
         <div class="section-header-breadcrumb">
-            <div class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></div>
-            <div class="breadcrumb-item"><a href="{{ route('conges.index') }}">Congés</a></div>
-            <div class="breadcrumb-item active">Détails #{{ $demande->id }}</div>
+            <div class="breadcrumb-item active">Dashboard</div>
+            <div class="breadcrumb-item">Gestion des congés</div>
         </div>
     </div>
 
     <div class="section-body">
+        <!-- Alertes urgentes -->
+        @if($demandesUrgentes->isNotEmpty())
+        <div class="alert alert-warning alert-dismissible show fade">
+            <div class="alert-body">
+                <button class="close" data-dismiss="alert">
+                    <span>&times;</span>
+                </button>
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Attention !</strong> Vous avez {{ $demandesUrgentes->count() }} demande(s) urgente(s) en attente de validation depuis plus de 3 jours.
+            </div>
+        </div>
+        @endif
+
+        <!-- Statistiques globales -->
         <div class="row">
-            <div class="col-12">
-                <!-- Carte principale -->
+            <div class="col-lg-3 col-md-6 col-sm-6 col-12">
+                <div class="card card-statistic-1">
+                    <div class="card-icon bg-primary">
+                        <i class="fas fa-calendar"></i>
+                    </div>
+                    <div class="card-wrap">
+                        <div class="card-header">
+                            <h4>Total demandes</h4>
+                        </div>
+                        <div class="card-body">
+                            {{ $stats['total_demandes'] }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 col-sm-6 col-12">
+                <div class="card card-statistic-1">
+                    <div class="card-icon bg-warning">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="card-wrap">
+                        <div class="card-header">
+                            <h4>En attente</h4>
+                        </div>
+                        <div class="card-body">
+                            {{ $stats['en_attente'] }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 col-sm-6 col-12">
+                <div class="card card-statistic-1">
+                    <div class="card-icon bg-success">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="card-wrap">
+                        <div class="card-header">
+                            <h4>Approuvées</h4>
+                        </div>
+                        <div class="card-body">
+                            {{ $stats['approuvees'] }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 col-sm-6 col-12">
+                <div class="card card-statistic-1">
+                    <div class="card-icon bg-danger">
+                        <i class="fas fa-times-circle"></i>
+                    </div>
+                    <div class="card-wrap">
+                        <div class="card-header">
+                            <h4>Refusées</h4>
+                        </div>
+                        <div class="card-body">
+                            {{ $stats['refusees'] }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Première ligne : Demandes urgentes et Congés en cours -->
+        <div class="row">
+            <!-- Demandes urgentes -->
+            <div class="col-md-6">
                 <div class="card">
                     <div class="card-header">
-                        <h4>Informations de la demande</h4>
+                        <h4><i class="fas fa-exclamation-circle text-warning"></i> Demandes urgentes</h4>
                         <div class="card-header-action">
-                            <a href="{{ route('conges.index') }}" class="btn btn-icon icon-left btn-secondary">
-                                <i class="fas fa-arrow-left"></i> Retour
+                            <a href="{{ route('conges.index') }}?statut=en_attente" class="btn btn-warning btn-sm">
+                                <i class="fas fa-list"></i> Voir toutes
                             </a>
-
-                            <!-- Actions selon statut et permissions -->
-                            <div class="btn-group ml-2">
-                                @if($demande->statut === 'en_attente' &&
-                                    (auth()->user()->hasRole('admin') || auth()->id() === $demande->user_id))
-                                    <a href="{{ route('conges.edit', $demande) }}"
-                                       class="btn btn-icon icon-left btn-primary">
-                                        <i class="fas fa-edit"></i> Modifier
-                                    </a>
-                                @endif
-
-                                @if(auth()->user()->hasRole('admin|manager') && $demande->statut === 'en_attente')
-                                    <div class="dropdown d-inline">
-                                        <button class="btn btn-icon icon-left btn-success dropdown-toggle"
-                                                type="button" id="actionDropdown" data-toggle="dropdown">
-                                            <i class="fas fa-cogs"></i> Actions
-                                        </button>
-                                        <div class="dropdown-menu">
-                                            <form action="{{ route('conges.traiter', $demande) }}" method="POST"
-                                                  class="d-inline approve-form">
-                                                @csrf
-                                                <input type="hidden" name="action" value="approuver">
-                                                <button type="button" class="dropdown-item approve-btn">
-                                                    <i class="fas fa-check text-success"></i> Approuver
-                                                </button>
-                                            </form>
-                                            <div class="dropdown-divider"></div>
-                                            <form action="{{ route('conges.traiter', $demande) }}" method="POST"
-                                                  class="d-inline refuse-form">
-                                                @csrf
-                                                <input type="hidden" name="action" value="refuser">
-                                                <button type="button" class="dropdown-item refuse-btn">
-                                                    <i class="fas fa-times text-danger"></i> Refuser
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                @endif
-
-                                @if($demande->statut === 'en_attente' &&
-                                    (auth()->user()->hasRole('admin') || auth()->id() === $demande->user_id))
-                                    <form action="{{ route('conges.annuler', $demande) }}" method="POST"
-                                          class="d-inline cancel-form ml-1">
-                                        @csrf
-                                        <button type="button" class="btn btn-icon icon-left btn-warning cancel-btn">
-                                            <i class="fas fa-ban"></i> Annuler
-                                        </button>
-                                    </form>
-                                @endif
-                            </div>
                         </div>
                     </div>
-
                     <div class="card-body">
-                        <!-- Bannière de statut -->
-                        <div class="alert alert-{{ $statutColor }} alert-has-icon">
-                            <div class="alert-icon">
-                                @switch($demande->statut)
-                                    @case('en_attente')
-                                        <i class="fas fa-clock"></i>
-                                        @break
-                                    @case('approuve')
-                                        <i class="fas fa-check-circle"></i>
-                                        @break
-                                    @case('refuse')
-                                        <i class="fas fa-times-circle"></i>
-                                        @break
-                                    @case('annule')
-                                        <i class="fas fa-ban"></i>
-                                        @break
-                                @endswitch
-                            </div>
-                            <div class="alert-body">
-                                <div class="alert-title">
-                                    @switch($demande->statut)
-                                        @case('en_attente')
-                                            Demande en attente de validation
-                                            @break
-                                        @case('approuve')
-                                            Demande approuvée
-                                            @break
-                                        @case('refuse')
-                                            Demande refusée
-                                            @break
-                                        @case('annule')
-                                            Demande annulée
-                                            @break
-                                    @endswitch
-                                </div>
-                                <div class="alert-text">
-                                    @if($demande->statut === 'en_attente')
-                                        Soumise le {{ $demande->created_at->format('d/m/Y à H:i') }}
-                                        @if($demande->created_at->diffInDays(now()) > 0)
-                                            (il y a {{ $demande->created_at->diffInDays(now()) }} jours)
-                                        @endif
-                                    @elseif($demande->date_validation)
-                                        Traitée le {{ $demande->date_validation->format('d/m/Y à H:i') }}
-                                        @if($demande->validePar)
-                                            par {{ $demande->validePar->name ?? $demande->validePar->prenom . ' ' . $demande->validePar->nom }}
-                                        @endif
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <!-- Informations principales -->
-                            <div class="col-md-8">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h4><i class="fas fa-info-circle"></i> Détails de la demande</h4>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <label class="font-weight-bold">Demandeur</label>
-                                                    <div class="d-flex align-items-center">
-                                                        @if($demande->user && $demande->user->photo)
-                                                            <img src="{{ asset('storage/' . $demande->user->photo) }}"
-                                                                class="rounded-circle mr-2" width="40" height="40"
-                                                                alt="Photo">
-                                                        @elseif($demande->user)
-                                                            <div class="avatar bg-primary text-white rounded-circle mr-2"
-                                                                style="width: 40px; height: 40px; line-height: 40px; text-align: center;">
-                                                                {{ strtoupper(substr($demande->user->prenom ?? 'U', 0, 1) . substr($demande->user->nom ?? 'N', 0, 1)) }}
-                                                            </div>
-                                                        @else
-                                                            <div class="avatar bg-secondary text-white rounded-circle mr-2"
-                                                                style="width: 40px; height: 40px; line-height: 40px; text-align: center;">
-                                                                <i class="fas fa-user-slash"></i>
-                                                            </div>
-                                                        @endif
-                                                        <div>
-                                                            @if($demande->user)
-                                                                <strong>{{ $demande->user->prenom ?? 'Prénom' }} {{ $demande->user->nom ?? 'Nom' }}</strong><br>
-                                                                <small class="text-muted">{{ $demande->user->email ?? 'Email non disponible' }}</small>
-                                                            @else
-                                                                <strong class="text-danger">Utilisateur supprimé</strong><br>
-                                                                <small class="text-muted">ID: {{ $demande->user_id }}</small>
-                                                            @endif
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <label class="font-weight-bold">Type de congé</label>
-                                                    <div class="mt-2">
-                                                        @if($demande->typeConge)
-                                                            <span class="badge badge-{{ $demande->typeConge->est_paye ? 'success' : 'warning' }} p-2" style="font-size: 1em;">
-                                                                {{ $demande->typeConge->libelle }}
-                                                            </span>
-                                                            @if($demande->typeConge->est_paye)
-                                                                <span class="badge badge-info ml-2">Payé</span>
-                                                            @else
-                                                                <span class="badge badge-secondary ml-2">Non payé</span>
-                                                            @endif
-                                                            @if($demande->typeConge->nombre_jours_max)
-                                                                <div class="mt-2">
-                                                                    <small class="text-muted">
-                                                                        Maximum {{ $demande->typeConge->nombre_jours_max }} jours
-                                                                    </small>
-                                                                </div>
-                                                            @endif
-                                                        @else
-                                                            <span class="badge badge-secondary p-2">Type inconnu</span>
-                                                        @endif
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <label class="font-weight-bold">Période</label>
-                                                    <div class="mt-2">
-                                                        @if($demande->date_debut)
-                                                            <div class="d-flex align-items-center mb-2">
-                                                                <i class="fas fa-calendar-day text-primary mr-2"></i>
-                                                                <div>
-                                                                    <strong>Date de début :</strong><br>
-                                                                    {{ $demande->date_debut->format('d/m/Y') }}
-                                                                    <small class="text-muted">
-                                                                        ({{ $demande->date_debut->locale('fr')->isoFormat('dddd') }})
-                                                                    </small>
-                                                                </div>
-                                                            </div>
-                                                        @endif
-                                                        @if($demande->date_fin)
-                                                            <div class="d-flex align-items-center">
-                                                                <i class="fas fa-calendar-check text-primary mr-2"></i>
-                                                                <div>
-                                                                    <strong>Date de fin :</strong><br>
-                                                                    {{ $demande->date_fin->format('d/m/Y') }}
-                                                                    <small class="text-muted">
-                                                                        ({{ $demande->date_fin->locale('fr')->isoFormat('dddd') }})
-                                                                    </small>
-                                                                </div>
-                                                            </div>
-                                                        @endif
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <label class="font-weight-bold">Durée</label>
-                                                    <div class="mt-2">
-                                                        <div class="d-flex align-items-center">
-                                                            <i class="fas fa-clock text-primary mr-2 fa-2x"></i>
-                                                            <div>
-                                                                <h3 class="mb-0">{{ $demande->nombre_jours ?? 0 }} jour(s)</h3>
-                                                                @if($demande->date_debut && $demande->date_fin)
-                                                                    <small class="text-muted">
-                                                                        {{ $demande->date_debut->diffInDays($demande->date_fin) + 1 }} jours calendaires
-                                                                    </small>
-                                                                @endif
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        @if($demande->motif)
-                                        <div class="row">
-                                            <div class="col-md-12">
-                                                <div class="form-group">
-                                                    <label class="font-weight-bold">Motif</label>
-                                                    <div class="card bg-light">
-                                                        <div class="card-body">
-                                                            <p class="mb-0">{{ $demande->motif }}</p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        @endif
-
-                                        <!-- Informations de validation -->
-                                        @if($demande->statut !== 'en_attente' && $demande->statut !== 'annule')
-                                        <div class="row">
-                                            <div class="col-md-12">
-                                                <div class="form-group">
-                                                    <label class="font-weight-bold">Décision</label>
-                                                    <div class="card border-{{ $demande->statut === 'approuve' ? 'success' : 'danger' }}">
-                                                        <div class="card-body">
-                                                            <div class="d-flex justify-content-between align-items-center">
-                                                                <div>
-                                                                    <h5 class="mb-0">
-                                                                        @if($demande->statut === 'approuve')
-                                                                            <i class="fas fa-check-circle text-success"></i> Approuvé
-                                                                        @else
-                                                                            <i class="fas fa-times-circle text-danger"></i> Refusé
-                                                                        @endif
-                                                                    </h5>
-                                                                    @if($demande->validePar)
-                                                                        <small class="text-muted">
-                                                                            Par {{ $demande->validePar->name ?? $demande->validePar->prenom . ' ' . $demande->validePar->nom }}
-                                                                        </small>
-                                                                    @endif
-                                                                </div>
-                                                                <div class="text-right">
-                                                                    @if($demande->date_validation)
-                                                                        <small class="text-muted">
-                                                                            Le {{ $demande->date_validation->format('d/m/Y à H:i') }}
-                                                                        </small>
-                                                                    @else
-                                                                        <small class="text-muted">
-                                                                            Date de validation non disponible
-                                                                        </small>
-                                                                    @endif
-                                                                </div>
-                                                            </div>
-                                                            @if($demande->historiques && $demande->historiques->isNotEmpty())
-                                                                @php
-                                                                    $historiqueValidation = $demande->historiques
-                                                                        ->whereIn('action', ['demande_approuvee', 'demande_refusee'])
-                                                                        ->first();
-                                                                @endphp
-                                                                @if($historiqueValidation && $historiqueValidation->commentaire)
-                                                                <hr>
-                                                                <div class="mt-2">
-                                                                    <strong>Commentaire :</strong>
-                                                                    <p class="mb-0 mt-1">{{ $historiqueValidation->commentaire }}</p>
-                                                                </div>
-                                                                @endif
-                                                            @endif
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Informations complémentaires -->
-                            <div class="col-md-4">
-                                <!-- Carte d'information -->
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h4><i class="fas fa-chart-bar"></i> Informations</h4>
-                                    </div>
-                                    <div class="card-body">
-                                        <ul class="list-group list-group-flush">
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <span>Référence</span>
-                                                <span class="badge badge-light">#{{ $demande->id }}</span>
-                                            </li>
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <span>Soumis le</span>
-                                                <span>{{ $demande->created_at->format('d/m/Y H:i') }}</span>
-                                            </li>
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <span>Dernière mise à jour</span>
-                                                <span>{{ $demande->updated_at->format('d/m/Y H:i') }}</span>
-                                            </li>
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <span>Statut</span>
-                                                <span class="badge badge-{{ $statutColor }}">
-                                                    @if($demande->statut === 'en_attente')
-                                                        En attente
-                                                    @elseif($demande->statut === 'approuve')
-                                                        Approuvé
-                                                    @elseif($demande->statut === 'refuse')
-                                                        Refusé
+                        @if($demandesUrgentes->isNotEmpty())
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Employé</th>
+                                            <th>Type</th>
+                                            <th>Dates</th>
+                                            <th>Jours</th>
+                                            <th>Depuis</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($demandesUrgentes as $demande)
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    @if($demande->user->photo)
+                                                        <img alt="image" src="{{ asset('storage/' . $demande->user->photo) }}"
+                                                             class="rounded-circle mr-2" width="30" height="30">
                                                     @else
-                                                        Annulé
+                                                        <div class="avatar bg-primary text-white rounded-circle mr-2"
+                                                             style="width: 30px; height: 30px; line-height: 30px; text-align: center;">
+                                                            {{ strtoupper(substr($demande->user->prenom, 0, 1) . substr($demande->user->nom, 0, 1)) }}
+                                                        </div>
                                                     @endif
-                                                </span>
-                                            </li>
-                                            @if($demande->typeConge && $demande->typeConge->est_paye)
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <span>Impact solde</span>
-                                                <span class="text-{{ $demande->statut === 'approuve' ? 'success' : 'secondary' }}">
-                                                    @if($demande->statut === 'approuve')
-                                                        -{{ $demande->nombre_jours }} jours
-                                                    @else
-                                                        Aucun impact
-                                                    @endif
-                                                </span>
-                                            </li>
-                                            @endif
-                                        </ul>
-                                    </div>
-                                </div>
-
-                                <!-- Carte de solde -->
-                                @php
-                                    $solde = \App\Models\SoldeConge::where('user_id', $demande->user_id)
-                                        ->where('annee', now()->year)
-                                        ->first();
-                                @endphp
-                                @if($solde)
-                                <div class="card mt-3">
-                                    <div class="card-header">
-                                        <h4><i class="fas fa-wallet"></i> Solde de congés</h4>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="text-center mb-3">
-                                            <div class="progress-circle-wrapper">
-                                                <div class="circular-progress" data-percent="{{ $solde->jours_acquis > 0 ? min(100, ($solde->jours_restants / $solde->jours_acquis) * 100) : 0 }}">
-                                                    <span class="progress-value">{{ $solde->jours_restants }}</span>
+                                                    <div>
+                                                        <strong>{{ $demande->user->prenom }} {{ $demande->user->nom }}</strong>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div class="mt-2">
-                                                <small class="text-muted">jours restants sur {{ $solde->jours_acquis }}</small>
-                                            </div>
-                                        </div>
-                                        <ul class="list-group list-group-flush">
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <span>Jours acquis</span>
-                                                <span class="badge badge-success">{{ $solde->jours_acquis }}</span>
-                                            </li>
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <span>Jours pris</span>
-                                                <span class="badge badge-warning">{{ $solde->jours_pris }}</span>
-                                            </li>
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <span>Jours restants</span>
-                                                <span class="badge badge-primary">{{ $solde->jours_restants }}</span>
-                                            </li>
-                                        </ul>
-                                    </div>
-                                </div>
-                                @endif
-                            </div>
-                        </div>
-
-                        <!-- Historique -->
-                        @if($demande->historiques && $demande->historiques->isNotEmpty())
-                        <div class="row mt-4">
-                            <div class="col-md-12">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h4><i class="fas fa-history"></i> Historique des actions</h4>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="activities">
-                                            @foreach($demande->historiques->sortByDesc('date_action') as $historique)
-                                            <div class="activity">
-                                                <div class="activity-icon bg-{{ $historique->action_class ?? 'primary' }}">
-                                                    @switch($historique->action)
-                                                        @case('demande_soumise')
-                                                            <i class="fas fa-paper-plane"></i>
-                                                            @break
-                                                        @case('demande_modifiee')
-                                                            <i class="fas fa-edit"></i>
-                                                            @break
-                                                        @case('demande_approuvee')
+                                            </td>
+                                            <td>
+                                                <span class="badge" style="background-color: {{ optional($demande->typeConge)->couleur ?? '#3B82F6' }}; color: white;">
+                                                    {{ optional($demande->typeConge)->libelle ?? 'Type inconnu' }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {{ \Carbon\Carbon::parse($demande->date_debut)->format('d/m') }}
+                                                <i class="fas fa-arrow-right mx-1"></i>
+                                                {{ \Carbon\Carbon::parse($demande->date_fin)->format('d/m') }}
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-info">{{ $demande->nombre_jours }}j</span>
+                                            </td>
+                                            <td>
+                                                <span class="text-danger">
+                                                    {{ $demande->created_at->diffForHumans() }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div class="btn-group">
+                                                    <form action="{{ route('conges.traiter', $demande) }}" method="POST" class="d-inline">
+                                                        @csrf
+                                                        <input type="hidden" name="action" value="approuve">
+                                                        <button type="submit" class="btn btn-success btn-sm" title="Approuver">
                                                             <i class="fas fa-check"></i>
-                                                            @break
-                                                        @case('demande_refusee')
-                                                            <i class="fas fa-times"></i>
-                                                            @break
-                                                        @case('demande_annulee')
-                                                            <i class="fas fa-ban"></i>
-                                                            @break
-                                                        @default
-                                                            <i class="fas fa-history"></i>
-                                                    @endswitch
+                                                        </button>
+                                                    </form>
+                                                    <button type="button" class="btn btn-danger btn-sm refuse-btn"
+                                                            data-demande-id="{{ $demande->id }}"
+                                                            title="Refuser">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                    <a href="{{ route('conges.show', $demande) }}"
+                                                       class="btn btn-info btn-sm" title="Voir détails">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
                                                 </div>
-                                                <div class="activity-detail">
-                                                    <div class="mb-2">
-                                                        <span class="text-job text-muted">
-                                                            {{ $historique->date_action->format('d/m/Y à H:i') }}
-                                                            ({{ $historique->date_action->diffForHumans() }})
-                                                        </span>
-                                                        <span class="bullet"></span>
-                                                        <span class="badge badge-{{ $historique->action_class ?? 'primary' }}">
-                                                            {{ $historique->action_label ?? ucfirst(str_replace('_', ' ', $historique->action)) }}
-                                                        </span>
-                                                    </div>
-                                                    <p>
-                                                        @if($historique->effectuePar)
-                                                            <strong>{{ $historique->effectuePar->name ?? $historique->effectuePar->prenom . ' ' . $historique->effectuePar->nom }}</strong>
-                                                        @else
-                                                            <strong>Système</strong>
-                                                        @endif
-                                                        @if($historique->commentaire)
-                                                            : {{ $historique->commentaire }}
-                                                        @endif
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                </div>
+                                            </td>
+                                        </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
                             </div>
-                        </div>
+                        @else
+                            <div class="text-center py-4">
+                                <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                                <h5>Aucune demande urgente</h5>
+                                <p class="text-muted">Toutes les demandes sont traitées dans les délais.</p>
+                            </div>
                         @endif
                     </div>
+                </div>
+            </div>
 
-                    <div class="card-footer text-right">
-                        <a href="{{ route('conges.index') }}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left"></i> Retour à la liste
-                        </a>
-                        @if($demande->statut === 'en_attente' &&
-                            (auth()->user()->hasRole('admin') || auth()->id() === $demande->user_id))
-                            <a href="{{ route('conges.edit', $demande) }}" class="btn btn-primary">
-                                <i class="fas fa-edit"></i> Modifier
+            <!-- Congés en cours -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h4><i class="fas fa-plane text-primary"></i> Congés en cours</h4>
+                        <div class="card-header-action">
+                            <span class="badge badge-primary">{{ $congesEnCours->count() }} personne(s) absente(s)</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        @if($congesEnCours->isNotEmpty())
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Employé</th>
+                                            <th>Type</th>
+                                            <th>Période</th>
+                                            <th>Jours restants</th>
+                                            <th>Retour le</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($congesEnCours as $conge)
+                                        @php
+                                            $dateFin = \Carbon\Carbon::parse($conge->date_fin);
+                                            $joursRestants = max(0, now()->diffInDays($dateFin, false));
+                                            $pourcentage = $conge->nombre_jours > 0 ?
+                                                (($conge->nombre_jours - $joursRestants) / $conge->nombre_jours) * 100 : 0;
+                                        @endphp
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    @if($conge->user->photo)
+                                                        <img alt="image" src="{{ asset('storage/' . $conge->user->photo) }}"
+                                                             class="rounded-circle mr-2" width="30" height="30">
+                                                    @else
+                                                        <div class="avatar bg-primary text-white rounded-circle mr-2"
+                                                             style="width: 30px; height: 30px; line-height: 30px; text-align: center;">
+                                                            {{ strtoupper(substr($conge->user->prenom, 0, 1) . substr($conge->user->nom, 0, 1)) }}
+                                                        </div>
+                                                    @endif
+                                                    <div>
+                                                        <strong>{{ $conge->user->prenom }} {{ $conge->user->nom }}</strong><br>
+                                                        <small class="text-muted">{{ $conge->user->email }}</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge" style="background-color: {{ optional($conge->typeConge)->couleur ?? '#3B82F6' }}; color: white;">
+                                                    {{ optional($conge->typeConge)->libelle ?? 'Type inconnu' }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {{ \Carbon\Carbon::parse($conge->date_debut)->format('d/m') }}
+                                                <i class="fas fa-arrow-right mx-1"></i>
+                                                {{ \Carbon\Carbon::parse($conge->date_fin)->format('d/m') }}
+                                            </td>
+                                            <td>
+                                                <div class="progress" style="height: 20px;">
+                                                    <div class="progress-bar
+                                                        @if($pourcentage < 30) bg-success
+                                                        @elseif($pourcentage < 70) bg-warning
+                                                        @else bg-danger
+                                                        @endif"
+                                                        role="progressbar"
+                                                        style="width: {{ $pourcentage }}%"
+                                                        aria-valuenow="{{ $pourcentage }}"
+                                                        aria-valuemin="0"
+                                                        aria-valuemax="100">
+                                                        {{ $joursRestants }}j
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <strong>{{ $dateFin->format('d/m/Y') }}</strong><br>
+                                                <small class="text-muted">
+                                                    {{ $dateFin->diffForHumans() }}
+                                                </small>
+                                            </td>
+                                        </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @else
+                            <div class="text-center py-4">
+                                <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                                <h5>Tout le monde est présent</h5>
+                                <p class="text-muted">Aucun congé en cours actuellement.</p>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Deuxième ligne : Graphiques et Statistiques -->
+        <div class="row">
+            <!-- Graphique des demandes par mois -->
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h4><i class="fas fa-chart-bar"></i> Évolution des demandes par mois</h4>
+                        <div class="card-header-action">
+                            <select id="chart-year" class="form-control form-control-sm" style="width: auto; display: inline-block;">
+                                @for($i = now()->year - 2; $i <= now()->year; $i++)
+                                    <option value="{{ $i }}" {{ $i == now()->year ? 'selected' : '' }}>
+                                        {{ $i }}
+                                    </option>
+                                @endfor
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="demandesChart" height="120"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistiques par type -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h4><i class="fas fa-chart-pie"></i> Répartition par type</h4>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="typeChart" height="250"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Troisième ligne : Prochains congés et Soldes critiques -->
+        <div class="row">
+            <!-- Prochains congés programmés -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h4><i class="fas fa-calendar-plus text-success"></i> Prochains congés (15 jours)</h4>
+                        <div class="card-header-action">
+                            <a href="{{ route('conges.calendrier') }}" class="btn btn-success btn-sm">
+                                <i class="fas fa-calendar-alt"></i> Calendrier
                             </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        @if($prochainsConges->isNotEmpty())
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Employé</th>
+                                            <th>Type</th>
+                                            <th>Début</th>
+                                            <th>Fin</th>
+                                            <th>Dans</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($prochainsConges as $conge)
+                                        @php
+                                            $dateDebut = \Carbon\Carbon::parse($conge->date_debut);
+                                            $dans = $dateDebut->diffForHumans();
+                                            $isProche = $dateDebut->diffInDays(now()) <= 3;
+                                        @endphp
+                                        <tr class="{{ $isProche ? 'table-warning' : '' }}">
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    @if($conge->user->photo)
+                                                        <img alt="image" src="{{ asset('storage/' . $conge->user->photo) }}"
+                                                             class="rounded-circle mr-2" width="30" height="30">
+                                                    @else
+                                                        <div class="avatar bg-primary text-white rounded-circle mr-2"
+                                                             style="width: 30px; height: 30px; line-height: 30px; text-align: center;">
+                                                            {{ strtoupper(substr($conge->user->prenom, 0, 1) . substr($conge->user->nom, 0, 1)) }}
+                                                        </div>
+                                                    @endif
+                                                    <div>
+                                                        <strong>{{ $conge->user->prenom }} {{ $conge->user->nom }}</strong>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge" style="background-color: {{ optional($conge->typeConge)->couleur ?? '#3B82F6' }}; color: white;">
+                                                    {{ optional($conge->typeConge)->libelle ?? 'Type inconnu' }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {{ $dateDebut->format('d/m/Y') }}<br>
+                                                <small class="text-muted">{{ $dateDebut->locale('fr')->dayName }}</small>
+                                            </td>
+                                            <td>
+                                                {{ \Carbon\Carbon::parse($conge->date_fin)->format('d/m/Y') }}
+                                            </td>
+                                            <td>
+                                                @if($isProche)
+                                                    <span class="badge badge-warning">{{ $dans }}</span>
+                                                @else
+                                                    <span class="text-muted">{{ $dans }}</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                <a href="{{ route('conges.show', $conge) }}"
+                                                   class="btn btn-sm btn-info" title="Voir détails">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @else
+                            <div class="text-center py-4">
+                                <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                                <h5>Aucun congé à venir</h5>
+                                <p class="text-muted">Pas de congé programmé dans les 15 prochains jours.</p>
+                            </div>
                         @endif
-                        @if(auth()->user()->hasRole('admin') ||
-                            (auth()->id() === $demande->user_id &&
-                             in_array($demande->statut, ['en_attente', 'annule'])))
-                            <form action="{{ route('conges.destroy', $demande) }}" method="POST"
-                                  class="d-inline delete-form">
-                                @csrf
-                                @method('DELETE')
-                                <button type="button" class="btn btn-danger delete-btn">
-                                    <i class="fas fa-trash"></i> Supprimer
+                    </div>
+                </div>
+            </div>
+
+            <!-- Soldes critiques -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h4><i class="fas fa-exclamation-triangle text-danger"></i> Soldes critiques</h4>
+                        <div class="card-header-action">
+                            <a href="{{ route('conges.index') }}" class="btn btn-danger btn-sm">
+                                <i class="fas fa-wallet"></i> Gérer
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        @if($soldesCritiques->isNotEmpty())
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Employé</th>
+                                            <th>Jours acquis</th>
+                                            <th>Jours pris</th>
+                                            <th>Jours restants</th>
+                                            <th>Utilisation</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($soldesCritiques as $solde)
+                                        @php
+                                            $tauxUtilisation = $solde->jours_acquis > 0 ?
+                                                round(($solde->jours_pris / $solde->jours_acquis) * 100, 1) : 0;
+                                            $isTresCritique = $solde->jours_restants < 5;
+                                        @endphp
+                                        <tr class="{{ $isTresCritique ? 'table-danger' : 'table-warning' }}">
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    @if($solde->user->photo)
+                                                        <img alt="image" src="{{ asset('storage/' . $solde->user->photo) }}"
+                                                             class="rounded-circle mr-2" width="30" height="30">
+                                                    @else
+                                                        <div class="avatar bg-primary text-white rounded-circle mr-2"
+                                                             style="width: 30px; height: 30px; line-height: 30px; text-align: center;">
+                                                            {{ strtoupper(substr($solde->user->prenom, 0, 1) . substr($solde->user->nom, 0, 1)) }}
+                                                        </div>
+                                                    @endif
+                                                    <div>
+                                                        <strong>{{ $solde->user->prenom }} {{ $solde->user->nom }}</strong><br>
+                                                        <small class="text-muted">{{ $solde->annee }}</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-success">{{ $solde->jours_acquis }}</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-warning">{{ $solde->jours_pris }}</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-{{ $isTresCritique ? 'danger' : 'warning' }}">
+                                                    {{ $solde->jours_restants }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div class="progress" style="height: 20px;">
+                                                    <div class="progress-bar
+                                                        @if($tauxUtilisation < 50) bg-success
+                                                        @elseif($tauxUtilisation < 80) bg-warning
+                                                        @else bg-danger
+                                                        @endif"
+                                                        role="progressbar"
+                                                        style="width: {{ min($tauxUtilisation, 100) }}%"
+                                                        aria-valuenow="{{ $tauxUtilisation }}"
+                                                        aria-valuemin="0"
+                                                        aria-valuemax="100">
+                                                        {{ $tauxUtilisation }}%
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <a href="{{ route('conges.solde.user', $solde->user) }}"
+                                                   class="btn btn-sm btn-info" title="Voir solde">
+                                                    <i class="fas fa-wallet"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @else
+                            <div class="text-center py-4">
+                                <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                                <h5>Aucun solde critique</h5>
+                                <p class="text-muted">Tous les soldes sont dans des limites acceptables.</p>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quatrième ligne : Actions rapides et Export -->
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4><i class="fas fa-bolt"></i> Actions rapides</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3 text-center">
+                                <a href="{{ route('conges.create') }}" class="btn btn-primary btn-lg btn-block mb-3">
+                                    <i class="fas fa-plus-circle fa-2x mb-2"></i><br>
+                                    Nouvelle demande
+                                </a>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <a href="{{ route('conges.calendrier') }}" class="btn btn-success btn-lg btn-block mb-3">
+                                    <i class="fas fa-calendar-alt fa-2x mb-2"></i><br>
+                                    Voir calendrier
+                                </a>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <button type="button" class="btn btn-info btn-lg btn-block mb-3" onclick="window.print()">
+                                    <i class="fas fa-print fa-2x mb-2"></i><br>
+                                    Imprimer rapport
                                 </button>
-                            </form>
-                        @endif
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <button type="button" class="btn btn-warning btn-lg btn-block mb-3" id="export-btn">
+                                    <i class="fas fa-file-export fa-2x mb-2"></i><br>
+                                    Exporter données
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </section>
+
+<!-- Modal pour refus -->
+<div class="modal fade" id="refuseModal" tabindex="-1" role="dialog" aria-labelledby="refuseModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="refuseModalLabel">Refuser la demande</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="refuseForm" method="POST">
+                @csrf
+                <input type="hidden" name="action" value="refuse">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="refuseComment">Motif du refus <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="refuseComment" name="commentaire"
+                                  rows="4" placeholder="Expliquez le motif du refus..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-danger">Confirmer le refus</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('styles')
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.css">
 <style>
-    /* Styles pour les badges */
-    .badge {
-        font-size: 0.85em;
-        font-weight: 500;
-        padding: 0.5em 0.75em;
+    .card-statistic-1 .card-icon {
+        width: 60px;
+        height: 60px;
+        line-height: 60px;
+        font-size: 1.5rem;
     }
 
-    /* Avatar */
+    .card-statistic-1 .card-body {
+        font-size: 1.5rem;
+        font-weight: bold;
+    }
+
     .avatar {
         display: inline-flex;
         align-items: center;
@@ -530,115 +608,278 @@
         font-weight: bold;
     }
 
-    /* Historique */
-    .activities {
-        margin: 0;
-        padding: 0;
-        list-style: none;
+    .progress {
+        border-radius: 10px;
+        overflow: hidden;
     }
 
-    .activity {
-        position: relative;
-        padding-left: 60px;
-        margin-bottom: 30px;
+    .progress-bar {
+        font-weight: 500;
+        font-size: 0.8rem;
+        line-height: 20px;
     }
 
-    .activity-icon {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 45px;
-        height: 45px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 1.2em;
+    .btn-lg {
+        padding: 20px 10px;
     }
 
-    .activity-detail {
-        background-color: #f8f9fa;
-        border-radius: 5px;
-        padding: 15px;
-        border-left: 4px solid #e9ecef;
+    .btn-lg i {
+        display: block;
+        margin-bottom: 10px;
     }
 
-    .activity-detail .text-job {
-        font-size: 0.85em;
+    .table td, .table th {
+        vertical-align: middle;
     }
 
-    .activity-detail .bullet {
-        width: 5px;
-        height: 5px;
-        background-color: #6c757d;
-        border-radius: 50%;
-        display: inline-block;
-        margin: 0 10px;
+    /* Badges personnalisés */
+    .badge {
+        font-weight: 500;
+        padding: 0.35em 0.65em;
+    }
+</style>
+@endpush
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Données pour les graphiques
+    const statsData = @json($stats);
+    const chartData = @json($chartData ?? []);
+    const typeData = @json($typeData ?? []);
+
+    // 1. Graphique des demandes par mois
+    initDemandesChart();
+
+    // 2. Graphique de répartition par type
+    initTypeChart();
+
+    // 3. Gestion des refus
+    document.querySelectorAll('.refuse-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const demandeId = this.dataset.demandeId;
+            const form = document.getElementById('refuseForm');
+            form.action = `/conges/${demandeId}/traiter`;
+            $('#refuseModal').modal('show');
+        });
+    });
+
+    // 4. Export des données
+    document.getElementById('export-btn').addEventListener('click', function() {
+        Swal.fire({
+            title: 'Exporter les données',
+            text: 'Choisissez le format d\'export',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Excel',
+            cancelButtonText: 'PDF',
+            showDenyButton: true,
+            denyButtonText: 'CSV'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                exportData('excel');
+            } else if (result.dismiss === Swal.DismissReason.cancel) {
+                exportData('pdf');
+            } else if (result.isDenied) {
+                exportData('csv');
+            }
+        });
+    });
+
+    // 5. Filtre année pour le graphique
+    document.getElementById('chart-year').addEventListener('change', function() {
+        // Recharger les données pour l'année sélectionnée
+        loadChartData(this.value);
+    });
+
+    // Fonctions
+    function initDemandesChart() {
+        const ctx = document.getElementById('demandesChart').getContext('2d');
+
+        const labels = chartData.months || ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+        const dataEnAttente = chartData.en_attente || Array(12).fill(0);
+        const dataApprouvees = chartData.approuvees || Array(12).fill(0);
+        const dataRefusees = chartData.refusees || Array(12).fill(0);
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'En attente',
+                        data: dataEnAttente,
+                        backgroundColor: '#ffc107',
+                        borderColor: '#ffc107',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Approuvées',
+                        data: dataApprouvees,
+                        backgroundColor: '#28a745',
+                        borderColor: '#28a745',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Refusées',
+                        data: dataRefusees,
+                        backgroundColor: '#dc3545',
+                        borderColor: '#dc3545',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        stacked: true,
+                    },
+                    y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Nombre de demandes'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                }
+            }
+        });
     }
 
-    /* Progress circle */
-    .progress-circle-wrapper {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin: 20px 0;
+    function initTypeChart() {
+        const ctx = document.getElementById('typeChart').getContext('2d');
+
+        const labels = typeData.labels || ['Payés', 'Maladie', 'Maternité', 'Sans solde'];
+        const data = typeData.data || [40, 25, 15, 20];
+        const backgroundColors = typeData.colors || ['#3B82F6', '#EF4444', '#8B5CF6', '#6B7280'];
+
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: backgroundColors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = Math.round((value / total) * 100);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
     }
 
-    .circular-progress {
-        width: 100px;
-        height: 100px;
-        border-radius: 50%;
-        position: relative;
-        background: conic-gradient(#28a745 0% var(--percent, 0%), #e9ecef var(--percent, 0%) 100%);
+    function loadChartData(year) {
+        // AJAX pour charger les données de l'année sélectionnée
+        fetch(`/api/conges/stats/${year}`)
+            .then(response => response.json())
+            .then(data => {
+                // Mettre à jour les graphiques avec les nouvelles données
+                console.log('Données chargées pour', year, data);
+                // Ici, tu devrais recréer les graphiques avec les nouvelles données
+            })
+            .catch(error => console.error('Erreur:', error));
     }
 
-    .circular-progress:before {
-        content: '';
-        position: absolute;
-        width: 80px;
-        height: 80px;
-        background: white;
-        border-radius: 50%;
-        top: 10px;
-        left: 10px;
+    function exportData(format) {
+        const year = document.getElementById('chart-year').value;
+        let url = '';
+
+        switch(format) {
+            case 'excel':
+                url = `/conges/export/excel?annee=${year}`;
+                break;
+            case 'pdf':
+                url = `/conges/export/pdf?annee=${year}`;
+                break;
+            case 'csv':
+                url = `/conges/export/csv?annee=${year}`;
+                break;
+        }
+
+        // Ouvrir dans un nouvel onglet pour le téléchargement
+        window.open(url, '_blank');
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Export lancé',
+            text: `Le téléchargement du fichier ${format.toUpperCase()} va commencer.`,
+            timer: 2000,
+            showConfirmButton: false
+        });
     }
 
-    .progress-value {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        font-size: 1.5em;
-        font-weight: bold;
-        color: #343a40;
-        z-index: 1;
+    // Mise à jour en temps réel (optionnel)
+    function startLiveUpdates() {
+        // Toutes les 30 secondes, vérifier les nouvelles demandes
+        setInterval(() => {
+            fetch('/api/conges/stats/live')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.hasNewRequests) {
+                        // Afficher une notification
+                        showNotification('Nouvelle demande de congé', 'Une nouvelle demande nécessite votre attention.');
+                    }
+                })
+                .catch(error => console.error('Erreur live update:', error));
+        }, 30000); // 30 secondes
     }
 
-    /* Alert colors */
-    .alert-success {
-        border-left-color: #28a745;
+    function showNotification(title, message) {
+        if (Notification.permission === "granted") {
+            new Notification(title, { body: message });
+        } else if (Notification.permission !== "denied") {
+            Notification.requestPermission().then(permission => {
+                if (permission === "granted") {
+                    new Notification(title, { body: message });
+                }
+            });
+        }
+
+        // Notification SweetAlert
+        Swal.fire({
+            title: title,
+            text: message,
+            icon: 'info',
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000
+        });
     }
 
-    .alert-warning {
-        border-left-color: #ffc107;
+    // Démarrer les mises à jour en temps réel si admin
+    @if(auth()->user()->hasRole('admin|manager'))
+    if (Notification.permission === "default") {
+        Notification.requestPermission();
     }
-
-    .alert-danger {
-        border-left-color: #dc3545;
-    }
-
-    .alert-secondary {
-        border-left-color: #6c757d;
-    }
-
-    /* Badge colors */
-    .bg-demande_soumise { background-color: #3b82f6 !important; }
-    .bg-demande_modifiee { background-color: #f59e0b !important; }
-    .bg-demande_approuvee { background-color: #10b981 !important; }
-    .bg-demande_refusee { background-color: #ef4444 !important; }
-    .bg-demande_annulee { background-color: #6b7280 !important; }
-
-    .badge-demande_soumise { background-color: #3b82f6 !important; color: white; }
-    .badge-demande_modifiee { background-color: #f59e0b !important; color: white; }
-    .badge-
+    // startLiveUpdates(); // Décommente pour activer
+    @endif
+});
+</script>
+@endpush

@@ -89,24 +89,27 @@
                                     <div class="form-group">
                                         <label>Type de congé <span class="text-danger">*</span></label>
                                         <select name="type_conge_id" id="type_conge_id"
-                                                class="form-control select2 @error('type_conge_id') is-invalid @enderror"
-                                                required
-                                                onchange="updateTypeCongeInfo()">
-                                            <option value="">Sélectionner un type</option>
-                                            @foreach($typesConges as $type)
-                                                <option value="{{ $type->id }}"
-                                                        data-est-paye="{{ $type->est_paye ? '1' : '0' }}"
-                                                        data-max-jours="{{ $type->nombre_jours_max }}"
-                                                        {{ old('type_conge_id') == $type->id ? 'selected' : '' }}>
-                                                    {{ $type->libelle }}
-                                                    @if($type->est_paye)
-                                                        <span class="text-success"> (Payé)</span>
-                                                    @else
-                                                        <span class="text-warning"> (Non payé)</span>
-                                                    @endif
-                                                </option>
-                                            @endforeach
-                                        </select>
+                                    class="form-control select2 @error('type_conge_id') is-invalid @enderror"
+                                    required
+                                    onchange="updateTypeCongeInfo()">
+                                <option value="">Sélectionner un type</option>
+                                @foreach($typesConges as $type)
+                                    <option value="{{ $type->id }}"
+                                            data-est-paye="{{ $type->est_paye ? '1' : '0' }}"
+                                            data-est-annuel="{{ $type->est_annuel ? '1' : '0' }}"
+                                            data-max-jours="{{ $type->nombre_jours_max }}"
+                                            {{ old('type_conge_id') == $type->id ? 'selected' : '' }}>
+                                        {{ $type->libelle }}
+                                        @if($type->est_annuel)
+                                            <span class="text-success"> (Annuel - déduit du solde)</span>
+                                        @elseif($type->est_paye)
+                                            <span class="text-primary"> (Payé - non déduit)</span>
+                                        @else
+                                            <span class="text-warning"> (Non payé)</span>
+                                        @endif
+                                    </option>
+                                @endforeach
+</select>
                                         <small class="form-text text-muted" id="type-conge-info">
                                             Sélectionnez un type pour voir les détails
                                         </small>
@@ -267,7 +270,7 @@ function calculateDays() {
     var dateFin = $('#date_fin').val();
     var typeCongeId = $('#type_conge_id').val();
 
-    if (!dateDebut || !dateFin || !typeCongeId) {
+    if (!dateDebut || !dateFin) {
         $('#preview-card').hide();
         return;
     }
@@ -280,6 +283,7 @@ function calculateDays() {
             text: 'La date de fin doit être postérieure à la date de début',
         });
         $('#date_fin').val('');
+        $('#nombre_jours').val('');
         return;
     }
 
@@ -308,6 +312,9 @@ function calculateDays() {
     // Mettre à jour les infos du type de congé
     updateTypeCongeInfo();
 
+    // Vérifier le solde
+    verifierSolde();
+
     // Afficher la prévisualisation
     updatePreview();
 }
@@ -317,6 +324,7 @@ function updateTypeCongeInfo() {
     var selectedOption = $('#type_conge_id option:selected');
     var typeCongeId = selectedOption.val();
     var estPaye = selectedOption.data('est-paye');
+    var estAnnuel = selectedOption.data('est-annuel');
     var maxJours = selectedOption.data('max-jours');
     var nombreJours = parseFloat($('#nombre_jours').val()) || 0;
 
@@ -330,7 +338,14 @@ function updateTypeCongeInfo() {
         infoText += 'Maximum ' + maxJours + ' jours. ';
     }
 
-    infoText += estPaye == '1' ? 'Congé payé.' : 'Congé non payé.';
+    // Afficher le type de congé
+    if (estAnnuel == '1') {
+        infoText += 'Congé annuel (déduit du solde).';
+    } else if (estPaye == '1') {
+        infoText += 'Congé payé (non déduit du solde).';
+    } else {
+        infoText += 'Congé non payé.';
+    }
 
     $('#type-conge-info').html(infoText);
 
@@ -342,17 +357,54 @@ function updateTypeCongeInfo() {
             text: 'Le nombre de jours demandé (' + nombreJours + ') dépasse le maximum autorisé (' + maxJours + ' jours) pour ce type de congé.',
         });
     }
+}
 
-    // Vérifier le solde pour les congés payés
-    if (estPaye == '1') {
-        var soldeRestant = {{ isset($solde) ? $solde->jours_restants : 0 }};
+// Fonction pour vérifier le solde
+function verifierSolde() {
+    var typeCongeId = $('#type_conge_id').val();
+    var nombreJours = parseFloat($('#nombre_jours').val()) || 0;
+
+    if (!typeCongeId || !nombreJours) {
+        $('#submit-btn').prop('disabled', false).html('<i class="fas fa-paper-plane"></i> Soumettre la Demande');
+        return;
+    }
+
+    var selectedOption = $('#type_conge_id option:selected');
+    var estAnnuel = selectedOption.data('est-annuel');
+    var soldeRestant = {{ isset($solde) ? $solde->jours_restants : 0 }};
+    var typeText = selectedOption.text().replace(/<[^>]*>/g, ''); // Retirer le HTML
+
+    // Vérifier uniquement pour les congés annuels
+    if (estAnnuel == '1') {
         if (nombreJours > soldeRestant) {
+            $('#submit-btn').prop('disabled', true);
+            $('#submit-btn').html('<i class="fas fa-ban"></i> Solde insuffisant');
+
             Swal.fire({
                 icon: 'error',
                 title: 'Solde insuffisant',
-                text: 'Vous avez seulement ' + soldeRestant + ' jours disponibles. Veuillez ajuster vos dates ou choisir un congé non payé.',
+                html: '<div class="text-left">' +
+                      '<p><strong>Type :</strong> ' + typeText + ' (Congé annuel)</p>' +
+                      '<p><strong>Solde disponible :</strong> ' + soldeRestant + ' jours</p>' +
+                      '<p><strong>Demandé :</strong> ' + nombreJours + ' jours</p>' +
+                      '<p class="text-danger"><strong>Manquant :</strong> ' + (nombreJours - soldeRestant) + ' jours</p>' +
+                      '<hr>' +
+                      '<p class="mb-2"><strong>Options :</strong></p>' +
+                      '<ul class="text-left">' +
+                      '<li>Réduire la durée du congé</li>' +
+                      '<li>Choisir un autre type de congé (ex: maladie, maternité)</li>' +
+                      '</ul>' +
+                      '</div>',
+                confirmButtonText: 'Compris'
             });
+        } else {
+            $('#submit-btn').prop('disabled', false);
+            $('#submit-btn').html('<i class="fas fa-paper-plane"></i> Soumettre la Demande');
         }
+    } else {
+        // Pour tous les autres types (payés non annuels ou non payés), activer le bouton
+        $('#submit-btn').prop('disabled', false);
+        $('#submit-btn').html('<i class="fas fa-paper-plane"></i> Soumettre la Demande');
     }
 }
 
@@ -362,10 +414,12 @@ function updatePreview() {
     var dateDebut = $('#date_debut').val();
     var dateFin = $('#date_fin').val();
     var nombreJours = $('#nombre_jours').val();
-    var estPaye = $('#type_conge_id option:selected').data('est-paye');
+    var selectedOption = $('#type_conge_id option:selected');
+    var estPaye = selectedOption.data('est-paye');
+    var estAnnuel = selectedOption.data('est-annuel');
     var soldeRestant = {{ isset($solde) ? $solde->jours_restants : 0 }};
 
-    if (!typeText || !dateDebut || !dateFin) {
+    if (!typeText || !dateDebut || !dateFin || !nombreJours) {
         $('#preview-card').hide();
         return;
     }
@@ -385,13 +439,19 @@ function updatePreview() {
     $('#preview-period').html(formatDate(dateDebut) + ' au ' + formatDate(dateFin));
     $('#preview-duration').html(nombreJours + ' jour(s)');
 
-    // Calculer le nouveau solde
-    if (estPaye == '1') {
+    // Afficher l'impact sur le solde selon le type
+    if (estAnnuel == '1') {
         var nouveauSolde = soldeRestant - parseFloat(nombreJours);
         var soldeClass = nouveauSolde >= 0 ? 'text-success' : 'text-danger';
-        $('#preview-solde').html('<span class="' + soldeClass + '">' + nouveauSolde.toFixed(1) + ' jours</span>');
+        var soldeText = nouveauSolde >= 0 ?
+            nouveauSolde.toFixed(1) + ' jours restants' :
+            'Dépassement de ' + Math.abs(nouveauSolde).toFixed(1) + ' jours';
+
+        $('#preview-solde').html('<span class="' + soldeClass + '">' + soldeText + '</span>');
+    } else if (estPaye == '1') {
+        $('#preview-solde').html('<span class="text-info">Congé payé (non déduit du solde annuel)</span>');
     } else {
-        $('#preview-solde').html('<span class="text-info">Non impacté (congé non payé)</span>');
+        $('#preview-solde').html('<span class="text-secondary">Congé non payé</span>');
     }
 
     $('#preview-card').show();
@@ -404,7 +464,7 @@ $('#demande-form').on('submit', function(e) {
     var dateFin = $('#date_fin').val();
     var nombreJours = parseFloat($('#nombre_jours').val()) || 0;
     var selectedOption = $('#type_conge_id option:selected');
-    var estPaye = selectedOption.data('est-paye');
+    var estAnnuel = selectedOption.data('est-annuel');
     var maxJours = selectedOption.data('max-jours');
     var soldeRestant = {{ isset($solde) ? $solde->jours_restants : 0 }};
 
@@ -430,6 +490,17 @@ $('#demande-form').on('submit', function(e) {
         return false;
     }
 
+    // Vérifier si un nombre de jours est calculé
+    if (!nombreJours || nombreJours <= 0) {
+        e.preventDefault();
+        Swal.fire({
+            icon: 'error',
+            title: 'Durée invalide',
+            text: 'Veuillez vérifier vos dates pour calculer une durée valide',
+        });
+        return false;
+    }
+
     // Vérifier le maximum de jours
     if (maxJours && nombreJours > maxJours) {
         e.preventDefault();
@@ -441,32 +512,44 @@ $('#demande-form').on('submit', function(e) {
         return false;
     }
 
-    // Vérifier le solde pour les congés payés
-    if (estPaye == '1' && nombreJours > soldeRestant) {
+    // Vérifier le solde uniquement pour les congés annuels
+    if (estAnnuel == '1' && nombreJours > soldeRestant) {
         e.preventDefault();
         Swal.fire({
             icon: 'error',
             title: 'Solde insuffisant',
-            text: 'Vous n\'avez pas assez de jours de congés disponibles.',
+            html: 'Vous n\'avez pas assez de jours de congés annuels disponibles.<br>' +
+                  'Solde restant : <strong>' + soldeRestant + ' jours</strong><br>' +
+                  'Demandé : <strong>' + nombreJours + ' jours</strong>',
         });
         return false;
     }
 
     // Demander confirmation
     e.preventDefault();
+
+    var confirmationMessage = '<div class="text-left">' +
+        '<p><strong>Type :</strong> ' + $('#type_conge_id option:selected').text() + '</p>' +
+        '<p><strong>Période :</strong> ' + dateDebut + ' au ' + dateFin + '</p>' +
+        '<p><strong>Durée :</strong> ' + nombreJours + ' jour(s)</p>';
+
+    if (estAnnuel == '1') {
+        var nouveauSolde = soldeRestant - nombreJours;
+        confirmationMessage += '<p><strong>Nouveau solde :</strong> ' + nouveauSolde + ' jours</p>';
+    }
+
+    confirmationMessage += '</div>';
+
     Swal.fire({
         title: 'Confirmer la demande',
-        html: '<div class="text-left">' +
-              '<p><strong>Type :</strong> ' + $('#type_conge_id option:selected').text() + '</p>' +
-              '<p><strong>Période :</strong> ' + dateDebut + ' au ' + dateFin + '</p>' +
-              '<p><strong>Durée :</strong> ' + nombreJours + ' jour(s)</p>' +
-              '</div>',
+        html: confirmationMessage,
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#3085d6',
         cancelButtonColor: '#d33',
         confirmButtonText: 'Oui, soumettre',
-        cancelButtonText: 'Annuler'
+        cancelButtonText: 'Annuler',
+        reverseButtons: true
     }).then((result) => {
         if (result.isConfirmed) {
             // Soumettre le formulaire
@@ -477,59 +560,42 @@ $('#demande-form').on('submit', function(e) {
     return false;
 });
 
-// Dans ta vue create.blade.php
-function verifierSolde() {
-    var typeCongeId = $('#type_conge_id').val();
-    var nombreJours = parseFloat($('#nombre_jours').val()) || 0;
-
-    if (!typeCongeId) return;
-
-    var selectedOption = $('#type_conge_id option:selected');
-    var estPaye = selectedOption.data('est-paye');
-    var soldeRestant = {{ isset($solde) ? $solde->jours_restants : 0 }};
-
-    if (estPaye == '1') {
-        if (nombreJours > soldeRestant) {
-            $('#submit-btn').prop('disabled', true);
-            $('#submit-btn').html('<i class="fas fa-ban"></i> Solde insuffisant');
-
-            Swal.fire({
-                icon: 'error',
-                title: 'Solde insuffisant',
-                html: '<div class="text-left">' +
-                      '<p>Vous avez seulement <strong>' + soldeRestant + ' jours</strong> disponibles.</p>' +
-                      '<p>Demandé : <strong>' + nombreJours + ' jours</strong></p>' +
-                      '<p class="text-danger">Manquant : <strong>' + (nombreJours - soldeRestant) + ' jours</strong></p>' +
-                      '<p>Veuillez :</p>' +
-                      '<ul>' +
-                      '<li>Réduire la durée de votre congé</li>' +
-                      '<li>Choisir un congé non payé</li>' +
-                      '</ul>' +
-                      '</div>',
-                confirmButtonText: 'Compris'
-            });
-        } else {
-            $('#submit-btn').prop('disabled', false);
-            $('#submit-btn').html('<i class="fas fa-paper-plane"></i> Soumettre la Demande');
-        }
-    } else {
-        $('#submit-btn').prop('disabled', false);
-        $('#submit-btn').html('<i class="fas fa-paper-plane"></i> Soumettre la Demande');
-    }
-}
-
-// Appeler cette fonction quand les dates ou le type changent
+// Événements de changement
 $('#type_conge_id, #date_debut, #date_fin').on('change', function() {
     if ($('#date_debut').val() && $('#date_fin').val()) {
         calculateDays();
-        verifierSolde();
+    } else {
+        $('#nombre_jours').val('');
+        $('#preview-card').hide();
+        $('#submit-btn').prop('disabled', false).html('<i class="fas fa-paper-plane"></i> Soumettre la Demande');
     }
 });
 
-// Écouter les changements pour mettre à jour la prévisualisation
-$('#type_conge_id, #date_debut, #date_fin').on('change', function() {
-    if ($('#date_debut').val() && $('#date_fin').val() && $('#type_conge_id').val()) {
-        updatePreview();
+// Réinitialiser le formulaire si besoin
+$('.btn-danger').on('click', function(e) {
+    if ($('#date_debut').val() || $('#date_fin').val() || $('#type_conge_id').val()) {
+        e.preventDefault();
+        Swal.fire({
+            title: 'Annuler la demande ?',
+            text: 'Les informations saisies seront perdues.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Oui, annuler',
+            cancelButtonText: 'Continuer'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = "{{ route('conges.index') }}";
+            }
+        });
+    }
+});
+
+// Initialiser l'affichage si des valeurs existent déjà (en cas d'erreur de validation)
+$(document).ready(function() {
+    if ($('#date_debut').val() && $('#date_fin').val()) {
+        calculateDays();
     }
 });
 </script>
