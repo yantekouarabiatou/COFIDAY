@@ -13,6 +13,7 @@ return new class extends Migration {
             $table->integer('nombre_jours_max')->nullable();
             $table->boolean('est_paye')->default(true);
             $table->boolean('actif')->default(true);
+            $table->boolean('est_annuel')->default(false);
             $table->timestamps();
         });
     }

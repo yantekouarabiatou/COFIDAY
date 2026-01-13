@@ -17,8 +17,8 @@ return new class extends Migration {
             $table->decimal('jours_acquis', 5, 2)->default(0);
             $table->decimal('jours_pris', 5, 2)->default(0);
             $table->decimal('jours_restants', 5, 2)->default(0);
+            $table->decimal('jours_reportes', 5, 2)->default(0);
             $table->timestamps();
-
             $table->unique(['user_id', 'annee']);
         });
     }

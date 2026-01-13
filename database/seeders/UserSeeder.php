@@ -12,6 +12,21 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         // ===== ADMIN =====
+
+        $superadmin = User::updateOrCreate(
+            ['username' => 'superadmin'], // clé unique
+            [
+                'nom' => 'IROKO',
+                'prenom' => 'Beltime',
+                'email' => 'adisiroko@gmail.com',
+                'password' => Hash::make('password'),
+                'poste_id' => Poste::where('intitule', 'Directeur Général')->first()?->id,
+                'telephone' => '0152456069',
+                'is_active' => true,
+            ]
+        );
+        $superadmin->syncRoles(['admin']);
+
         $admin = User::updateOrCreate(
             ['username' => 'admin'], // clé unique
             [

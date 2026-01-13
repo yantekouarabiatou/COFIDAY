@@ -287,6 +287,9 @@ Route::middleware(['auth'])->group(function () {
             ->parameters(['conges' => 'demande']);
     });
 
+    Route::middleware(['auth', 'role:admin'])->group(function () {
+        Route::post('/conges/solde/{user}/ajuster', [CongeController::class, 'ajusterSolde'])->name('conges.ajuster-solde');
+    });
     // Route API à créer dans routes/api.php
     Route::get('/personnel-details', function (Request $request) {
         $personnel = User::with(['poste', 'timeEntries' => function ($q) use ($request) {
