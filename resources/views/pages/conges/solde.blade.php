@@ -191,7 +191,7 @@
                                                             <span class="badge badge-success">{{ $solde->jours_acquis }}</span>
                                                         </td>
                                                         <td class="text-center">
-                                                            <span class="badge badge-warning">{{ $solde->jours_pris }}</span>
+                                                            <span class="badge badge-danger">{{ $solde->jours_pris }}</span>
                                                         </td>
                                                         <td class="text-center">
                                                             <span class="badge badge-primary">{{ $solde->jours_restants }}</span>
@@ -286,7 +286,7 @@
                                                     </li>
                                                     <li class="list-group-item d-flex justify-content-between align-items-center">
                                                         Total jours pris
-                                                        <span class="badge badge-warning badge-pill">{{ $totalJoursPris }}</span>
+                                                        <span class="badge badge-danger badge-pill">{{ $totalJoursPris }}</span>
                                                     </li>
                                                     <li class="list-group-item d-flex justify-content-between align-items-center">
                                                         Solde initial

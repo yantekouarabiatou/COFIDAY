@@ -113,14 +113,13 @@
 <body>
 
     <!-- En-tête avec titre -->
-    <div class="header">
-        @if(isset($logoBase64) && $logoBase64)
-            <img src="{{ $logoBase64 }}" alt="Logo COFIMA" class="logo">
-        @else
-            <div style="font-size: 48pt; font-weight: 900; color: #002060; letter-spacing: 3px;">
-                COFIMA
-            </div>
-        @endif
+    <div class="logo-section">
+            @if(isset($logoBase64))
+                <img src="{{ $logoBase64 }}" alt="Logo COFIMA" class="logo-image">
+            @else
+                <div style="font-size: 40px; color: var(--primary-color); font-weight: 700;">COFIMA</div>
+            @endif
+        </div>
 
         <div class="title">Rapport des Feuilles de Temps</div>
         <div class="subtitle">Suivi des heures travaillées</div>

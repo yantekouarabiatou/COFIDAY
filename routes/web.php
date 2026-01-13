@@ -159,16 +159,6 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/statistics/export', [StatisticsController::class, 'export'])->name('statistics.export');
     Route::post('/stats/annual/update', [StatisticsController::class, 'updateCharts'])->name('stats.annual.update');
-
-
-    Route::get('/statistics/plaintes', [PlaintesStatsController::class, 'index'])->name('stats.plaintes');
-    Route::post('/statistics/plaintes/update', [PlaintesStatsController::class, 'update'])->name('stats.plaintes.update');
-
-    Route::get('/statistics/interets', [InteretsStatsController::class, 'index'])->name('stats.interets');
-    Route::post('/statistics/interets/update', [InteretsStatsController::class, 'update'])->name('stats.interets.update');
-    Route::get('/reports/independances/annual', [IndependanceReportController::class, 'annual'])
-        ->name('reports.independances.annual');
-
     Route::middleware(['auth'])->group(function () {
         Route::resource('daily-entries', DailyEntryController::class)->names('daily-entries');
 
@@ -294,9 +284,6 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/pdf', [CongeController::class, 'exportPdf'])->name('conges.export.pdf');
         Route::get('/csv', [CongeController::class, 'exportCsv'])->name('conges.export.csv');
     });
-
-   
-
 
     Route::middleware(['auth', 'role:admin'])->group(function () {
         Route::post('/conges/solde/{user}/ajuster', [CongeController::class, 'ajusterSolde'])->name('conges.ajuster-solde');

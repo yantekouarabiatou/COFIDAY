@@ -182,8 +182,12 @@
 
     <!-- En-tête -->
     <div class="header">
-        <div style="font-size: 32pt; font-weight: 900; color: #002060; letter-spacing: 2px;">
-            COFTIME
+        <div class="logo-section">
+            @if(isset($logoBase64))
+                <img src="{{ $logoBase64 }}" alt="Logo COFIMA" class="logo-image">
+            @else
+                <div style="font-size: 40px; color: var(--primary-color); font-weight: 700;">COFIMA</div>
+            @endif
         </div>
 
         <div class="title">Analyse des Personnels par Mission</div>

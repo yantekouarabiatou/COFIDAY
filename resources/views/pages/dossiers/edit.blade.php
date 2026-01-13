@@ -142,6 +142,52 @@
                                 </div>
                             </div>
 
+                            <!-- CHAMPS MANQUANTS AJOUTÉS -->
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Heures théoriques (sans weekend)</label>
+                                        <div class="input-group">
+                                            <input type="number" step="0.5" min="0"
+                                                name="heure_theorique_sans_weekend"
+                                                id="heure_sans_weekend"
+                                                class="form-control @error('heure_theorique_sans_weekend') is-invalid @enderror"
+                                                value="{{ old('heure_theorique_sans_weekend', $dossier->heure_theorique_sans_weekend) }}"
+                                                placeholder="Calcul automatique">
+                                            <div class="input-group-append">
+                                                <span class="input-group-text">h</span>
+                                            </div>
+                                        </div>
+                                        <small class="text-muted">Basé sur 8h/jour (lundi–vendredi)</small>
+                                        @error('heure_theorique_sans_weekend')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Heures théoriques (avec weekend)</label>
+                                        <div class="input-group">
+                                            <input type="number" step="0.5" min="0"
+                                                name="heure_theorique_avec_weekend"
+                                                id="heure_avec_weekend"
+                                                class="form-control @error('heure_theorique_avec_weekend') is-invalid @enderror"
+                                                value="{{ old('heure_theorique_avec_weekend', $dossier->heure_theorique_avec_weekend) }}"
+                                                placeholder="Calcul automatique">
+                                            <div class="input-group-append">
+                                                <span class="input-group-text">h</span>
+                                            </div>
+                                        </div>
+                                        <small class="text-muted">Basé sur 8h/jour (weekend inclus)</small>
+                                        @error('heure_theorique_avec_weekend')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- FIN DES CHAMPS AJOUTÉS -->
+
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="form-group">
@@ -263,6 +309,55 @@ $(document).ready(function() {
         allowClear: true
     });
 
+    // Fonction pour calculer les heures théoriques
+    function calculerHeuresTheoriques() {
+        const dateDebut = $('input[name="date_ouverture"]').val();
+        const dateFin = $('input[name="date_cloture_prevue"]').val();
+
+        if (!dateDebut || !dateFin) return;
+
+        const start = new Date(dateDebut);
+        const end = new Date(dateFin);
+
+        if (end < start) return;
+
+        let totalJours = 0;
+        let joursOuvrables = 0;
+
+        let current = new Date(start);
+
+        while (current <= end) {
+            totalJours++;
+
+            const day = current.getDay(); // 0 = Dimanche, 6 = Samedi
+            if (day !== 0 && day !== 6) {
+                joursOuvrables++;
+            }
+
+            current.setDate(current.getDate() + 1);
+        }
+
+        const heuresAvecWeekend = totalJours * 8;
+        const heuresSansWeekend = joursOuvrables * 8;
+
+        // Ne pas écraser si l'utilisateur a déjà modifié
+        if (!$('#heure_avec_weekend').is(':focus') && !$('#heure_avec_weekend').val()) {
+            $('#heure_avec_weekend').val(heuresAvecWeekend);
+        }
+
+        if (!$('#heure_sans_weekend').is(':focus') && !$('#heure_sans_weekend').val()) {
+            $('#heure_sans_weekend').val(heuresSansWeekend);
+        }
+    }
+
+    // Écouter les changements de dates
+    $('input[name="date_ouverture"], input[name="date_cloture_prevue"]').on('change', calculerHeuresTheoriques);
+
+    // Calculer automatiquement si les dates existent déjà
+    if ($('input[name="date_ouverture"]').val() && $('input[name="date_cloture_prevue"]').val()) {
+        calculerHeuresTheoriques();
+    }
+
     // Validation du formulaire
     $('#dossier-form').on('submit', function(e) {
         var nom = $('input[name="nom"]').val().trim();
@@ -301,6 +396,30 @@ $(document).ready(function() {
                 icon: 'error',
                 title: 'Date invalide',
                 text: 'La date de clôture réelle doit être postérieure à la date d\'ouverture',
+            });
+            return false;
+        }
+
+        // Validation des heures théoriques si remplies
+        var heuresAvecWeekend = $('#heure_avec_weekend').val();
+        var heuresSansWeekend = $('#heure_sans_weekend').val();
+
+        if (heuresAvecWeekend && heuresAvecWeekend < 0) {
+            e.preventDefault();
+            Swal.fire({
+                icon: 'error',
+                title: 'Heures invalides',
+                text: 'Les heures théoriques ne peuvent pas être négatives',
+            });
+            return false;
+        }
+
+        if (heuresSansWeekend && heuresSansWeekend < 0) {
+            e.preventDefault();
+            Swal.fire({
+                icon: 'error',
+                title: 'Heures invalides',
+                text: 'Les heures théoriques ne peuvent pas être négatives',
             });
             return false;
         }

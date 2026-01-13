@@ -469,7 +469,7 @@
                                                 <span class="badge badge-success">{{ $solde->jours_acquis }}</span>
                                             </td>
                                             <td>
-                                                <span class="badge badge-warning">{{ $solde->jours_pris }}</span>
+                                                <span class="badge badge-danger">{{ $solde->jours_pris }}</span>
                                             </td>
                                             <td>
                                                 <span class="badge badge-{{ $isTresCritique ? 'danger' : 'warning' }}">

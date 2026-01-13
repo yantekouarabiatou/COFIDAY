@@ -409,7 +409,7 @@
                                             </li>
                                             <li class="list-group-item d-flex justify-content-between align-items-center">
                                                 <span>Jours pris</span>
-                                                <span class="badge badge-warning">{{ $solde->jours_pris }}</span>
+                                                <span class="badge badge-danger">{{ $solde->jours_pris }}</span>
                                             </li>
                                             <li class="list-group-item d-flex justify-content-between align-items-center">
                                                 <span>Jours restants</span>
