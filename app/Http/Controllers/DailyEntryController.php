@@ -444,11 +444,6 @@ class DailyEntryController extends Controller
             'motif_refus' => 'required|string|max:500',
         ]);
 
-        if (!Auth::user()->hasRole('responsable')) {
-            return redirect()->back()
-                ->with('error', 'Vous n\'avez pas les permissions pour refuser les feuilles de temps.');
-        }
-
         $dailyEntry->update([
             'statut' => 'refusé',
             'valide_par' => Auth::id(),
@@ -456,9 +451,12 @@ class DailyEntryController extends Controller
             'motif_refus' => $request->motif_refus,
         ]);
 
-        return redirect()->back()
-            ->with('success', 'Feuille de temps refusée avec succès.');
+        return response()->json([
+            'success' => true,
+            'message' => 'Feuille de temps refusée avec succès.'
+        ]);
     }
+
 
     /**
      * AJAX: Créer un dossier rapidement

@@ -315,7 +315,7 @@ $(document).ready(function() {
     const autresHeuresData = [];
 
     Object.values(personnels).forEach(p => {
-        labels.push((p.user.prenom + ' ' + p.user.nom).substring(0, 15) + '...');
+        labels.push((p.user.nom + ' ' + p.user.prenom).substring(0, 15) + '...');
         heuresData.push(p.total_heures);
         autresHeuresData.push(p.charge_totale.heures_reelles - p.total_heures);
     });
@@ -361,55 +361,106 @@ $(document).ready(function() {
             }
         });
     }
+// Graphique des statuts - Même style que ton chart original + noms dans le tooltip
+if (document.getElementById('statutChart')) {
+    const statutCounts = {
+        disponible: 0,
+        charge_elevee: 0,
+        surcharge: 0
+    };
 
-    // Graphique des statuts
-    if (document.getElementById('statutChart')) {
-        const statutCounts = {
-            disponible: 0,
-            charge_elevee: 0,
-            surcharge: 0
-        };
+    const statutDetails = {
+        disponible: [],
+        charge_elevee: [],
+        surcharge: []
+    };
 
-        Object.values(personnels).forEach(p => {
-            if (p.charge_totale.ecart > 10) {
-                statutCounts.surcharge++;
-            } else if (p.charge_totale.ecart > 5) {
-                statutCounts.charge_elevee++;
-            } else {
-                statutCounts.disponible++;
-            }
-        });
+    Object.values(personnels).forEach(p => {
+        const nomComplet = `${p.user.prenom} ${p.user.nom}`;
+        const ecart = p.charge_totale.ecart;
 
-        const ctx2 = document.getElementById('statutChart').getContext('2d');
-        new Chart(ctx2, {
-            type: 'pie',
-            data: {
-                labels: ['Disponible', 'Charge élevée', 'Surcharge'],
-                datasets: [{
-                    data: [statutCounts.disponible, statutCounts.charge_elevee, statutCounts.surcharge],
-                    backgroundColor: [
-                        'rgba(75, 192, 192, 0.8)',
-                        'rgba(255, 205, 86, 0.8)',
-                        'rgba(255, 99, 132, 0.8)'
-                    ],
-                    borderColor: [
-                        'rgba(75, 192, 192, 1)',
-                        'rgba(255, 205, 86, 1)',
-                        'rgba(255, 99, 132, 1)'
-                    ],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
+        if (ecart > 10) {
+            statutCounts.surcharge++;
+            statutDetails.surcharge.push(nomComplet);
+        } else if (ecart > 5) {
+            statutCounts.charge_elevee++;
+            statutDetails.charge_elevee.push(nomComplet);
+        } else {
+            statutCounts.disponible++;
+            statutDetails.disponible.push(nomComplet);
+        }
+    });
+
+    const ctx2 = document.getElementById('statutChart').getContext('2d');
+    new Chart(ctx2, {
+        type: 'pie',
+        data: {
+            labels: [
+                `Disponible (${statutCounts.disponible})`,
+                `Charge élevée (${statutCounts.charge_elevee})`,
+                `Surcharge (${statutCounts.surcharge})`
+            ],
+            datasets: [{
+                data: [
+                    statutCounts.disponible,
+                    statutCounts.charge_elevee,
+                    statutCounts.surcharge
+                ],
+                backgroundColor: [
+                    'rgba(75, 192, 192, 0.75)',   // Vert - Disponible
+                    'rgba(255, 205, 86, 0.75)',   // Jaune - Charge élevée
+                    'rgba(255, 99, 132, 0.75)'    // Rouge - Surcharge
+                ],
+                borderColor: [
+                    'rgba(75, 192, 192, 1)',
+                    'rgba(255, 205, 86, 1)',
+                    'rgba(255, 99, 132, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',          // Légende en bas comme tu veux
+                    labels: {
+                        font: {
+                            size: 13
+                        },
+                        padding: 20,
+                        usePointStyle: true,     // Petits cercles colorés dans la légende
+                        pointStyle: 'circle'
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0,0,0,0.85)',
+                    titleFont: { size: 14 },
+                    bodyFont: { size: 13 },
+                    callbacks: {
+                        label: function(context) {
+                            const index = context.dataIndex;
+                            let category = '';
+                            let names = [];
+
+                            if (index === 0) {
+                                category = 'Disponible';
+                                names = statutDetails.disponible;
+                            } else if (index === 1) {
+                                category = 'Charge élevée';
+                                names = statutDetails.charge_elevee;
+                            } else {
+                                category = 'Surcharge';
+                                names = statutDetails.surcharge;
+                            }
+
+                            return `${category} : ${names.length > 0 ? names.join(', ') : 'aucune personne'}`;
+                        }
                     }
                 }
             }
-        });
-    }
-});
+        }
+    });
+}});
 </script>
 @endpush

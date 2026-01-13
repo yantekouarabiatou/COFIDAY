@@ -501,21 +501,30 @@ $(document).ready(function() {
                         motif_refus: result.value
                     },
                     success: function(response) {
-                        Swal.fire(
-                            'Refusé !',
-                            'La feuille a été refusée.',
-                            'success'
-                        ).then(() => {
-                            location.reload();
-                        });
+                        if (response.success) {
+                            Swal.fire(
+                                'Refusé !',
+                                response.message,
+                                'success'
+                            ).then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire(
+                                'Erreur',
+                                response.message,
+                                'error'
+                            );
+                        }
                     },
-                    error: function() {
+                    error: function(xhr) {
                         Swal.fire(
                             'Erreur !',
-                            'Une erreur est survenue.',
+                            xhr.responseJSON?.message || 'Une erreur est survenue.',
                             'error'
                         );
                     }
+
                 });
             }
         });

@@ -132,7 +132,7 @@ class CongeController extends Controller
                 'type_conge_id' => 'required|exists:types_conges,id',
                 'date_debut' => 'required|date|after_or_equal:today',
                 'date_fin' => 'required|date|after_or_equal:date_debut',
-                'motif' => 'nullable|string|max:1000',
+                'motif' => 'required|string|max:1000',
             ]);
 
             // Calculer le nombre de jours ouvrés
@@ -325,7 +325,7 @@ class CongeController extends Controller
                 'type_conge_id' => 'required|exists:types_conges,id',
                 'date_debut' => 'required|date|after_or_equal:today',
                 'date_fin' => 'required|date|after_or_equal:date_debut',
-                'motif' => 'nullable|string|max:1000',
+                'motif' => 'required|string|max:1000',
             ]);
 
             // Récupérer le type de congé

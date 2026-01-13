@@ -80,7 +80,14 @@ class UserHelper
     public static function getAvatarColor($user): string
     {
         $palette = [
-            '#004080', '#003366', '#2b6cb0', '#4c51bf', '#2f855a', '#d69e2e', '#dd6b20', '#b83280'
+            '#004080',
+            '#003366',
+            '#2b6cb0',
+            '#4c51bf',
+            '#2f855a',
+            '#d69e2e',
+            '#dd6b20',
+            '#b83280'
         ];
 
         $seed = $user->id ?? ($user->email ?? Str::random(8));
@@ -89,10 +96,23 @@ class UserHelper
         return $palette[$index];
     }
 
-    public static function hoursToHoursMinutes(float $decimal): string
+    // app/Helpers/UserHelper.php
+
+    public static function hoursToHoursMinutes(?float $decimal): string
     {
+        if ($decimal === null || $decimal <= 0) {
+            return '0h 0min';
+        }
+
         $hours = floor($decimal);
         $minutes = round(($decimal - $hours) * 60);
+
+        // Optionnel : gérer les minutes à 60 (rare mais possible avec round)
+        if ($minutes >= 60) {
+            $hours++;
+            $minutes -= 60;
+        }
+
         return "{$hours}h {$minutes}min";
     }
 }

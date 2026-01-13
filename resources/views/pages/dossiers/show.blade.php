@@ -1,3 +1,7 @@
+@php
+use App\Helpers\UserHelper;
+@endphp
+
 @extends('layaout')
 
 @section('title', 'Dossier - ' . $dossier->nom)
@@ -152,6 +156,30 @@
                                             </div>
                                             <div class="card-body">
                                                 <h3 class="text-info">{{ $dossier->frais_dossier_formate }}</h3>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Budget et frais -->
+                                <div class="row mb-4">
+                                    <div class="col-md-6">
+                                        <div class="card card-success">
+                                            <div class="card-header">
+                                                <h4><i class="fas fa-briefcase"></i> Heures théoriques sans weekend</h4>
+                                            </div>
+                                            <div class="card-body">
+                                                <h3 class="text-success">{{ UserHelper::hoursToHoursMinutes($dossier->heure_theorique_sans_weekend) }}</h3>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card card-info">
+                                            <div class="card-header">
+                                                <h4><i class="fas fa-calendar-week"></i> Heures théoriques avec weekend</h4>
+                                            </div>
+                                            <div class="card-body">
+                                                <h3 class="text-info">{{ UserHelper::hoursToHoursMinutes($dossier->heure_theorique_avec_weekend) }}</h3>
                                             </div>
                                         </div>
                                     </div>

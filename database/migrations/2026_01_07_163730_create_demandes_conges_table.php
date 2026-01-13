@@ -21,7 +21,7 @@ return new class extends Migration {
             $table->date('date_fin');
             $table->decimal('nombre_jours', 5, 2);
 
-            $table->text('motif')->nullable();
+            $table->text('motif');
 
             $table->enum('statut', [
                 'en_attente',

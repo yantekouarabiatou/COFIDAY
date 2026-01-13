@@ -202,7 +202,7 @@
                             <div class="form-group">
                                 <label>Motif (optionnel)</label>
                                 <textarea name="motif" class="form-control @error('motif') is-invalid @enderror"
-                                          rows="3" placeholder="Raison de votre demande de congé...">{{ old('motif', $demande->motif) }}</textarea>
+                                        required  rows="3" placeholder="Raison de votre demande de congé...">{{ old('motif', $demande->motif) }}</textarea>
                                 <small class="form-text text-muted">
                                     Maximum 1000 caractères
                                 </small>

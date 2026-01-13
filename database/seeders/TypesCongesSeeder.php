@@ -50,6 +50,17 @@ class TypesCongesSeeder extends Seeder
                 'actif' => true,
                 'couleur' => '#10B981',
             ],
+
+                        [
+                'libelle' => 'Permission exceptionnelle',
+                'nombre_jours_max' => 2,
+                'est_paye' => true,
+                'est_annuel' => false, // Payé mais pas annuel
+                'actif' => true,
+                'couleur' => '#083f2dff',
+            ],
+
+        
         ]);
     }
 }
