@@ -1,3 +1,7 @@
+@php
+use App\Helpers\UserHelper;
+@endphp
+
 @extends('layaout')
 
 @section('title','Mon Tableau de bord')
@@ -36,9 +40,9 @@
                     </div>
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center">
-                            <h3 class="mb-0" id="mes-dossiers">
+                            <h4 class="mb-0" id="mes-dossiers">
                                 <i class="fas fa-spinner fa-spin"></i>
-                            </h3>
+                            </h4>
                             <span class="badge badge-pill badge-info" id="dossiers-actifs-badge">0 actifs</span>
                         </div>
                     </div>
@@ -57,9 +61,9 @@
                     </div>
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center">
-                            <h3 class="mb-0" id="mes-heures-mois">
+                            <h4 class="mb-0" id="mes-heures-mois">
                                 <i class="fas fa-spinner fa-spin"></i>
-                            </h3>
+                            </h4>
                             <span class="badge badge-pill" id="heures-percent">--</span>
                         </div>
                     </div>
@@ -78,9 +82,9 @@
                     </div>
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center">
-                            <h3 class="mb-0" id="mes-heures-totales">
+                            <h4 class="mb-0" id="mes-heures-totales">
                                 <i class="fas fa-spinner fa-spin"></i>
-                            </h3>
+                            </h4>
                             <span class="badge badge-pill badge-secondary">Cumul</span>
                         </div>
                     </div>
@@ -99,9 +103,9 @@
                     </div>
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center">
-                            <h3 class="mb-0" id="mes-conges">
+                            <h4 class="mb-0" id="mes-conges">
                                 <i class="fas fa-spinner fa-spin"></i>
-                            </h3>
+                            </h4>
                             <span class="badge badge-pill badge-warning" id="conges-badge">En cours</span>
                         </div>
                     </div>
@@ -513,6 +517,8 @@
 @endsection
 
 @push('scripts')
+// Remplacez tout le contenu de @push('scripts') dans dashboard.blade.php
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 <script>
 let chartMesHeures, chartMesDossiers, chartMesConges, chartHeuresParDossier;
@@ -520,6 +526,50 @@ let chartMesHeures, chartMesDossiers, chartMesConges, chartHeuresParDossier;
 // Configuration Chart.js globale
 Chart.defaults.font.family = "'Nunito', sans-serif";
 Chart.defaults.plugins.legend.labels.usePointStyle = true;
+
+/**
+ * Convertir les heures décimales en format "Xh Ymin"
+ * Équivalent de UserHelper::hoursToHoursMinutes()
+ */
+function hoursToHoursMinutes(decimal) {
+    if (!decimal || decimal <= 0) {
+        return '0h 0min';
+    }
+    
+    const hours = Math.floor(decimal);
+    let minutes = Math.round((decimal - hours) * 60);
+    
+    // Gérer les minutes à 60
+    if (minutes >= 60) {
+        hours++;
+        minutes -= 60;
+    }
+    
+    return `${hours}h ${minutes}min`;
+}
+
+/**
+ * Version courte sans les 0min
+ */
+function hoursToHoursMinutesShort(decimal) {
+    if (!decimal || decimal <= 0) {
+        return '0h';
+    }
+    
+    let hours = Math.floor(decimal);
+    let minutes = Math.round((decimal - hours) * 60);
+    
+    if (minutes >= 60) {
+        hours++;
+        minutes -= 60;
+    }
+    
+    if (minutes === 0) {
+        return `${hours}h`;
+    }
+    
+    return `${hours}h ${minutes}min`;
+}
 
 // Charger les données au chargement de la page
 $(document).ready(function() {
@@ -560,6 +610,7 @@ function loadDashboardData() {
         },
         error: function(xhr) {
             console.error('Erreur de chargement:', xhr);
+            console.error('Response:', xhr.responseText);
             Swal.fire({
                 icon: 'error',
                 title: 'Erreur de chargement',
@@ -579,11 +630,11 @@ function updatePersonalStats(data) {
         $('#user-name').text(data.user.name);
     }
     
-    // Mettre à jour les cartes principales
-    animateValue('mes-dossiers', 0, totals.mes_dossiers, 1000);
-    animateValue('mes-heures-mois', 0, Math.round(totals.heures_mois), 1000, 'h');
-    animateValue('mes-heures-totales', 0, Math.round(totals.heures_totales), 1000, 'h');
-    animateValue('mes-conges', 0, totals.mes_conges_en_cours, 1000);
+    // Affichage direct avec format heures/minutes
+    $('#mes-dossiers').text(totals.mes_dossiers);
+    $('#mes-heures-mois').text(hoursToHoursMinutesShort(totals.heures_mois));
+    $('#mes-heures-totales').text(hoursToHoursMinutesShort(totals.heures_totales));
+    $('#mes-conges').text(totals.mes_conges_en_cours);
     
     // Badges
     $('#dossiers-actifs-badge').text(totals.dossiers_actifs + ' actifs');
@@ -598,28 +649,11 @@ function updateQuickStats(data) {
     const monthly = data.monthly;
     const totals = data.totals;
     
-    $('#heures-semaine').html(Math.round(weekly.heures) + '<small>h</small>');
+    // Afficher avec format heures/minutes
+    $('#heures-semaine').html(hoursToHoursMinutesShort(weekly.heures));
     $('#dossiers-semaine').text(weekly.dossiers_travailles);
     $('#conges-mois').text(monthly.conges);
     $('#dossiers-actifs').text(totals.dossiers_actifs);
-}
-
-function animateValue(id, start, end, duration, suffix = '') {
-    const element = document.getElementById(id);
-    if (!element) return;
-    
-    const range = end - start;
-    const increment = range / (duration / 16);
-    let current = start;
-    
-    const timer = setInterval(function() {
-        current += increment;
-        if ((increment > 0 && current >= end) || (increment < 0 && current <= end)) {
-            current = end;
-            clearInterval(timer);
-        }
-        element.textContent = Math.round(current) + suffix;
-    }, 16);
 }
 
 function updatePercentage(selector, value) {
@@ -681,7 +715,7 @@ function updateMesHeuresChart(data) {
                     backgroundColor: 'rgba(0, 0, 0, 0.8)',
                     padding: 12,
                     callbacks: {
-                        label: (context) => context.parsed.y.toFixed(2) + ' heures'
+                        label: (context) => hoursToHoursMinutes(context.parsed.y)
                     }
                 }
             },
@@ -690,7 +724,7 @@ function updateMesHeuresChart(data) {
                     beginAtZero: true,
                     grid: { color: 'rgba(0, 0, 0, 0.05)' },
                     ticks: {
-                        callback: (value) => value + 'h'
+                        callback: (value) => hoursToHoursMinutesShort(value)
                     }
                 },
                 x: {
@@ -700,10 +734,10 @@ function updateMesHeuresChart(data) {
         }
     });
     
-    // Totaux
-    $('#total-heures-30j').text(Math.round(totalHeures) + 'h');
-    $('#moyenne-jour').text(moyenneHeures.toFixed(1) + 'h');
-    $('#max-jour').text(maxHeures.toFixed(1) + 'h');
+    // Totaux avec format heures/minutes
+    $('#total-heures-30j').text(hoursToHoursMinutes(totalHeures));
+    $('#moyenne-jour').text(hoursToHoursMinutes(moyenneHeures));
+    $('#max-jour').text(hoursToHoursMinutes(maxHeures));
 }
 
 function updateMesDossiersChart(data) {
@@ -713,7 +747,6 @@ function updateMesDossiersChart(data) {
     if (chartMesDossiers) chartMesDossiers.destroy();
     
     if (!data.names || data.names.length === 0) {
-        ctx.getContext('2d').clearRect(0, 0, ctx.width, ctx.height);
         $(ctx).parent().html('<div class="text-center py-4 text-muted"><i class="fas fa-inbox fa-3x mb-3"></i><p>Aucun dossier actif ce mois</p></div>');
         return;
     }
@@ -740,7 +773,7 @@ function updateMesDossiersChart(data) {
                 legend: { display: false },
                 tooltip: {
                     callbacks: {
-                        label: (context) => context.parsed.x.toFixed(2) + ' heures'
+                        label: (context) => hoursToHoursMinutes(context.parsed.x)
                     }
                 }
             },
@@ -749,7 +782,7 @@ function updateMesDossiersChart(data) {
                     beginAtZero: true,
                     grid: { color: 'rgba(0, 0, 0, 0.05)' },
                     ticks: {
-                        callback: (value) => value + 'h'
+                        callback: (value) => hoursToHoursMinutesShort(value)
                     }
                 },
                 y: { grid: { display: false } }
@@ -769,7 +802,7 @@ function updateMesCongesChart(data) {
         return;
     }
     
-    const colors = ['#6777ef', '#ffa426', '#47c363', '#fc544b'];
+    const colors = ['#6777ef', '#ffa426', '#47c363', '#fc544b', '#3abaf4', '#e83e8c'];
     
     chartMesConges = new Chart(ctx.getContext('2d'), {
         type: 'doughnut',
@@ -777,7 +810,7 @@ function updateMesCongesChart(data) {
             labels: data.types,
             datasets: [{
                 data: data.counts,
-                backgroundColor: colors,
+                backgroundColor: colors.slice(0, data.types.length),
                 borderWidth: 3,
                 borderColor: '#fff'
             }]
@@ -829,7 +862,7 @@ function updateHeuresParDossierChart(data) {
                 legend: { display: false },
                 tooltip: {
                     callbacks: {
-                        label: (context) => context.parsed.y.toFixed(2) + ' heures'
+                        label: (context) => hoursToHoursMinutes(context.parsed.y)
                     }
                 }
             },
@@ -838,7 +871,7 @@ function updateHeuresParDossierChart(data) {
                     beginAtZero: true,
                     grid: { color: 'rgba(0, 0, 0, 0.05)' },
                     ticks: {
-                        callback: (value) => value + 'h'
+                        callback: (value) => hoursToHoursMinutesShort(value)
                     }
                 },
                 x: { 
@@ -880,12 +913,16 @@ function updateDailyEntries(entries) {
         const weekend = entry.is_weekend ? '<i class="fas fa-mug-hot text-warning ml-1" title="Week-end"></i>' : '';
         const holiday = entry.is_holiday ? '<i class="fas fa-calendar-day text-danger ml-1" title="Jour férié"></i>' : '';
         
+        // Afficher avec format heures/minutes
+        const heuresReelles = hoursToHoursMinutes(entry.heures_reelles);
+        const heuresTheoriques = hoursToHoursMinutes(entry.heures_theoriques);
+        
         html += `
             <tr>
                 <td>${entry.jour} ${weekend} ${holiday}</td>
                 <td class="text-center">
-                    <strong>${entry.heures_reelles}h</strong>
-                    ${entry.heures_theoriques > 0 ? '<small class="text-muted">/ ' + entry.heures_theoriques + 'h</small>' : ''}
+                    <strong>${heuresReelles}</strong>
+                    ${entry.heures_theoriques > 0 ? '<small class="text-muted">/ ' + heuresTheoriques + '</small>' : ''}
                 </td>
                 <td class="text-center">
                     <span class="badge badge-statut ${statutClass}">${statutBadge}</span>
@@ -907,27 +944,31 @@ function updateCongesAVenir(conges) {
     
     let html = '';
     conges.forEach(conge => {
-        let typeIcon = '';
+        let typeIcon = 'fa-umbrella-beach';
         let typeColor = '#6777ef';
         
-        switch(conge.type) {
-            case 'MALADIE':
-                typeIcon = 'fa-medkit';
-                typeColor = '#fc544b';
-                break;
-            case 'MATERNITE':
-                typeIcon = 'fa-baby';
-                typeColor = '#ffa426';
-                break;
-            case 'REMUNERE':
-                typeIcon = 'fa-umbrella-beach';
-                typeColor = '#47c363';
-                break;
-            case 'NON REMUNERE':
-                typeIcon = 'fa-plane-departure';
-                typeColor = '#95a5a6';
-                break;
+        // Identifier le type basé sur le libellé
+        const typeUpper = (conge.type || '').toUpperCase();
+        
+        if (typeUpper.includes('MALADIE') || typeUpper.includes('SICK')) {
+            typeIcon = 'fa-medkit';
+            typeColor = '#fc544b';
+        } else if (typeUpper.includes('MATERNITÉ') || typeUpper.includes('MATERNITE') || typeUpper.includes('PATERNITÉ')) {
+            typeIcon = 'fa-baby';
+            typeColor = '#ffa426';
+        } else if (typeUpper.includes('PAYÉ') || typeUpper.includes('PAYE') || typeUpper.includes('RÉMUNÉRÉ')) {
+            typeIcon = 'fa-umbrella-beach';
+            typeColor = '#47c363';
+        } else if (typeUpper.includes('NON') && (typeUpper.includes('PAYÉ') || typeUpper.includes('PAYE'))) {
+            typeIcon = 'fa-plane-departure';
+            typeColor = '#95a5a6';
         }
+        
+        // Afficher avec décimales si nécessaire
+        const joursValue = parseFloat(conge.jours);
+        const joursDisplay = joursValue % 1 === 0 
+            ? Math.floor(joursValue) 
+            : joursValue.toFixed(1);
         
         html += `
             <div class="conge-item" style="border-left-color: ${typeColor}">
@@ -942,7 +983,7 @@ function updateCongesAVenir(conges) {
                         </div>
                     </div>
                     <div>
-                        <span class="badge badge-primary badge-pill">${conge.jours} jour(s)</span>
+                        <span class="badge badge-primary badge-pill">${joursDisplay} jour(s)</span>
                     </div>
                 </div>
             </div>
@@ -962,8 +1003,8 @@ function updateStatsTable(data) {
             name: 'Heures travaillées', 
             icon: 'fa-clock', 
             color: '#6777ef', 
-            week: Math.round(weekly.heures) + 'h', 
-            month: Math.round(monthly.heures) + 'h', 
+            week: hoursToHoursMinutes(weekly.heures),
+            month: hoursToHoursMinutes(monthly.heures),
             percent: percentages.heures 
         },
         { 
@@ -1010,5 +1051,7 @@ function updateStatsTable(data) {
     
     $('#stats-table-body').html(html);
 }
+
+
 </script>
 @endpush
