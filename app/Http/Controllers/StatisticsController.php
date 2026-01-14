@@ -7,8 +7,9 @@ use App\Models\User;
 use App\Models\TimeEntry;
 use App\Models\Dossier;
 use App\Models\DailyEntry;
-use App\Models\Conge;
 use App\Models\Client;
+use App\Models\DemandeConge;
+use App\Models\SoldeConge;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -57,6 +58,8 @@ class StatisticsController extends Controller
             'performance_mensuelle' => $this->getPerformanceMensuelle($startDate, $endDate, $userId),
             'taux_validation' => $this->getTauxValidation($startDate, $endDate, $userId),
             'heures_par_jour_semaine' => $this->getHeuresParJourSemaine($startDate, $endDate, $userId),
+            'soldes_conges' => $this->getSoldesConges($userId),
+            'activites_par_heure' => $this->getActivitesParHeure($startDate, $endDate, $userId),
         ];
 
         return response()->json([
@@ -105,50 +108,62 @@ class StatisticsController extends Controller
     }
 
     /**
-     * Totaux globaux
+     * Totaux globaux (avec nouvelles tables congés)
      */
     private function getTotauxGlobaux($startDate, $endDate, $userId = null)
     {
+        // Statistiques des heures travaillées
         $timeEntriesQuery = TimeEntry::whereBetween('created_at', [$startDate, $endDate]);
-        $congesQuery = Conge::where(function($q) use ($startDate, $endDate) {
-            $q->whereBetween('date_debut', [$startDate, $endDate])
-              ->orWhereBetween('date_fin', [$startDate, $endDate])
-              ->orWhere(function($q2) use ($startDate, $endDate) {
-                  $q2->where('date_debut', '<=', $startDate)
-                     ->where('date_fin', '>=', $endDate);
-              });
-        });
 
         if ($userId) {
             $timeEntriesQuery->where('user_id', $userId);
+        }
+
+        $totalHeures = round($timeEntriesQuery->sum('heures_reelles'), 2);
+        $employesActifs = $userId ? 1 : User::whereHas('timeEntries', function($q) use ($startDate, $endDate) {
+            $q->whereBetween('created_at', [$startDate, $endDate]);
+        })->count();
+
+        // Statistiques des congés
+        $congesQuery = DemandeConge::whereBetween('date_debut', [$startDate, $endDate])
+            ->orWhereBetween('date_fin', [$startDate, $endDate])
+            ->orWhere(function($q) use ($startDate, $endDate) {
+                $q->where('date_debut', '<=', $startDate)
+                   ->where('date_fin', '>=', $endDate);
+            });
+
+        if ($userId) {
             $congesQuery->where('user_id', $userId);
         }
 
+        $totalConges = $congesQuery->count();
+        $congesEnCours = DemandeConge::where('date_debut', '<=', now())
+            ->where('date_fin', '>=', now())
+            ->where('statut', 'approuve')
+            ->when($userId, function($q) use ($userId) {
+                $q->where('user_id', $userId);
+            })
+            ->count();
+
         return [
             'total_employes' => $userId ? 1 : User::count(),
-            'employes_actifs' => $userId ? 1 : User::whereHas('timeEntries', function($q) use ($startDate, $endDate) {
-                $q->whereBetween('created_at', [$startDate, $endDate]);
-            })->count(),
-            'total_heures' => round($timeEntriesQuery->sum('heures_reelles'), 2),
-            'total_dossiers' => $userId 
+            'employes_actifs' => $employesActifs,
+            'total_heures' => $totalHeures,
+            'total_dossiers' => $userId
                 ? Dossier::whereHas('timeEntries', function($q) use ($userId, $startDate, $endDate) {
                     $q->where('user_id', $userId)
                       ->whereBetween('created_at', [$startDate, $endDate]);
                 })->count()
                 : Dossier::whereBetween('created_at', [$startDate, $endDate])->count(),
             'dossiers_actifs' => Dossier::whereIn('statut', ['ouvert', 'en_cours'])->count(),
-            'total_conges' => $congesQuery->count(),
-            'conges_en_cours' => Conge::where('date_debut', '<=', now())
-                ->where('date_fin', '>=', now())
-                ->when($userId, function($q) use ($userId) {
-                    $q->where('user_id', $userId);
-                })
-                ->count(),
+            'total_conges' => $totalConges,
+            'conges_en_cours' => $congesEnCours,
             'total_clients' => Client::count(),
             'moyenne_heures_employe' => $userId ? null : round(
-                $timeEntriesQuery->sum('heures_reelles') / max(User::count(), 1),
+                $totalHeures / max(User::count(), 1),
                 2
             ),
+            'moyenne_heures_actif' => $employesActifs > 0 ? round($totalHeures / $employesActifs, 2) : 0,
         ];
     }
 
@@ -163,10 +178,15 @@ class StatisticsController extends Controller
             ->groupBy('users.id', 'users.prenom', 'users.nom', 'users.email')
             ->selectRaw('SUM(time_entries.heures_reelles) as total_heures')
             ->selectRaw('COUNT(DISTINCT time_entries.dossier_id) as nombre_dossiers')
+            ->selectRaw('COUNT(DISTINCT DATE(time_entries.created_at)) as jours_travailles')
             ->orderByDesc('total_heures')
             ->limit(20)
             ->get()
             ->map(function($user, $index) {
+                $moyenneJour = $user->jours_travailles > 0
+                    ? round(($user->total_heures ?? 0) / $user->jours_travailles, 2)
+                    : 0;
+
                 return [
                     'rang' => $index + 1,
                     'id' => $user->id,
@@ -174,6 +194,8 @@ class StatisticsController extends Controller
                     'email' => $user->email,
                     'total_heures' => round($user->total_heures ?? 0, 2),
                     'nombre_dossiers' => $user->nombre_dossiers ?? 0,
+                    'jours_travailles' => $user->jours_travailles ?? 0,
+                    'moyenne_jour' => $moyenneJour,
                 ];
             });
     }
@@ -184,14 +206,15 @@ class StatisticsController extends Controller
     private function getClassementConges($startDate, $endDate)
     {
         return User::select('users.id', 'users.prenom', 'users.nom', 'users.email')
-            ->leftJoin('conges', 'users.id', '=', 'conges.user_id')
+            ->leftJoin('demandes_conges', 'users.id', '=', 'demandes_conges.user_id')
             ->where(function($q) use ($startDate, $endDate) {
-                $q->whereBetween('conges.date_debut', [$startDate, $endDate])
-                  ->orWhereBetween('conges.date_fin', [$startDate, $endDate]);
+                $q->whereBetween('demandes_conges.date_debut', [$startDate, $endDate])
+                  ->orWhereBetween('demandes_conges.date_fin', [$startDate, $endDate]);
             })
             ->groupBy('users.id', 'users.prenom', 'users.nom', 'users.email')
-            ->selectRaw('COUNT(conges.id) as nombre_conges')
-            ->selectRaw('SUM(DATEDIFF(conges.date_fin, conges.date_debut) + 1) as total_jours_conges')
+            ->selectRaw('COUNT(demandes_conges.id) as nombre_conges')
+            ->selectRaw('SUM(demandes_conges.nombre_jours) as total_jours_conges')
+            ->selectRaw('SUM(CASE WHEN demandes_conges.statut = "approuve" THEN demandes_conges.nombre_jours ELSE 0 END) as jours_approuves')
             ->orderByDesc('nombre_conges')
             ->limit(20)
             ->get()
@@ -203,6 +226,7 @@ class StatisticsController extends Controller
                     'email' => $user->email,
                     'nombre_conges' => $user->nombre_conges ?? 0,
                     'total_jours' => $user->total_jours_conges ?? 0,
+                    'jours_approuves' => $user->jours_approuves ?? 0,
                 ];
             });
     }
@@ -215,7 +239,7 @@ class StatisticsController extends Controller
         $diffInDays = $startDate->diffInDays($endDate);
         $groupBy = 'DATE(time_entries.created_at)';
         $format = '%Y-%m-%d';
-        
+
         // Adapter le groupement selon la durée
         if ($diffInDays > 90) {
             $groupBy = 'DATE_FORMAT(time_entries.created_at, "%Y-%m")';
@@ -228,6 +252,7 @@ class StatisticsController extends Controller
         $query = TimeEntry::selectRaw("$groupBy as periode")
             ->selectRaw('SUM(heures_reelles) as total_heures')
             ->selectRaw('COUNT(DISTINCT user_id) as nombre_employes')
+            ->selectRaw('COUNT(DISTINCT dossier_id) as nombre_dossiers')
             ->whereBetween('created_at', [$startDate, $endDate]);
 
         if ($userId) {
@@ -247,6 +272,7 @@ class StatisticsController extends Controller
             })->toArray(),
             'heures' => $data->pluck('total_heures')->map(fn($h) => round($h, 2))->toArray(),
             'employes' => $data->pluck('nombre_employes')->toArray(),
+            'dossiers' => $data->pluck('nombre_dossiers')->toArray(),
         ];
     }
 
@@ -255,7 +281,7 @@ class StatisticsController extends Controller
      */
     private function getRepartitionDossiers($startDate, $endDate, $userId = null)
     {
-        $query = Dossier::select('dossiers.nom', 'dossiers.reference', 'dossiers.type_dossier')
+        $query = Dossier::select('dossiers.id', 'dossiers.nom', 'dossiers.reference', 'dossiers.type_dossier')
             ->join('time_entries', 'dossiers.id', '=', 'time_entries.dossier_id')
             ->whereBetween('time_entries.created_at', [$startDate, $endDate]);
 
@@ -279,23 +305,38 @@ class StatisticsController extends Controller
     }
 
     /**
-     * Statistiques des congés
+     * Statistiques des congés par type
      */
     private function getStatistiquesConges($startDate, $endDate, $userId = null)
     {
-        $query = Conge::whereBetween('date_debut', [$startDate, $endDate]);
+        $query = DemandeConge::join('types_conges', 'demandes_conges.type_conge_id', '=', 'types_conges.id')
+            ->whereBetween('date_debut', [$startDate, $endDate]);
 
         if ($userId) {
-            $query->where('user_id', $userId);
+            $query->where('demandes_conges.user_id', $userId);
         }
 
-        $congesParType = $query->select('type_conge', DB::raw('count(*) as count'))
-            ->groupBy('type_conge')
+        $congesParType = $query->select('types_conges.libelle', DB::raw('count(*) as count'))
+            ->groupBy('types_conges.libelle')
+            ->get();
+
+        $congesParStatut = DemandeConge::whereBetween('date_debut', [$startDate, $endDate])
+            ->when($userId, function($q) use ($userId) {
+                $q->where('user_id', $userId);
+            })
+            ->select('statut', DB::raw('count(*) as count'))
+            ->groupBy('statut')
             ->get();
 
         return [
-            'types' => $congesParType->pluck('type_conge')->toArray(),
-            'counts' => $congesParType->pluck('count')->toArray(),
+            'types' => [
+                'labels' => $congesParType->pluck('libelle')->toArray(),
+                'counts' => $congesParType->pluck('count')->toArray(),
+            ],
+            'statuts' => [
+                'labels' => $congesParStatut->pluck('statut')->map(fn($s) => ucfirst($s))->toArray(),
+                'counts' => $congesParStatut->pluck('count')->toArray(),
+            ],
         ];
     }
 
@@ -318,11 +359,53 @@ class StatisticsController extends Controller
             ->orderBy('mois')
             ->get();
 
+        // Ajouter les données des congés mensuels
+        $congesMensuels = DemandeConge::selectRaw('MONTH(date_debut) as mois')
+            ->selectRaw('YEAR(date_debut) as annee')
+            ->selectRaw('SUM(nombre_jours) as total_jours')
+            ->whereBetween('date_debut', [$startDate, $endDate])
+            ->where('statut', 'approuve')
+            ->when($userId, function($q) use ($userId) {
+                $q->where('user_id', $userId);
+            })
+            ->groupBy('annee', 'mois')
+            ->orderBy('annee')
+            ->orderBy('mois')
+            ->get();
+
+        // Fusionner les données par mois
+        $allMonths = collect();
+        for ($i = 0; $i < 12; $i++) {
+            $date = Carbon::create()->month($i + 1);
+            $allMonths->push([
+                'mois' => $date->month,
+                'annee' => $date->year,
+                'label' => $date->format('M Y'),
+                'heures' => 0,
+                'jours_conges' => 0
+            ]);
+        }
+
+        // Remplir les données réelles
+        foreach ($data as $item) {
+            $key = $item->annee . '-' . str_pad($item->mois, 2, '0', STR_PAD_LEFT);
+            $monthData = $allMonths->firstWhere('mois', $item->mois);
+            if ($monthData) {
+                $monthData['heures'] = round($item->total_heures, 2);
+            }
+        }
+
+        foreach ($congesMensuels as $item) {
+            $monthData = $allMonths->firstWhere('mois', $item->mois);
+            if ($monthData) {
+                $monthData['jours_conges'] = round($item->total_jours, 1);
+            }
+        }
+
         return [
-            'labels' => $data->map(function($item) {
-                return Carbon::create($item->annee, $item->mois)->format('M Y');
-            })->toArray(),
-            'heures' => $data->pluck('total_heures')->map(fn($h) => round($h, 2))->toArray(),
+            'labels' => $allMonths->pluck('label')->toArray(),
+            'heures' => $allMonths->pluck('heures')->toArray(),
+            'jours_conges' => $allMonths->pluck('jours_conges')->toArray(),
         ];
     }
 
@@ -344,7 +427,7 @@ class StatisticsController extends Controller
         $total = $stats->sum('count');
 
         return [
-            'statuts' => $stats->pluck('statut')->toArray(),
+            'statuts' => $stats->pluck('statut')->map(fn($s) => ucfirst($s))->toArray(),
             'counts' => $stats->pluck('count')->toArray(),
             'pourcentages' => $stats->map(function($item) use ($total) {
                 return $total > 0 ? round(($item->count / $total) * 100, 1) : 0;
@@ -370,7 +453,7 @@ class StatisticsController extends Controller
             ->get();
 
         $jours = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-        
+
         // Réorganiser pour commencer par Lundi
         $heuresParJour = array_fill(0, 7, 0);
         foreach ($data as $item) {
@@ -381,13 +464,87 @@ class StatisticsController extends Controller
         $lundi = array_slice($heuresParJour, 1, 6);
         $dimanche = array_slice($heuresParJour, 0, 1);
         $heuresParJour = array_merge($lundi, $dimanche);
-        
+
         $joursOrdre = array_merge(array_slice($jours, 1, 6), array_slice($jours, 0, 1));
 
         return [
             'jours' => $joursOrdre,
             'heures' => $heuresParJour,
         ];
+    }
+
+    /**
+     * Soldes de congés des employés
+     */
+    private function getSoldesConges($userId = null)
+    {
+        $query = SoldeConge::join('users', 'soldes_conges.user_id', '=', 'users.id')
+            ->where('soldes_conges.annee', now()->year);
+
+        if ($userId) {
+            $query->where('soldes_conges.user_id', $userId);
+        }
+
+        $data = $query->select(
+                'users.id',
+                'users.prenom',
+                'users.nom',
+                'soldes_conges.jours_acquis',
+                'soldes_conges.jours_pris',
+                'soldes_conges.jours_restants',
+                'soldes_conges.jours_reportes'
+            )
+            ->orderByDesc('soldes_conges.jours_restants')
+            ->limit(10)
+            ->get();
+
+        return [
+            'employes' => $data->map(function($item) {
+                return [
+                    'nom_complet' => $item->prenom . ' ' . $item->nom,
+                    'jours_acquis' => $item->jours_acquis,
+                    'jours_pris' => $item->jours_pris,
+                    'jours_restants' => $item->jours_restants,
+                    'jours_reportes' => $item->jours_reportes,
+                    'pourcentage_pris' => $item->jours_acquis > 0
+                        ? round(($item->jours_pris / $item->jours_acquis) * 100, 1)
+                        : 0,
+                ];
+            })->toArray(),
+        ];
+    }
+
+    /**
+     * Activités par heure de la journée
+     */
+    private function getActivitesParHeure($startDate, $endDate, $userId = null)
+    {
+        $query = TimeEntry::selectRaw('HOUR(heure_debut) as heure')
+            ->selectRaw('COUNT(*) as nombre_activites')
+            ->selectRaw('SUM(heures_reelles) as total_heures')
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereNotNull('heure_debut');
+
+        if ($userId) {
+            $query->where('user_id', $userId);
+        }
+
+        $data = $query->groupBy('heure')
+            ->orderBy('heure')
+            ->get();
+
+        // Compléter toutes les heures de la journée
+        $heures = [];
+        for ($i = 7; $i <= 20; $i++) { // De 7h à 20h
+            $heureData = $data->firstWhere('heure', $i);
+            $heures[] = [
+                'heure' => sprintf('%02d:00', $i),
+                'nombre_activites' => $heureData ? $heureData->nombre_activites : 0,
+                'total_heures' => $heureData ? round($heureData->total_heures, 2) : 0,
+            ];
+        }
+
+        return $heures;
     }
 
     /**
@@ -424,33 +581,73 @@ class StatisticsController extends Controller
         }
 
         $user = User::findOrFail($userId);
+        $currentYear = now()->year;
+
+        // Heures travaillées
+        $heuresTotales = round(TimeEntry::where('user_id', $userId)->sum('heures_reelles'), 2);
+        $heuresMois = round(TimeEntry::where('user_id', $userId)
+            ->whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
+            ->sum('heures_reelles'), 2);
+        $heuresAnnee = round(TimeEntry::where('user_id', $userId)
+            ->whereYear('created_at', now()->year)
+            ->sum('heures_reelles'), 2);
+
+        // Dossiers
+        $nombreDossiers = Dossier::whereHas('timeEntries', function($q) use ($userId) {
+            $q->where('user_id', $userId);
+        })->count();
+
+        // Congés
+        $demandesConges = DemandeConge::where('user_id', $userId)
+            ->whereYear('date_debut', $currentYear)
+            ->get();
+
+        $nombreCongesAnnee = $demandesConges->count();
+        $joursCongesAnnee = $demandesConges->where('statut', 'approuve')->sum('nombre_jours');
+        $congesEnAttente = $demandesConges->where('statut', 'en_attente')->count();
+
+        // Solde de congés
+        $soldeConge = SoldeConge::where('user_id', $userId)
+            ->where('annee', $currentYear)
+            ->first();
 
         $stats = [
             'user' => [
                 'id' => $user->id,
                 'nom_complet' => $user->prenom . ' ' . $user->nom,
                 'email' => $user->email,
+                'poste' => $user->poste->intitule ?? 'Non défini',
+                'type_contrat' => $user->type_contrat ?? 'Non défini',
             ],
-            'heures_totales' => round(TimeEntry::where('user_id', $userId)->sum('heures_reelles'), 2),
-            'heures_mois' => round(TimeEntry::where('user_id', $userId)
-                ->whereMonth('created_at', now()->month)
-                ->whereYear('created_at', now()->year)
-                ->sum('heures_reelles'), 2),
-            'heures_annee' => round(TimeEntry::where('user_id', $userId)
-                ->whereYear('created_at', now()->year)
-                ->sum('heures_reelles'), 2),
-            'nombre_dossiers' => Dossier::whereHas('timeEntries', function($q) use ($userId) {
-                $q->where('user_id', $userId);
-            })->count(),
-            'nombre_conges_annee' => Conge::where('user_id', $userId)
-                ->whereYear('date_debut', now()->year)
-                ->count(),
-            'jours_conges_annee' => Conge::where('user_id', $userId)
-                ->whereYear('date_debut', now()->year)
-                ->get()
-                ->sum(function($conge) {
-                    return Carbon::parse($conge->date_debut)->diffInDays(Carbon::parse($conge->date_fin)) + 1;
-                }),
+            'heures' => [
+                'total' => $heuresTotales,
+                'mois' => $heuresMois,
+                'annee' => $heuresAnnee,
+                'moyenne_mensuelle' => round($heuresAnnee / max(now()->month, 1), 2),
+            ],
+            'dossiers' => [
+                'total' => $nombreDossiers,
+                'actifs' => Dossier::whereHas('timeEntries', function($q) use ($userId) {
+                    $q->where('user_id', $userId);
+                })->whereIn('statut', ['ouvert', 'en_cours'])->count(),
+            ],
+            'conges' => [
+                'total_demandes' => $nombreCongesAnnee,
+                'jours_pris' => $joursCongesAnnee,
+                'en_attente' => $congesEnAttente,
+                'jours_acquis' => $soldeConge ? $soldeConge->jours_acquis : 0,
+                'jours_restants' => $soldeConge ? $soldeConge->jours_restants : 0,
+                'jours_reportes' => $soldeConge ? $soldeConge->jours_reportes : 0,
+            ],
+            'validation' => [
+                'feuilles_validees' => DailyEntry::where('user_id', $userId)
+                    ->where('statut', 'validé')
+                    ->count(),
+                'feuilles_en_attente' => DailyEntry::where('user_id', $userId)
+                    ->where('statut', 'soumis')
+                    ->count(),
+            ],
         ];
 
         return response()->json($stats);
@@ -467,9 +664,9 @@ class StatisticsController extends Controller
 
         $type = $request->get('type', 'excel'); // excel, pdf, csv
         $periode = $request->get('periode', 'mois');
-        
+
         // TODO: Implémenter l'export avec Laravel Excel ou DomPDF
-        
+
         return response()->json([
             'message' => 'Export en cours de développement',
             'type' => $type,
