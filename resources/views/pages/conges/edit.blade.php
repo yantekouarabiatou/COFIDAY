@@ -200,7 +200,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label>Motif (optionnel)</label>
+                                <label>Motif</label>
                                 <textarea name="motif" class="form-control @error('motif') is-invalid @enderror"
                                         required  rows="3" placeholder="Raison de votre demande de congé...">{{ old('motif', $demande->motif) }}</textarea>
                                 <small class="form-text text-muted">
