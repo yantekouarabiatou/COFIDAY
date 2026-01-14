@@ -141,12 +141,12 @@
                             @if($dailyEntry->heures_reelles > $dailyEntry->heures_theoriques)
                                 <div class="col-md-3">
                                     <div class="card card-statistic-1">
-                                        <div class="card-icon bg-success">
+                                        <div class="card-icon bg-danger">
                                             <i class="fas fa-plus-circle"></i>
                                         </div>
                                         <div class="card-wrap">
-                                            <div class="card-header">
-                                                <h4>Heures supplémentaires</h4>
+                                            <div class="card-header ">
+                                                <h6>Heures supplémentaires</h6>
                                             </div>
                                             <div class="card-body">
                                                 {{ $hsHeures }}h {{ $hsMinutes }}min
@@ -341,7 +341,7 @@
                         <!-- Actions supplémentaires -->
                         <div class="text-center mt-4">
                             <div class="btn-group" role="group">
-                                
+
                                 <a href="{{ route('daily-entries.create') }}" class="btn btn-outline-success">
                                     <i class="fas fa-plus"></i> Nouvelle saisie
                                 </a>
