@@ -1,3 +1,7 @@
+@php
+use App\Helpers\UserHelper;
+@endphp
+
 @extends('layaout')
 
 @section('title', 'Tableau de bord - Gestion des Congés')
@@ -216,7 +220,12 @@
                                         @foreach($congesEnCours as $conge)
                                         @php
                                             $dateFin = \Carbon\Carbon::parse($conge->date_fin);
-                                            $joursRestants = max(0, now()->diffInDays($dateFin, false));
+                                            
+                                            // MODIFICATION ICI : Conversion en jour entier sans heures
+                                            $dateFinStart = $dateFin->copy()->startOfDay();
+                                            $nowStart = now()->startOfDay();
+                                            $joursRestants = max(0, $nowStart->diffInDays($dateFinStart, false));
+                                            
                                             $pourcentage = $conge->nombre_jours > 0 ?
                                                 (($conge->nombre_jours - $joursRestants) / $conge->nombre_jours) * 100 : 0;
                                         @endphp
@@ -244,25 +253,18 @@
                                                 </span>
                                             </td>
                                             <td>
-                                                {{ \Carbon\Carbon::parse($conge->date_debut)->format('d/m') }}
-                                                <i class="fas fa-arrow-right mx-1"></i>
-                                                {{ \Carbon\Carbon::parse($conge->date_fin)->format('d/m') }}
+                                                <div style="min-width: 120px;">
+                                                    {{ \Carbon\Carbon::parse($conge->date_debut)->format('d/m') }} <i class="fas fa-arrow-right mx-1"></i> {{ \Carbon\Carbon::parse($conge->date_fin)->format('d/m') }}
+                                                </div>
                                             </td>
                                             <td>
-                                                <div class="progress" style="height: 20px;">
-                                                    <div class="progress-bar
-                                                        @if($pourcentage < 30) bg-success
-                                                        @elseif($pourcentage < 70) bg-warning
-                                                        @else bg-danger
-                                                        @endif"
-                                                        role="progressbar"
-                                                        style="width: {{ $pourcentage }}%"
-                                                        aria-valuenow="{{ $pourcentage }}"
-                                                        aria-valuemin="0"
-                                                        aria-valuemax="100">
-                                                        {{ $joursRestants }}j
+                                                <div class="progress bg-success">
+                                                    <div class="progress-bar bg-success text-white d-flex align-items-center justify-content-center"
+                                                        style="width: 100%">
+                                                        {{ $joursRestants }} j
                                                     </div>
                                                 </div>
+
                                             </td>
                                             <td>
                                                 <strong>{{ $dateFin->format('d/m/Y') }}</strong><br>
@@ -351,12 +353,26 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach($prochainsConges as $conge)
-                                        @php
-                                            $dateDebut = \Carbon\Carbon::parse($conge->date_debut);
-                                            $dans = $dateDebut->diffForHumans();
-                                            $isProche = $dateDebut->diffInDays(now()) <= 3;
-                                        @endphp
+                                    @foreach($prochainsConges as $conge)
+                                    @php
+                                        $dateDebut = \Carbon\Carbon::parse($conge->date_debut);
+                                        
+                                        // MODIFICATION ICI : Calcul en jours entiers
+                                        $dateDebutStart = $dateDebut->copy()->startOfDay();
+                                        $nowStart = now()->startOfDay();
+                                        $joursAvantDebut = max(0, $nowStart->diffInDays($dateDebutStart, false));
+                                        
+                                        // Pour l'affichage "Dans X jours"
+                                        if ($joursAvantDebut == 0) {
+                                            $dans = "Aujourd'hui";
+                                        } elseif ($joursAvantDebut == 1) {
+                                            $dans = "Demain";
+                                        } else {
+                                            $dans = "Dans " . $joursAvantDebut . " jours";
+                                        }
+                                        
+                                        $isProche = $joursAvantDebut <= 3;
+                                    @endphp
                                         <tr class="{{ $isProche ? 'table-warning' : '' }}">
                                             <td>
                                                 <div class="d-flex align-items-center">
