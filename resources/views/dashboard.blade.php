@@ -117,9 +117,9 @@
                 <div class="card-body p-4">
                     <div class="row">
                         <div class="col-md-3 text-center border-right">
-                            <i class="fas fa-calendar-week fa-2x mb-2 text-primary"></i>
-                            <h6 class="mb-1">Heures (7 jours)</h6>
-                            <h4 class="font-weight-bold text-primary" id="heures-semaine">-</h4>
+                            <i class="fas fa-calendar-week fa-2x mb-2"></i>
+                            <h6 class="mb-1">Heures (5 jours)</h6>
+                            <h4 class="font-weight-bold " id="heures-semaine">-</h4>
                         </div>
                         <div class="col-md-3 text-center border-right">
                             <i class="fas fa-folder-open fa-2x mb-2 text-info"></i>
