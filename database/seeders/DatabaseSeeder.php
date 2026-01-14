@@ -28,6 +28,9 @@ class DatabaseSeeder extends Seeder
             DemandesCongesSeeder::class,
             SoldesCongesSeeder::class,
             HistoriquesCongesSeeder::class,
+            DailyEntrySeeder::class,
+
         ]);
+
     }
 }
