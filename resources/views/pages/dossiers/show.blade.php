@@ -207,7 +207,6 @@ use App\Helpers\UserHelper;
                                         <p>{{ $dossier->notes }}</p>
                                     </div>
                                 </div>
-                                @endif
                             </div>
 
                             <!-- Colonne de droite -->
@@ -223,7 +222,8 @@ use App\Helpers\UserHelper;
                                             <i class="fas fa-file-pdf fa-3x text-danger"></i>
                                         </div>
                                         <p class="mb-2">{{ $dossier->document_name }}</p>
-                                        <a href="{{ $dossier->document_url }}"
+
+                                @endif     <a href="{{ $dossier->document_url }}"
                                            class="btn btn-primary btn-sm"
                                            target="_blank"
                                            download>
@@ -268,7 +268,7 @@ use App\Helpers\UserHelper;
                                             <a href="{{ route('dossiers.edit', $dossier) }}" class="list-group-item list-group-item-action">
                                                 <i class="fas fa-edit mr-2"></i> Modifier le dossier
                                             </a>
-                                            
+
                                             <a href="{{ route('clients.show', $dossier->client) }}" class="list-group-item list-group-item-action">
                                                 <i class="fas fa-external-link-alt mr-2"></i> Voir le client
                                             </a>

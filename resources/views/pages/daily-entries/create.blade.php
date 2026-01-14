@@ -104,7 +104,7 @@
                                                     <div class="form-group mb-0">
                                                         <label class="font-weight-bold">Heure début <span class="text-danger">*</span></label>
                                                         <input type="time" name="time_entries[0][heure_debut]"
-                                                            class="form-control heure-debut text-center" value="09:00" required>
+                                                            class="form-control heure-debut text-center" value="08:00" required>
                                                     </div>
                                                 </div>
 
@@ -112,7 +112,7 @@
                                                     <div class="form-group mb-0">
                                                         <label class="font-weight-bold">Heure fin <span class="text-danger">*</span></label>
                                                         <input type="time" name="time_entries[0][heure_fin]"
-                                                            class="form-control heure-fin text-center" value="12:00" required>
+                                                            class="form-control heure-fin text-center" value="12:30" required>
                                                     </div>
                                                 </div>
 
@@ -374,9 +374,7 @@
         .btn-new-dossier-global i {
             margin-right: 5px;
         }
-    </style>
 
-    <style>
 /* Styles pour améliorer l'apparence des cartes d'activités */
 .time-entry-row .card {
     border-left: 4px solid #6777ef;
@@ -432,7 +430,7 @@
     .time-entry-row .card {
         margin-bottom: 1rem;
     }
-    
+
     .remove-row {
         width: 100%;
         margin-top: 10px;
