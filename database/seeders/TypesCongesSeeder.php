@@ -44,7 +44,7 @@ class TypesCongesSeeder extends Seeder
             ],
             [
                 'libelle' => 'Congés paternité',
-                'nombre_jours_max' => 25,
+                'nombre_jours_max' => 7,
                 'est_paye' => true,
                 'est_annuel' => false, // Payé mais pas annuel
                 'actif' => true,
@@ -60,7 +60,7 @@ class TypesCongesSeeder extends Seeder
                 'couleur' => '#083f2dff',
             ],
 
-        
+
         ]);
     }
 }
