@@ -36,24 +36,24 @@ class DashboardController extends Controller
             $totals = [
                 'mes_dossiers' => $this->getUserDossiersCount($user->id),
                 'dossiers_actifs' => $this->getUserDossiersActifsCount($user->id),
-                'heures_mois' => TimeEntry::where('user_id', $user->id)
+                'heures_mois' => (float) (TimeEntry::where('user_id', $user->id)
                     ->whereMonth('created_at', now()->month)
                     ->whereYear('created_at', now()->year)
-                    ->sum('heures_reelles') ?? 0,
+                    ->sum('heures_reelles') ?? 0),
                 'mes_conges_en_cours' => DemandeConge::where('date_debut', '<=', now())
                     ->where('date_fin', '>=', now())
                     ->where('user_id', $user->id)
                     ->where('statut', 'approuve')
                     ->count(),
-                'heures_totales' => TimeEntry::where('user_id', $user->id)->sum('heures_reelles') ?? 0,
+                'heures_totales' => (float) (TimeEntry::where('user_id', $user->id)->sum('heures_reelles') ?? 0),
             ];
 
             // Statistiques hebdomadaires (7 derniers jours)
             $weekStart = now()->subDays(7);
             $weeklyStats = [
-                'heures' => TimeEntry::where('user_id', $user->id)
+                'heures' => (float) (TimeEntry::where('user_id', $user->id)
                     ->where('created_at', '>=', $weekStart)
-                    ->sum('heures_reelles') ?? 0,
+                    ->sum('heures_reelles') ?? 0),
                 'dossiers_travailles' => TimeEntry::where('user_id', $user->id)
                     ->where('created_at', '>=', $weekStart)
                     ->distinct('dossier_id')
@@ -64,9 +64,9 @@ class DashboardController extends Controller
             $lastMonthStart = now()->subMonth()->startOfMonth();
             $lastMonthEnd = now()->subMonth()->endOfMonth();
             $lastMonthStats = [
-                'heures' => TimeEntry::where('user_id', $user->id)
+                'heures' => (float) (TimeEntry::where('user_id', $user->id)
                     ->whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])
-                    ->sum('heures_reelles') ?? 0,
+                    ->sum('heures_reelles') ?? 0),
                 'dossiers_travailles' => TimeEntry::where('user_id', $user->id)
                     ->whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])
                     ->distinct('dossier_id')
@@ -99,9 +99,9 @@ class DashboardController extends Controller
                 $date = now()->subDays($i);
                 $dateLabel = $date->format('d/m');
                 
-                $heures = TimeEntry::where('user_id', $user->id)
+                $heures = (float) (TimeEntry::where('user_id', $user->id)
                     ->whereDate('created_at', $date)
-                    ->sum('heures_reelles') ?? 0;
+                    ->sum('heures_reelles') ?? 0);
                 
                 $last30days->put($dateLabel, [
                     'heures' => round($heures, 2),
