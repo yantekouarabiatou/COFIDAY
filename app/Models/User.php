@@ -90,4 +90,10 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->hasMany(DemandeConge::class, 'user_id');
     }
+
+    public function demandesValidees()
+    {
+        return $this->hasMany(DemandeConge::class, 'superieur_hierarchique_id');
+    }
+
 }

@@ -199,16 +199,56 @@
                                 </div>
                             </div>
 
-                            <div class="form-group">
-                                <label>Motif</label>
-                                <textarea name="motif" class="form-control @error('motif') is-invalid @enderror"
-                                        required  rows="3" placeholder="Raison de votre demande de congé...">{{ old('motif', $demande->motif) }}</textarea>
-                                <small class="form-text text-muted">
-                                    Maximum 1000 caractères
-                                </small>
-                                @error('motif')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="superieur_hierarchique_id">
+                                            Supérieur hiérarchique <span class="text-danger">*</span>
+                                        </label>
+
+                                        <select
+                                            name="superieur_hierarchique_id"
+                                            id="superieur_hierarchique_id"
+                                            class="form-control select2 @error('superieur_hierarchique_id') is-invalid @enderror"
+                                            required
+                                        >
+                                            <option value="">Sélectionner un supérieur</option>
+
+                                            @foreach($users as $u)
+                                                @if($u->id !== auth()->id())
+                                                    <option
+                                                        value="{{ $u->id }}"
+                                                        {{ old('superieur_hierarchique_id', $demande->superieur_hierarchique_id) == $u->id ? 'selected' : '' }}
+                                                    >
+                                                        {{ $u->prenom }} {{ $u->nom }} — {{ $u->email }}
+                                                    </option>
+                                                @endif
+                                            @endforeach
+                                        </select>
+
+                                        <small class="form-text text-muted">
+                                            Vous pouvez rechercher par nom, prénom ou email
+                                        </small>
+
+                                        @error('superieur_hierarchique_id')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Motif</label>
+                                        <textarea name="motif" class="form-control @error('motif') is-invalid @enderror"
+                                                required  rows="3" placeholder="Raison de votre demande de congé...">{{ old('motif', $demande->motif) }}</textarea>
+                                        <small class="form-text text-muted">
+                                            Maximum 1000 caractères
+                                        </small>
+                                        @error('motif')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- Prévisualisation des changements -->
@@ -736,5 +776,14 @@ $('#type_conge_id, #date_debut, #date_fin').on('change', function() {
         calculateDays();
     }
 });
+
+$(document).ready(function () {
+    $('#superieur_hierarchique_id').select2({
+        placeholder: "Sélectionner un supérieur",
+        allowClear: true
+    }).val('{{ old('superieur_hierarchique_id', $demande->superieur_hierarchique_id) }}')
+      .trigger('change');
+});
+
 </script>
 @endpush

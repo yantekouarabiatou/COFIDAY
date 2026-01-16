@@ -89,27 +89,27 @@
                                     <div class="form-group">
                                         <label>Type de congé <span class="text-danger">*</span></label>
                                         <select name="type_conge_id" id="type_conge_id"
-                                    class="form-control select2 @error('type_conge_id') is-invalid @enderror"
-                                    required
-                                    onchange="updateTypeCongeInfo()">
-                                <option value="">Sélectionner un type</option>
-                                @foreach($typesConges as $type)
-                                    <option value="{{ $type->id }}"
-                                            data-est-paye="{{ $type->est_paye ? '1' : '0' }}"
-                                            data-est-annuel="{{ $type->est_annuel ? '1' : '0' }}"
-                                            data-max-jours="{{ $type->nombre_jours_max }}"
-                                            {{ old('type_conge_id') == $type->id ? 'selected' : '' }}>
-                                        {{ $type->libelle }}
-                                        @if($type->est_annuel)
-                                            <span class="text-success"> (Annuel - déduit du solde)</span>
-                                        @elseif($type->est_paye)
-                                            <span class="text-primary"> (Payé - non déduit)</span>
-                                        @else
-                                            <span class="text-warning"> (Non payé)</span>
-                                        @endif
-                                    </option>
-                                @endforeach
-</select>
+                                                class="form-control select2 @error('type_conge_id') is-invalid @enderror"
+                                                required
+                                                onchange="updateTypeCongeInfo()">
+                                            <option value="">Sélectionner un type</option>
+                                            @foreach($typesConges as $type)
+                                                <option value="{{ $type->id }}"
+                                                        data-est-paye="{{ $type->est_paye ? '1' : '0' }}"
+                                                        data-est-annuel="{{ $type->est_annuel ? '1' : '0' }}"
+                                                        data-max-jours="{{ $type->nombre_jours_max }}"
+                                                        {{ old('type_conge_id') == $type->id ? 'selected' : '' }}>
+                                                    {{ $type->libelle }}
+                                                    @if($type->est_annuel)
+                                                        <span class="text-success"> (Annuel - déduit du solde)</span>
+                                                    @elseif($type->est_paye)
+                                                        <span class="text-primary"> (Payé - non déduit)</span>
+                                                    @else
+                                                        <span class="text-warning"> (Non payé)</span>
+                                                    @endif
+                                                </option>
+                                            @endforeach
+                                        </select>
                                         <small class="form-text text-muted" id="type-conge-info">
                                             Sélectionnez un type pour voir les détails
                                         </small>
@@ -169,16 +169,55 @@
                                 </div>
                             </div>
 
-                            <div class="form-group">
-                                <label>Motif</label>
-                                <textarea name="motif" class="form-control @error('motif') is-invalid @enderror"
-                                        required  rows="3" placeholder="Raison de votre demande de congé...">{{ old('motif') }}</textarea>
-                                <small class="form-text text-muted">
-                                    Maximum 1000 caractères
-                                </small>
-                                @error('motif')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="superieur_hierarchique_id">
+                                            Supérieur hiérarchique <span class="text-danger">*</span>
+                                        </label>
+
+                                        <select
+                                            name="superieur_hierarchique_id"
+                                            id="superieur_hierarchique_id"
+                                            class="form-control select2 @error('superieur_hierarchique_id') is-invalid @enderror"
+                                            required
+                                        >
+                                            <option value="">Sélectionner un supérieur</option>
+
+                                            @foreach($users as $u)
+                                                @if($u->id !== auth()->id())
+                                                    <option
+                                                        value="{{ $u->id }}"
+                                                        {{ old('superieur_hierarchique_id') == $u->id ? 'selected' : '' }}
+                                                    >
+                                                        {{ $u->prenom }} {{ $u->nom }} — {{ $u->email }}
+                                                    </option>
+                                                @endif
+                                            @endforeach
+                                        </select>
+
+                                        <small class="form-text text-muted">
+                                            Vous pouvez rechercher par nom, prénom ou email
+                                        </small>
+
+                                        @error('superieur_hierarchique_id')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Motif</label>
+                                        <textarea name="motif" class="form-control @error('motif') is-invalid @enderror"
+                                                required  rows="3" placeholder="Raison de votre demande de congé...">{{ old('motif') }}</textarea>
+                                        <small class="form-text text-muted">
+                                            Maximum 1000 caractères
+                                        </small>
+                                        @error('motif')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- Prévisualisation -->
@@ -456,6 +495,10 @@ function updatePreview() {
 
     $('#preview-card').show();
 }
+$('.select2').select2({
+    placeholder: "Sélectionner...",
+    allowClear: true
+});
 
 // Validation du formulaire
 $('#demande-form').on('submit', function(e) {
