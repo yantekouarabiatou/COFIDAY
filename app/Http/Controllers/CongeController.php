@@ -60,7 +60,7 @@ class CongeController extends Controller
             $usePagination = true;
         } else {
             // Pas de pagination pour les employés (peu de données)
-            $demandes = $query->latest()->get();
+            $demandes = $query->latest()->paginate(20);
 
             // Statistiques
             $totalDemandes = $demandes->count();
