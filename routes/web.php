@@ -116,7 +116,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/recent', [NotificationController::class, 'recent'])->name('recent');
     });
 
-    Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
+    Route::prefix('admin')->middleware(['auth'])->group(function () {
 
         Route::get('/permissions', [PermissionController::class, 'index'])
             ->name('admin.roles.permissions.index');
