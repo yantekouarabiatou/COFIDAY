@@ -285,7 +285,7 @@
                                             </small>
                                         </div>
                                     </a>
-
+                                    @can('voir les activités')
                                     <a href="{{ route('activities') }}"
                                         class="dropdown-item has-icon d-flex align-items-center py-2">
                                         <div class="icon-wrapper mr-3 d-flex align-items-center justify-content-center"
@@ -297,9 +297,10 @@
                                             <small class="text-muted d-block" style="line-height: 1;">Historique
                                                 récent</small>
                                         </div>
+                                        @endcan
                                     </a>
 
-                                    @can('access-settings')
+                                    @can('acces-settings')
                                         <a href="{{ route('settings.show') }}"
                                             class="dropdown-item has-icon d-flex align-items-center py-2">
                                             <div class="icon-wrapper mr-3 d-flex align-items-center justify-content-center"
@@ -601,34 +602,42 @@
         @endcan
     @endif
 
-    {{-- GESTION DES LOGS --}}
-    @can(['accéder au tableau de bord admin', 'accéder au tableau de bord utilisateur'])
-        <li class="menu-header">GESTION DES LOGS</li>
+   {{-- GESTION DES LOGS --}}
+@if(auth()->user()->can('voir les activités') ||
+    auth()->user()->can('accéder au tableau de bord admin') ||
+    auth()->user()->can('accéder au tableau de bord utilisateur'))
+    <li class="menu-header">GESTION DES LOGS</li>
+    <li class="dropdown {{ request()->routeIs('activities') ? 'active' : '' }}">
+        <a href="#"
+            class="menu-toggle nav-link has-dropdown {{ request()->routeIs('activities') ? 'active' : '' }}">
+            <i class="fas fa-clipboard-list"></i><span>Gestion des activités</span>
+        </a>
+        <ul class="dropdown-menu"
+            style="{{ request()->routeIs('activities') ? 'display: block;' : '' }}">
+            @can('voir les activités')
+                <li class="{{ request()->routeIs('activities') ? 'active' : '' }}">
+                    <a class="nav-link" href="{{ route('activities') }}">
+                        <i class="fas fa-history"></i> Voir Activités
+                    </a>
+                </li>
+            @endcan
+        </ul>
+    </li>
+@endif
 
-        <li class="dropdown {{ request()->routeIs('activities') || request()->routeIs('notifications.*') ? 'active' : '' }}">
-            <a href="#"
-                class="menu-toggle nav-link has-dropdown {{ request()->routeIs('activities') || request()->routeIs('notifications.*') ? 'active' : '' }}">
-                <i class="fas fa-clipboard-list"></i><span>Gestion des activités</span>
-            </a>
-            <ul class="dropdown-menu"
-                style="{{ request()->routeIs('activities') || request()->routeIs('notifications.*') ? 'display: block;' : '' }}">
-                @can('voir les activités')
-                    <li class="{{ request()->routeIs('activities') ? 'active' : '' }}">
-                        <a class="nav-link" href="{{ route('activities') }}">
-                            <i class="fas fa-history"></i> Voir Activités
-                        </a>
-                    </li>
-                @endcan
-                @can('voir les notifications')
-                    <li class="{{ request()->routeIs('notifications.index') ? 'active' : '' }}">
-                        <a class="nav-link" href="{{ route('notifications.index') }}">
-                            <i class="fas fa-bell"></i> Notifications
-                        </a>
-                    </li>
-                @endcan
-            </ul>
-        </li>
-    @endcan
+{{-- NOTIFICATIONS --}}
+@can('voir les notifications')
+    @if(!(auth()->user()->can('voir les activités') ||
+          auth()->user()->can('accéder au tableau de bord admin') ||
+          auth()->user()->can('accéder au tableau de bord utilisateur')))
+        <li class="menu-header">GESTION DES LOGS</li>
+    @endif
+    <li class="{{ request()->routeIs('notifications.*') ? 'active' : '' }}">
+        <a href="{{ route('notifications.index') }}" class="nav-link">
+            <i class="fas fa-bell"></i><span>Notifications</span>
+        </a>
+    </li>
+@endcan
 
     {{-- RAPPORTS & STATISTIQUES --}}
     @can('voir les statistiques')
