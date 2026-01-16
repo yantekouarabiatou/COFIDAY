@@ -100,7 +100,7 @@ use App\Helpers\UserHelper;
                             <th><i class="fas fa-folder-open mr-1"></i>Dossier / Client</th>
                             <th class="text-center" style="width: 90px;"><i class="fas fa-stopwatch mr-1"></i>Heures</th>
                             <th><i class="fas fa-tasks mr-1"></i>Travaux effectués</th>
-                        </tr>
+                            <th><i class="fas fa-tasks mr-1">Rendus</i></th>                        </tr>
                     </thead>
                     <tbody>
                         @foreach($entries as $entry)
@@ -179,6 +179,10 @@ use App\Helpers\UserHelper;
 
                                         <td>
                                             <div class="travaux-text">{{ $te->travaux ?? '-' }}</div>
+                                        </td>
+
+                                        <td>
+                                            <div class="travaux-text">{{ $te->rendus ?? '-' }}</div>
                                         </td>
                                     </tr>
                                 @endforeach
