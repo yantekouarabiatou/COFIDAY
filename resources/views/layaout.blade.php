@@ -58,69 +58,76 @@
                 <ul class="navbar-nav navbar-right">
                     <li class="dropdown dropdown-list-toggle">
                         @auth
-                            @php
-                                $user = auth()->user();
-                                $unreadCount = $user->unreadNotifications()->count();
-                                $notifications = $user->notifications()->latest()->take(7)->get();
-                            @endphp
-
-                            <a href="#" data-toggle="dropdown" class="nav-link notification-toggle nav-link-lg">
-                                <i class="far fa-bell" style="color: #000000;"></i>
-                                <span id="unread-count" class="badge badge-danger badge-header"
-                                    style="{{ $unreadCount > 0 ? '' : 'display: none;' }}">
-                                    {{ $unreadCount > 99 ? '99+' : $unreadCount }}
-                                </span>
-                            </a>
-
+                        @php
+                            $user = auth()->user();
+                            $unreadCount = $user->unreadNotifications()->count();
+                            $notifications = $user->notifications()->latest()->take(7)->get();
+                        @endphp
+                        <a href="#" data-toggle="dropdown" class="nav-link notification-toggle nav-link-lg">
+                            <i class="far fa-bell" style="color: #000000;"></i>
+                            <span id="unread-count" class="badge badge-danger badge-header"
+                                style="{{ $unreadCount > 0 ? '' : 'display: none;' }}">
+                                {{ $unreadCount > 99 ? '99+' : $unreadCount }}
+                            </span>
+                        </a>
                             <div class="dropdown-menu dropdown-list dropdown-menu-right pullDown" style="width: 360px;">
-                                <div class="dropdown-header d-flex justify-content-between">
-                                    Notifications
-                                    @if($unreadCount > 0)
-                                        <form method="POST" action="{{ route('notifications.mark-all-read') }}"
-                                            class="d-inline">
-                                            @csrf
-                                            <button type="submit" class="btn btn-link text-primary p-0 border-0"
-                                                style="font-size: 12px;">
-                                                Tout marquer comme lu
-                                            </button>
-                                        </form>
-                                    @endif
-                                </div>
+                        <div class="dropdown-header d-flex justify-content-between align-items-center">
+                            <span>Notifications</span>
+                            @if($unreadCount > 0)
+                                <form method="POST" action="{{ route('notifications.mark-all-read') }}" class="d-inline">
+                                    @csrf
+                                    <button type="submit" class="btn btn-link text-primary p-0 border-0 small">
+                                        Tout marquer comme lu
+                                    </button>
+                                </form>
+                            @endif
+                        </div>
 
-                                <div class="dropdown-list-content dropdown-list-icons"
-                                    style="max-height: 300px; overflow-y: auto;">
-                                    @forelse($notifications as $notification)
-                                        <a href="{{ $notification->data['url'] ?? '#' }}"
-                                            class="dropdown-item {{ $notification->read_at ? '' : 'dropdown-item-unread' }}"
-                                            data-notification-id="{{ $notification->id }}"
-                                            onclick="handleNotificationClick(event, this)">
-                                            <div
-                                                class="dropdown-item-icon {{ $notification->data['color'] ?? 'bg-primary' }} text-white">
-                                                <i class="{{ $notification->data['icon'] ?? 'fas fa-bell' }}"></i>
-                                            </div>
-                                            <div class="dropdown-item-desc">
-                                                {!! $notification->data['message'] ?? 'Notification sans message' !!}
-                                                <div class="time text-muted">
-                                                    {{ $notification->created_at->diffForHumans() }}
-                                                </div>
-                                            </div>
-                                        </a>
-                                    @empty
-                                        <div class="dropdown-item text-center text-muted py-4">
-                                            <i class="far fa-bell-slash fa-2x mb-2"></i>
-                                            <p>Aucune notification</p>
+                        <div class="dropdown-list-content dropdown-list-icons" style="max-height: 320px; overflow-y: auto;">
+                            @forelse($notifications as $notification)
+                                <a href="{{ $notification->data['url'] ?? '#' }}"
+                                class="dropdown-item dropdown-item-unread-hover {{ $notification->read_at ? '' : 'dropdown-item-unread' }}"
+                                data-notification-id="{{ $notification->id }}"
+                                onclick="handleNotificationClick(event, this)">
+
+                                    <div class="dropdown-item-icon {{ $notification->data['color'] ?? 'bg-primary' }} text-white">
+                                        <i class="{{ $notification->data['icon'] ?? 'fas fa-bell' }}"></i>
+                                    </div>
+
+                                    <div class="dropdown-item-desc">
+                                        <div class="notification-message">
+                                            {!! $notification->data['message'] ?? 'Notification sans message' !!}
                                         </div>
-                                    @endforelse
+                                        <div class="time text-muted small mt-1">
+                                            {{ $notification->created_at->diffForHumans() }}
+                                        </div>
+                                    </div>
+                                </a>
+                            @empty
+                                <div class="dropdown-item text-center text-muted py-5">
+                                    <i class="far fa-bell-slash fa-3x mb-3"></i>
+                                    <p class="mb-0">Aucune notification pour le moment</p>
                                 </div>
+                            @endforelse
+                        </div>
 
-                                <div class="dropdown-footer text-center">
-                                    <a href="{{ route('notifications.index') }}">
-                                        Voir toutes les notifications <i class="fas fa-chevron-right"></i>
-                                    </a>
-                                </div>
-                            </div>
+                        <div class="dropdown-footer text-center border-top pt-3">
+                            <a href="{{ route('notifications.index') }}" class="text-primary font-weight-bold">
+                                Voir toutes les notifications <i class="fas fa-arrow-right ml-1"></i>
+                            </a>
+                        </div>
+                    </div>
                         @endauth
                     </li>
+
+                    <!-- Icône paramètres visible sur mobile -->
+                    <li class="nav-item d-lg-none">
+                        <a href="javascript:void(0)" class="nav-link nav-link-lg settingPanelToggleMobile">
+                            <i class="fa fa-cog fa-spin"></i>
+                        </a>
+                    </li>
+
+                     <!-- Menu utilisateur UNIQUE avec responsive -->
                     <li class="dropdown">
                         <a href="#" data-toggle="dropdown" class="nav-link dropdown-toggle nav-link-lg nav-link-user">
                             @auth
@@ -131,34 +138,30 @@
                                     $nomComplet = $user->prenom . ' ' . $user->nom;
                                     $initiales = strtoupper(substr($user->prenom, 0, 1) . substr($user->nom, 0, 1));
 
-                                    // 2. Gestion du Rôle (Récupération via role_id)
-                                    // On vérifie si la relation 'role' existe, sinon on regarde si role_id contient directement le nom (cas rare)
+                                    // 2. Gestion du Rôle
                                     $technicalName = null;
 
                                     if ($user->role) {
-                                        // Cas standard : role_id est un chiffre qui pointe vers la table roles
                                         $technicalName = $user->role->name;
                                     } elseif ($user->role_id && !is_numeric($user->role_id)) {
                                         $technicalName = $user->role_id;
                                     }
 
-                                    // Tableau de traduction
                                     $roleNames = [
                                         'super-admin' => 'Super Administrateur',
                                         'admin' => 'Administrateur',
                                         'responsable-conformite' => 'Responsable Conformité',
                                         'auditeur' => 'Auditeur Interne',
-                                        'gestionnaire-plaintes' => 'Gestionnaire des Plaintes',
-                                        'agent' => 'Agent de Traitement',
+                                        'employe' => 'Agent de Traitement',
                                         'user' => 'Utilisateur Standard',
                                     ];
 
-                                    // Logique d'affichage
                                     if ($technicalName) {
                                         $displayRole = $roleNames[$technicalName] ?? ucwords(str_replace('-', ' ', $technicalName));
                                     } else {
                                         $displayRole = 'Utilisateur';
                                     }
+
                                     // 3. Gestion de la couleur
                                     $colors = [
                                         ['bg' => '#4a70b7', 'border' => '#3a5a9d'],
@@ -173,25 +176,27 @@
                                 @endphp
 
                                 <div class="d-flex align-items-center">
+                                    <!-- Avatar - visible sur mobile et desktop -->
                                     <div class="avatar-wrapper position-relative">
                                         @if($user->photo)
-                                                <img alt="image" src="{{ asset('storage/' . $user->photo) }}"
-                                                    class="user-img-radious-style"
-                                                    style="width: 38px; height: 38px; object-fit: cover; border-radius: 50%;">
+                                            <img alt="image" src="{{ asset('storage/' . $user->photo) }}"
+                                                class="user-img-radious-style"
+                                                style="width: 38px; height: 38px; object-fit: cover; border-radius: 50%;">
                                         @else
                                             <div class="d-flex align-items-center justify-content-center user-img-radious-style"
                                                 style="background: {{ $selectedColor['bg'] }}; color: white; width: 38px; height: 38px;
-                                                                                border-radius: 50%; font-weight: 600; font-size: 14px;
-                                                                                border: 2px solid {{ $selectedColor['border'] }};">
+                                                border-radius: 50%; font-weight: 600; font-size: 14px;
+                                                border: 2px solid {{ $selectedColor['border'] }};">
                                                 {{ $initiales }}
                                             </div>
                                         @endif
                                         <div
                                             style="position: absolute; bottom: 0; right: 0; width: 10px; height: 10px;
-                                                                background: #10b981; border: 2px solid white; border-radius: 50%;">
+                                            background: #10b981; border: 2px solid white; border-radius: 50%;">
                                         </div>
                                     </div>
 
+                                    <!-- Info utilisateur - caché sur mobile -->
                                     <div class="user-info ml-2 d-none d-lg-block">
                                         <div class="user-name"
                                             style="font-size: 14px; font-weight: 600; color: #2d3748; line-height: 1.2;">
@@ -217,6 +222,7 @@
                             @endauth
                         </a>
 
+                        <!-- Dropdown menu - identique pour mobile et desktop -->
                         <div class="dropdown-menu dropdown-menu-right pullDown"
                             style="border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.15); border-radius: 12px; min-width: 260px; overflow: hidden;">
 
@@ -231,7 +237,7 @@
                                             @else
                                                 <div class="d-flex align-items-center justify-content-center"
                                                     style="background: {{ $selectedColor['bg'] }}; color: white; width: 54px; height: 54px;
-                                                                                                                    border-radius: 50%; font-weight: 600; font-size: 18px; border: 3px solid rgba(255,255,255,0.3);">
+                                                    border-radius: 50%; font-weight: 600; font-size: 18px; border: 3px solid rgba(255,255,255,0.3);">
                                                     {{ $initiales }}
                                                 </div>
                                             @endif
@@ -245,7 +251,7 @@
                                             </div>
                                             <div
                                                 style="font-size: 11px; font-weight: 600; background: rgba(255,255,255,0.2);
-                                                                                                    padding: 3px 10px; border-radius: 20px; display: inline-block;">
+                                                padding: 3px 10px; border-radius: 20px; display: inline-block;">
                                                 {{ $displayRole }}
                                             </div>
                                         </div>
@@ -253,7 +259,6 @@
                                 </div>
 
                                 <div class="dropdown-body" style="padding: 10px 0;">
-
                                     <a href="{{ route('user-profile.show', $user->id) }}"
                                         class="dropdown-item has-icon d-flex align-items-center py-2">
                                         <div class="icon-wrapper mr-3 d-flex align-items-center justify-content-center"
@@ -342,317 +347,326 @@
                     </div>
                     <ul class="sidebar-menu">
 
-                        {{-- GESTION DES REGISTRES - Uniquement Clients, Dossiers et Gestion des Temps --}}
-                        @if(
-                                auth()->user()->can('accéder au tableau de bord admin') ||
-                                auth()->user()->can('accéder au tableau de bord utilisateur') ||
-                                auth()->user()->can('voir les clients') ||
-                                auth()->user()->can('créer des clients') ||
-                                auth()->user()->can('voir les dossiers') ||
-                                auth()->user()->can('créer des dossiers') ||
-                                auth()->user()->can('voir les entrées journalières') ||
-                                auth()->user()->can('créer des entrées journalières') ||
-                                auth()->user()->can('voir tous les temps') ||
-                                auth()->user()->can('voir les congés') ||
-                                auth()->user()->can('créer des congés')
-                            )
-                            <li class="menu-header">GESTION DU TEMPS</li>
+    {{-- GESTION DES REGISTRES - Uniquement Clients, Dossiers et Gestion des Temps --}}
+    @if(
+        auth()->user()->can('accéder au tableau de bord admin') ||
+        auth()->user()->can('accéder au tableau de bord utilisateur') ||
+        auth()->user()->can('voir les clients') ||
+        auth()->user()->can('créer des clients') ||
+        auth()->user()->can('voir les dossiers') ||
+        auth()->user()->can('créer des dossiers') ||
+        auth()->user()->can('voir les entrées journalières') ||
+        auth()->user()->can('créer des entrées journalières') ||
+        auth()->user()->can('voir tous les temps') ||
+        auth()->user()->can('voir les demandes de congés') ||
+        auth()->user()->can('créer des demandes de congés')
+    )
+        <li class="menu-header">GESTION DU TEMPS</li>
 
-                            @can('accéder au tableau de bord utilisateur')
-                                <li class="{{ request()->routeIs('dashboard') ? 'active' : '' }}">
-                                    <a href="{{ route('dashboard') }}" class="nav-link">
-                                        <i class="fas fa-tachometer-alt"></i><span>Tableau de bord</span>
-                                    </a>
-                                </li>
-                            @endcan
+        @can('accéder au tableau de bord utilisateur')
+            <li class="{{ request()->routeIs('dashboard') ? 'active' : '' }}">
+                <a href="{{ route('dashboard') }}" class="nav-link">
+                    <i class="fas fa-tachometer-alt"></i><span>Tableau de bord</span>
+                </a>
+            </li>
+        @endcan
 
-                            {{-- Clients --}}
-                            @can(['voir les clients', 'créer des clients'])
-                                <li class="{{ request()->routeIs('clients.*') ? 'active' : '' }}">
-                                    <a href="{{ route('clients.index') }}" class="nav-link">
-                                        <i class="fas fa-user-tie"></i><span>Clients</span>
-                                    </a>
-                                </li>
-                            @endcan
+        {{-- Clients --}}
+        @can(['voir les clients', 'créer des clients'])
+            <li class="{{ request()->routeIs('clients.*') ? 'active' : '' }}">
+                <a href="{{ route('clients.index') }}" class="nav-link">
+                    <i class="fas fa-user-tie"></i><span>Clients</span>
+                </a>
+            </li>
+        @endcan
 
-                            {{-- Dossiers --}}
-                            @can(['voir les dossiers', 'créer des dossiers'])
-                                <li class="dropdown {{ request()->routeIs('dossiers.*') || request()->routeIs('missions.*') ? 'active' : '' }}">
-                                    <a href="#" class="menu-toggle nav-link has-dropdown {{ request()->routeIs('dossiers.*') || request()->routeIs('missions.*') ? 'active' : '' }}">
-                                        <i class="fas fa-folder-open"></i><span>Dossiers</span>
-                                    </a>
-                                    <ul class="dropdown-menu" style="{{ request()->routeIs('dossiers.*') || request()->routeIs('missions.*') ? 'display: block;' : '' }}">
-                                        @can('voir les dossiers')
-                                            <li class="{{ request()->routeIs('dossiers.index') ? 'active' : '' }}">
-                                                <a class="nav-link" href="{{ route('dossiers.index') }}">
-                                                    <i class="fas fa-list"></i> Liste des dossiers
-                                                </a>
-                                            </li>
-                                        @endcan
+        {{-- Dossiers --}}
+        @can(['voir les dossiers', 'créer des dossiers'])
+            <li class="dropdown {{ request()->routeIs('dossiers.*') || request()->routeIs('missions.*') ? 'active' : '' }}">
+                <a href="#" class="menu-toggle nav-link has-dropdown {{ request()->routeIs('dossiers.*') || request()->routeIs('missions.*') ? 'active' : '' }}">
+                    <i class="fas fa-folder-open"></i><span>Dossiers</span>
+                </a>
+                <ul class="dropdown-menu" style="{{ request()->routeIs('dossiers.*') || request()->routeIs('missions.*') ? 'display: block;' : '' }}">
+                    @can('voir les dossiers')
+                        <li class="{{ request()->routeIs('dossiers.index') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('dossiers.index') }}">
+                                <i class="fas fa-list"></i> Liste des dossiers
+                            </a>
+                        </li>
+                    @endcan
 
-                                        @can('créer des dossiers')
-                                            <li class="{{ request()->routeIs('dossiers.create') ? 'active' : '' }}">
-                                                <a class="nav-link" href="{{ route('dossiers.create') }}">
-                                                    <i class="fas fa-plus-circle"></i> Nouveau dossier
-                                                </a>
-                                            </li>
-                                        @endcan
+                    @can('créer des dossiers')
+                        <li class="{{ request()->routeIs('dossiers.create') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('dossiers.create') }}">
+                                <i class="fas fa-plus-circle"></i> Nouveau dossier
+                            </a>
+                        </li>
+                    @endcan
 
-                                        {{-- Séparateur --}}
-                                        <li><hr class="dropdown-divider"></li>
+                    {{-- Séparateur --}}
+                    <li><hr class="dropdown-divider"></li>
 
-                                        {{-- Nouvelles fonctionnalités d'analyse --}}
-                                        @can(['voir les rapports mensuels', 'voir tous les temps'])
-                                            <li class="dropdown-title">
-                                                <span class="" style="color: #2c5282"><i class="fas fa-chart-line"></i> ANALYSE & RAPPORTS</span>
-                                            </li>
+                    {{-- Nouvelles fonctionnalités d'analyse --}}
+                    @can(['voir les rapports mensuels temps', 'voir tous les temps'])
+                        <li class="dropdown-title">
+                            <span class="" style="color: #2c5282"><i class="fas fa-chart-line"></i> ANALYSE & RAPPORTS</span>
+                        </li>
 
-                                            <li class="{{ request()->routeIs('missions.analyse') ? 'active' : '' }}">
-                                                <a class="nav-link" href="{{ route('missions.analyse') }}">
-                                                    <i class="fas fa-chart-pie"></i> Analyse par mission
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <a class="nav-link" href="#" data-toggle="modal" data-target="#exportModal">
-                                                    <i class="fas fa-file-pdf"></i> Rapport complet
-                                                </a>
-                                            </li>
+                        <li class="{{ request()->routeIs('missions.analyse') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('missions.analyse') }}">
+                                <i class="fas fa-chart-pie"></i> Analyse par mission
+                            </a>
+                        </li>
+                        <li>
+                            <a class="nav-link" href="#" data-toggle="modal" data-target="#exportModal">
+                                <i class="fas fa-file-pdf"></i> Rapport complet
+                            </a>
+                        </li>
 
-                                            <li>
-                                                <a class="nav-link" href="#" data-toggle="modal" data-target="#exportExcelModal">
-                                                    <i class="fas fa-file-excel"></i> Export Excel
-                                                </a>
-                                            </li>
-                                        @endcan
-                                    </ul>
-                                </li>
-                            @endcan
+                        <li>
+                            <a class="nav-link" href="#" data-toggle="modal" data-target="#exportExcelModal">
+                                <i class="fas fa-file-excel"></i> Export Excel
+                            </a>
+                        </li>
+                    @endcan
+                </ul>
+            </li>
+        @endcan
 
-                            {{-- Gestion des Temps --}}
-                            @can(['voir les entrées journalières', 'créer des entrées journalières', 'voir tous les temps'])
-                                <li class="dropdown {{ request()->routeIs('daily-entries.*') || request()->routeIs('rapports.mensuel') ? 'active' : '' }}">
-                                    <a href="#" class="menu-toggle nav-link has-dropdown {{ request()->routeIs('daily-entries.*') || request()->routeIs('rapports.mensuel') ? 'active' : '' }}">
-                                        <i class="fas fa-clock"></i><span>Gestion des Temps</span>
-                                    </a>
-                                    <ul class="dropdown-menu" style="{{ request()->routeIs('daily-entries.*') || request()->routeIs('rapports.mensuel') ? 'display: block;' : '' }}">
-                                        @can('créer des entrées journalières')
-                                            <li class="{{ request()->routeIs('daily-entries.create') ? 'active' : '' }}">
-                                                <a class="nav-link" href="{{ route('daily-entries.create') }}">
-                                                    <i class="fas fa-plus-circle"></i> Saisir une tache
-                                                </a>
-                                            </li>
-                                        @endcan
-                                        @can(['voir les entrées journalières', 'voir tous les temps'])
-                                            <li class="{{ request()->routeIs('daily-entries.index') ? 'active' : '' }}">
-                                                <a class="nav-link" href="{{ route('daily-entries.index') }}">
-                                                    <i class="fas fa-list-alt"></i> Liste des taches
-                                                </a>
-                                            </li>
-                                        @endcan
-                                        @can(['voir les rapports mensuels', 'voir tous les temps'])
-                                            <li class="{{ request()->routeIs('rapports.mensuel') ? 'active' : '' }}">
-                                                <a class="nav-link" href="{{ route('rapports.mensuel') }}">
-                                                    <i class="fas fa-calendar-alt"></i> Rapport mensuel
-                                                </a>
-                                            </li>
-                                        @endcan
-                                    </ul>
-                                </li>
-                            @endcan
-                            {{-- Gestion des Congés --}}
-                            @can(['voir les congés', 'créer des congés'])
-                            <li class="dropdown {{ request()->is('conges*') ? 'active' : '' }}">
-                                <a href="#" class="menu-toggle nav-link has-dropdown {{ request()->is('conges*') ? 'active' : '' }}">
-                                    <i class="fas fa-umbrella-beach"></i><span>Gestion des Congés</span>
-                                </a>
-                                <ul class="dropdown-menu" style="{{ request()->is('conges*') ? 'display: block;' : '' }}">
-                                    @can('créer des congés')
-                                        <li class="{{ request()->routeIs('conges.create') ? 'active' : '' }}">
-                                            <a class="nav-link" href="{{ route('conges.create') }}"><i class="fas fa-user-plus"></i> Créer un congé</a>
-                                        </li>
-                                    @endcan
+        {{-- Gestion des Temps --}}
+        @can(['voir les entrées journalières', 'créer des entrées journalières', 'voir tous les temps'])
+            <li class="dropdown {{ request()->routeIs('daily-entries.*') || request()->routeIs('rapports.mensuel') ? 'active' : '' }}">
+                <a href="#" class="menu-toggle nav-link has-dropdown {{ request()->routeIs('daily-entries.*') || request()->routeIs('rapports.mensuel') ? 'active' : '' }}">
+                    <i class="fas fa-clock"></i><span>Gestion des Temps</span>
+                </a>
+                <ul class="dropdown-menu" style="{{ request()->routeIs('daily-entries.*') || request()->routeIs('rapports.mensuel') ? 'display: block;' : '' }}">
+                    @can('créer des entrées journalières')
+                        <li class="{{ request()->routeIs('daily-entries.create') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('daily-entries.create') }}">
+                                <i class="fas fa-plus-circle"></i> Saisir une tache
+                            </a>
+                        </li>
+                    @endcan
+                    @can(['voir les entrées journalières', 'voir tous les temps'])
+                        <li class="{{ request()->routeIs('daily-entries.index') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('daily-entries.index') }}">
+                                <i class="fas fa-list-alt"></i> Liste des taches
+                            </a>
+                        </li>
+                    @endcan
+                    @can(['voir les rapports mensuels temps', 'voir tous les temps'])
+                        <li class="{{ request()->routeIs('rapports.mensuel') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('rapports.mensuel') }}">
+                                <i class="fas fa-calendar-alt"></i> Rapport mensuel
+                            </a>
+                        </li>
+                    @endcan
+                </ul>
+            </li>
+        @endcan
 
+        {{-- Gestion des Congés --}}
+        @can(['voir les demandes de congés', 'créer des demandes de congés'])
+            <li class="dropdown {{ request()->is('conges*') ? 'active' : '' }}">
+                <a href="#" class="menu-toggle nav-link has-dropdown {{ request()->is('conges*') ? 'active' : '' }}">
+                    <i class="fas fa-umbrella-beach"></i><span>Gestion des Congés</span>
+                </a>
+                <ul class="dropdown-menu" style="{{ request()->is('conges*') ? 'display: block;' : '' }}">
+                    @can('créer des demandes de congés')
+                        <li class="{{ request()->routeIs('conges.create') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('conges.create') }}">
+                                <i class="fas fa-user-plus"></i> Créer un congé
+                            </a>
+                        </li>
+                    @endcan
 
-                                    @can('voir les congés')
-                                        <li class="{{ request()->routeIs('conges.index') ? 'active' : '' }}">
-                                            <a class="nav-link" href="{{ route('conges.index') }}"><i class="fas fa-list"></i> Liste des congés</a>
-                                        </li>
-                                    @endcan
+                    @can('voir les demandes de congés')
+                        <li class="{{ request()->routeIs('conges.index') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('conges.index') }}">
+                                <i class="fas fa-list"></i> Liste des congés
+                            </a>
+                        </li>
+                    @endcan
 
-                                    @can('voir les congés')
-                                    <li class="{{ request()->routeIs('conges.calendrier') ? 'active' : '' }}">
-                                        <a class="nav-link" href="{{ route('conges.calendrier') }}">
-                                            <i class="fas fa-calendar-alt"></i> <span>Calendrier des congés</span>
-                                        </a>
-                                    </li>
-                                @endcan
+                    @can('voir le calendrier des congés')
+                        <li class="{{ request()->routeIs('conges.calendrier') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('conges.calendrier') }}">
+                                <i class="fas fa-calendar-alt"></i> <span>Calendrier des congés</span>
+                            </a>
+                        </li>
+                    @endcan
 
-                                @can('voir les congés')
-                                    <li class="{{ request()->routeIs('conges.calendrier') ? 'active' : '' }}">
-                                        <a class="nav-link" href="{{ route('conges.solde') }}">
-                                            <i class="fas fa-chart-pie"></i> <span>soldes des congés</span>
-                                        </a>
-                                    </li>
-                                @endcan
+                    @can('voir les soldes de congés')
+                        <li class="{{ request()->routeIs('conges.solde') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('conges.solde') }}">
+                                <i class="fas fa-chart-pie"></i> <span>Soldes des congés</span>
+                            </a>
+                        </li>
+                    @endcan
 
-                                @can('voir les congés')
-                                        <li class="{{ request()->routeIs('rapports.mensuel') ? 'active' : '' }}">
-                                            <a class="nav-link" href="{{ route('conges.dashboard') }}">
-                                                <i class="fas fa-tachometer-alt"></i> Tableau de bord
-                                            </a>
-                                        </li>
-                                    @endcan
-                                </ul>
-                            </li>
-                            @endcan
+                    @can('accéder au dashboard des congés')
+                        <li class="{{ request()->routeIs('conges.dashboard') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('conges.dashboard') }}">
+                                <i class="fas fa-tachometer-alt"></i> Tableau de bord
+                            </a>
+                        </li>
+                    @endcan
+                </ul>
+            </li>
+        @endcan
 
-                        @endif
+    @endif
 
-                        {{-- GESTION DES PARAMÈTRES (inchangée) --}}
-                        @if(
-                                auth()->user()->can('voir les utilisateurs') ||
-                                auth()->user()->can('créer des utilisateurs') ||
-                                auth()->user()->can('voir les postes') ||
-                                auth()->user()->can('voir les rôles') ||
-                                auth()->user()->can('voir les permissions') ||
-                                auth()->user()->can('gérer les permissions') ||
-                                auth()->user()->can('voir les paramètres')
-                            )
-                            <li class="menu-header">GESTION DES PARAMÈTRES</li>
+    {{-- GESTION DES PARAMÈTRES --}}
+    @if(
+        auth()->user()->can('voir les utilisateurs') ||
+        auth()->user()->can('créer des utilisateurs') ||
+        auth()->user()->can('voir les postes') ||
+        auth()->user()->can('voir les rôles') ||
+        auth()->user()->can('voir les permissions') ||
+        auth()->user()->can('gérer les permissions') ||
+        auth()->user()->can('voir les paramètres')
+    )
+        <li class="menu-header">GESTION DES PARAMÈTRES</li>
 
-                            @can(['voir les utilisateurs', 'créer des utilisateurs', 'voir les postes'])
-                                <li class="dropdown {{ request()->is('users*') || request()->is('postes*') ? 'active' : '' }}">
-                                    <a href="#"
-                                        class="menu-toggle nav-link has-dropdown {{ request()->is('users*') || request()->is('postes*') ? 'active' : '' }}">
-                                        <i class="fas fa-users-cog"></i><span>Gestion des Utilisateurs</span>
-                                    </a>
-                                    <ul class="dropdown-menu"
-                                        style="{{ request()->is('users*') || request()->is('postes*') ? 'display: block;' : '' }}">
-                                        @can('créer des utilisateurs')
-                                            <li class="{{ request()->routeIs('users.create') ? 'active' : '' }}">
-                                                <a class="nav-link" href="{{ route('users.create') }}"><i
-                                                        class="fas fa-user-plus"></i> Créer un utilisateur</a>
-                                            </li>
-                                        @endcan
-                                        @can('voir les utilisateurs')
-                                            <li class="{{ request()->routeIs('users.index') ? 'active' : '' }}">
-                                                <a class="nav-link" href="{{ route('users.index') }}"><i class="fas fa-list"></i>
-                                                    Liste des utilisateurs</a>
-                                            </li>
-                                        @endcan
-                                        @can('voir les postes')
-                                            <li class="{{ request()->routeIs('postes.*') ? 'active' : '' }}">
-                                                <a class="nav-link" href="{{ route('postes.index') }}"><i
-                                                        class="fas fa-briefcase"></i> Gestion des postes</a>
-                                            </li>
-                                        @endcan
-                                    </ul>
-                                </li>
-                            @endcan
+        @can(['voir les utilisateurs', 'créer des utilisateurs', 'voir les postes'])
+            <li class="dropdown {{ request()->is('users*') || request()->is('postes*') ? 'active' : '' }}">
+                <a href="#"
+                    class="menu-toggle nav-link has-dropdown {{ request()->is('users*') || request()->is('postes*') ? 'active' : '' }}">
+                    <i class="fas fa-users-cog"></i><span>Gestion des Utilisateurs</span>
+                </a>
+                <ul class="dropdown-menu"
+                    style="{{ request()->is('users*') || request()->is('postes*') ? 'display: block;' : '' }}">
+                    @can('créer des utilisateurs')
+                        <li class="{{ request()->routeIs('users.create') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('users.create') }}">
+                                <i class="fas fa-user-plus"></i> Créer un utilisateur
+                            </a>
+                        </li>
+                    @endcan
+                    @can('voir les utilisateurs')
+                        <li class="{{ request()->routeIs('users.index') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('users.index') }}">
+                                <i class="fas fa-list"></i> Liste des utilisateurs
+                            </a>
+                        </li>
+                    @endcan
+                    @can('voir les postes')
+                        <li class="{{ request()->routeIs('postes.*') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('postes.index') }}">
+                                <i class="fas fa-briefcase"></i> Gestion des postes
+                            </a>
+                        </li>
+                    @endcan
+                </ul>
+            </li>
+        @endcan
 
-                            @can(['voir les rôles', 'voir les permissions', 'gérer les permissions'])
-                                <li
-                                    class="dropdown {{ request()->is('admin/permissions*') || request()->is('roles*') ? 'active' : '' }}">
-                                    <a href="#"
-                                        class="menu-toggle nav-link has-dropdown {{ request()->is('admin/permissions*') || request()->is('roles*') ? 'active' : '' }}">
-                                        <i class="fas fa-user-lock"></i><span>Gestion des permissions</span>
-                                    </a>
-                                    <ul class="dropdown-menu"
-                                        style="{{ request()->is('admin/permissions*') || request()->is('roles*') ? 'display: block;' : '' }}">
-                                        @can('voir les rôles')
-                                            <li><a class="nav-link" href="{{ route('admin.roles.index') }}"><i
-                                                        class="fas fa-user-tag"></i> Gérer les rôles</a></li>
-                                        @endcan
-                                        @can(['voir les permissions', 'gérer les permissions'])
-                                            <li><a class="nav-link" href="{{ route('admin.roles.permissions.index') }}"><i
-                                                        class="fas fa-tasks"></i> Gérer les permissions</a></li>
-                                        @endcan
-                                    </ul>
-                                </li>
-                            @endcan
+        @can(['voir les rôles', 'voir les permissions', 'gérer les permissions'])
+            <li class="dropdown {{ request()->is('admin/permissions*') || request()->is('roles*') ? 'active' : '' }}">
+                <a href="#"
+                    class="menu-toggle nav-link has-dropdown {{ request()->is('admin/permissions*') || request()->is('roles*') ? 'active' : '' }}">
+                    <i class="fas fa-user-lock"></i><span>Gestion des permissions</span>
+                </a>
+                <ul class="dropdown-menu"
+                    style="{{ request()->is('admin/permissions*') || request()->is('roles*') ? 'display: block;' : '' }}">
+                    @can('voir les rôles')
+                        <li><a class="nav-link" href="{{ route('admin.roles.index') }}">
+                            <i class="fas fa-user-tag"></i> Gérer les rôles
+                        </a></li>
+                    @endcan
+                    @can(['voir les permissions', 'gérer les permissions'])
+                        <li><a class="nav-link" href="{{ route('admin.roles.permissions.index') }}">
+                            <i class="fas fa-tasks"></i> Gérer les permissions
+                        </a></li>
+                    @endcan
+                </ul>
+            </li>
+        @endcan
 
-                            @can('voir les paramètres')
-                                <li class="dropdown {{ request()->is('settings*') ? 'active' : '' }}">
-                                    <a href="#"
-                                        class="menu-toggle nav-link has-dropdown {{ request()->is('settings*') ? 'active' : '' }}">
-                                        <i class="fas fa-cog"></i><span>Paramètres Entreprise</span>
-                                    </a>
-                                    <ul class="dropdown-menu" style="{{ request()->is('settings*') ? 'display: block;' : '' }}">
-                                        <li>
-                                            <a class="nav-link" href="{{ route('settings.show') }}">
-                                                <i class="fas fa-building"></i> Paramètres Généraux
-                                            </a>
-                                        </li>
-                                    </ul>
-                                </li>
-                            @endcan
-                        @endif
+        @can('access-settings')
+            <li class="dropdown {{ request()->is('settings*') ? 'active' : '' }}">
+                <a href="#"
+                    class="menu-toggle nav-link has-dropdown {{ request()->is('settings*') ? 'active' : '' }}">
+                    <i class="fas fa-cog"></i><span>Paramètres Entreprise</span>
+                </a>
+                <ul class="dropdown-menu" style="{{ request()->is('settings*') ? 'display: block;' : '' }}">
+                    <li>
+                        <a class="nav-link" href="{{ route('settings.show') }}">
+                            <i class="fas fa-building"></i> Paramètres Généraux
+                        </a>
+                    </li>
+                </ul>
+            </li>
+        @endcan
+    @endif
 
-                        {{-- GESTION DES LOGS (inchangée) --}}
-                        @can(['accéder au tableau de bord admin', 'accéder au tableau de bord utilisateur'])
-                            <li class="menu-header">GESTION DES LOGS</li>
+    {{-- GESTION DES LOGS --}}
+    @can(['accéder au tableau de bord admin', 'accéder au tableau de bord utilisateur'])
+        <li class="menu-header">GESTION DES LOGS</li>
 
-                            <li
-                                class="dropdown {{ request()->routeIs('activities') || request()->routeIs('notifications.*') ? 'active' : '' }}">
-                                <a href="#"
-                                    class="menu-toggle nav-link has-dropdown {{ request()->routeIs('activities') || request()->routeIs('notifications.*') ? 'active' : '' }}">
-                                    <i class="fas fa-clipboard-list"></i><span>Gestion des activités</span>
-                                </a>
-                                <ul class="dropdown-menu"
-                                    style="{{ request()->routeIs('activities') || request()->routeIs('notifications.*') ? 'display: block;' : '' }}">
-                                    @can('accéder au tableau de bord admin')
-                                        <li class="{{ request()->routeIs('activities') ? 'active' : '' }}">
-                                            <a class="nav-link" href="{{ route('activities') }}"><i class="fas fa-history"></i>
-                                                Voir Activités</a>
-                                        </li>
-                                    @endcan
-                                    <li class="{{ request()->routeIs('notifications.index') ? 'active' : '' }}">
-                                        <a class="nav-link" href="{{ route('notifications.index') }}"><i
-                                                class="fas fa-bell"></i> Notifications</a>
-                                    </li>
-                                </ul>
-                            </li>
-                        @endcan
+        <li class="dropdown {{ request()->routeIs('activities') || request()->routeIs('notifications.*') ? 'active' : '' }}">
+            <a href="#"
+                class="menu-toggle nav-link has-dropdown {{ request()->routeIs('activities') || request()->routeIs('notifications.*') ? 'active' : '' }}">
+                <i class="fas fa-clipboard-list"></i><span>Gestion des activités</span>
+            </a>
+            <ul class="dropdown-menu"
+                style="{{ request()->routeIs('activities') || request()->routeIs('notifications.*') ? 'display: block;' : '' }}">
+                @can('voir les activités')
+                    <li class="{{ request()->routeIs('activities') ? 'active' : '' }}">
+                        <a class="nav-link" href="{{ route('activities') }}">
+                            <i class="fas fa-history"></i> Voir Activités
+                        </a>
+                    </li>
+                @endcan
+                @can('voir les notifications')
+                    <li class="{{ request()->routeIs('notifications.index') ? 'active' : '' }}">
+                        <a class="nav-link" href="{{ route('notifications.index') }}">
+                            <i class="fas fa-bell"></i> Notifications
+                        </a>
+                    </li>
+                @endcan
+            </ul>
+        </li>
+    @endcan
 
-                        {{-- RAPPORTS & STATISTIQUES (rapport temps conservé) --}}
-                        @can('voir les statistiques')
-                            <li class="menu-header">RAPPORTS & STATISTIQUES</li>
+    {{-- RAPPORTS & STATISTIQUES --}}
+    @can('voir les statistiques')
+        <li class="menu-header">RAPPORTS & STATISTIQUES</li>
 
-                            @php
-                                $rapportActive = request()->is('rapports*')
-                                    || request()->routeIs('statistics.*')
-                                    || request()->routeIs('stats.*')
-                                    || request()->routeIs('reports.*');
-                            @endphp
+        @php
+            $rapportActive = request()->is('rapports*')
+                || request()->routeIs('statistics.*')
+                || request()->routeIs('stats.*')
+                || request()->routeIs('reports.*');
+        @endphp
 
-                            <li class="dropdown {{ $rapportActive ? 'active' : '' }}">
-                                <a href="#" class="menu-toggle nav-link has-dropdown {{ $rapportActive ? 'active' : '' }}">
-                                    <i class="fas fa-chart-line"></i><span>Statistiques</span>
-                                </a>
+        <li class="dropdown {{ $rapportActive ? 'active' : '' }}">
+            <a href="#" class="menu-toggle nav-link has-dropdown {{ $rapportActive ? 'active' : '' }}">
+                <i class="fas fa-chart-line"></i><span>Statistiques</span>
+            </a>
 
-                                <ul class="dropdown-menu" style="{{ $rapportActive ? 'display: block;' : '' }}">
-                                    @can('voir les statistiques générales')
-                                    <li class="{{ request()->routeIs('admin.stats.globale') ? 'active' : '' }}">
-                                        <a class="nav-link" href="{{ route('admin.stats.globale') }}">
-                                            <i class="fas fa-chart-pie"></i> Statistiques générales
-                                        </a>
-                                    </li>
-                                    @endcan
+            <ul class="dropdown-menu" style="{{ $rapportActive ? 'display: block;' : '' }}">
+                @can('voir les statistiques générales')
+                    <li class="{{ request()->routeIs('admin.stats.globale') ? 'active' : '' }}">
+                        <a class="nav-link" href="{{ route('admin.stats.globale') }}">
+                            <i class="fas fa-chart-pie"></i> Statistiques générales
+                        </a>
+                    </li>
+                @endcan
 
-                                    @can(['voir les rapports mensuels', 'voir tous les temps'])
-                                        <li class="{{ request()->routeIs('rapports.mensuel') ? 'active' : '' }}">
-                                            <a class="nav-link" href="{{ route('rapports.mensuel') }}">
-                                                <i class="fas fa-clock"></i> Rapport des Temps
-                                            </a>
-                                        </li>
-                                    @endcan
+                @can('voir les rapports mensuels temps')
+                    <li class="{{ request()->routeIs('rapports.mensuel') ? 'active' : '' }}">
+                        <a class="nav-link" href="{{ route('rapports.mensuel') }}">
+                            <i class="fas fa-clock"></i> Rapport des Temps
+                        </a>
+                    </li>
+                @endcan
+            </ul>
+        </li>
+    @endcan
 
-                                     
-                                </ul>
-                            </li>
-                        @endcan
-
-                    </ul>
+</ul>
                 </aside>
             </div>
             <!-- Main Content -->
@@ -994,6 +1008,7 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+
             const body = document.body;
             const mainWrapper = document.querySelector('.main-wrapper-1'); // Peut avoir besoin de la classe body-dark/light
             const sidebar = document.querySelector('.main-sidebar');
@@ -1001,6 +1016,9 @@
             const navbarBg = document.querySelector('.navbar-bg');
             const mainNavbar = document.querySelector('.main-navbar');
 
+            document.querySelector('.settingPanelToggleMobile')?.addEventListener('click', function() {
+            document.querySelector('.settingSidebar').classList.add('show');
+        });
             // Récupère le thème sauvegardé (dark par défaut)
             // J'utilise 'light' par défaut pour coller aux classes de votre HTML initial si rien n'est stocké.
             const savedTheme = localStorage.getItem('theme') || 'light';
@@ -1079,54 +1097,145 @@
             });
         });
     </script>
-    <script>
-        function handleNotificationClick(event, element) {
-            const notificationId = element.dataset.notificationId;
-            const url = element.getAttribute('href');
-            const isUnread = element.classList.contains('dropdown-item-unread');
 
-            // Si déjà lue → on va directement
-            if (!isUnread) {
-                window.location.href = url;
-                return;
+     <!-- Script pour gérer le panneau de settings -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Gestion du bouton settings mobile
+            const mobileSettingBtn = document.querySelector('.settingPanelToggle');
+            const settingsPanel = document.querySelector('.settingSidebar');
+
+            if (mobileSettingBtn && settingsPanel) {
+                mobileSettingBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    settingsPanel.classList.toggle('show');
+                });
+
+                // Fermer en cliquant sur le bouton X dans le panel
+                const closeBtn = settingsPanel.querySelector('.settingPanelToggle');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        settingsPanel.classList.remove('show');
+                    });
+                }
+
+                // Fermer en cliquant à l'extérieur
+                document.addEventListener('click', function(event) {
+                    if (settingsPanel.classList.contains('show') &&
+                        !settingsPanel.contains(event.target) &&
+                        !mobileSettingBtn.contains(event.target)) {
+                        settingsPanel.classList.remove('show');
+                    }
+                });
             }
 
-            // Sinon → on marque comme lue en AJAX
-            event.preventDefault();
+            // Debug: afficher un message si le bouton est cliqué
+            console.log('Script chargé');
+            console.log('Bouton settings mobile:', mobileSettingBtn);
+            console.log('Panel settings:', settingsPanel);
 
-            fetch(`/notifications/${notificationId}/read`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-            })
-                .then(response => {
-                    if (response.ok) {
-                        // Mise à jour visuelle immédiate
-                        element.classList.remove('dropdown-item-unread');
+            // Gestion des notifications
+            @if(auth()->check())
+                if (typeof Echo !== 'undefined') {
+                    Echo.private(`App.Models.User.{{ auth()->id() }}`)
+                        .notification((notification) => {
+                            console.log('Nouvelle notification reçue :', notification);
 
-                        // Mise à jour du compteur
-                        const badge = document.getElementById('unread-count');
-                        let count = parseInt(badge.textContent.replace('+', '')) || 0;
-                        count--;
-                        if (count <= 0) {
-                            badge.style.display = 'none';
-                        } else {
-                            badge.textContent = count > 99 ? '99+' : count;
-                        }
+                            const badge = document.getElementById('unread-count');
+                            if (badge) {
+                                let count = parseInt(badge.textContent.replace('+', '')) || 0;
+                                count++;
+                                badge.textContent = count > 99 ? '99+' : count;
+                                badge.style.display = 'block';
+                            }
 
-                        // Redirection après succès
-                        window.location.href = url;
-                    }
-                })
-                .catch(() => {
-                    // En cas d'erreur → on va quand même
-                    window.location.href = url;
+                            Swal.mixin({
+                                toast: true,
+                                position: 'top-end',
+                                icon: 'info',
+                                title: notification.message || 'Nouvelle notification',
+                                showConfirmButton: false,
+                                timer: 5000,
+                                timerProgressBar: true,
+                            }).fire();
+                        });
+                }
+            @endif
+
+            // Initialisation Select2
+            $('.select2').select2({
+                theme: 'bootstrap4',
+                placeholder: "Sélectionner une option",
+                allowClear: true,
+                width: '100%'
+            });
+
+            // Réinitialiser Select2 quand le modal se ferme
+            $('#exportModal, #exportExcelModal').on('hidden.bs.modal', function () {
+                $(this).find('.select2').select2('destroy').select2({
+                    theme: 'bootstrap4',
+                    width: '100%'
                 });
+            });
+        });
+ </script>
+    <script>
+      function handleNotificationClick(event, element) {
+    event.preventDefault();
+
+    const notificationId = element.dataset.notificationId;
+    const url = element.getAttribute('href');
+
+    // Si pas d'URL valide → on ne fait rien ou on log
+    if (!url || url === '#') {
+        console.warn('Notification sans URL valide');
+        return;
+    }
+
+    // Si déjà lue → redirection directe
+    if (!element.classList.contains('dropdown-item-unread')) {
+        window.location.href = url;
+        return;
+    }
+
+    // Marquer comme lue en AJAX + redirection
+    fetch(`/notifications/${notificationId}/read`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Erreur lors du marquage comme lu');
         }
-    </script>
+        return response.json();
+    })
+    .then(() => {
+        // Mise à jour visuelle
+        element.classList.remove('dropdown-item-unread');
+
+        // Mise à jour du compteur global
+        const badge = document.getElementById('unread-count');
+        if (badge) {
+            let count = parseInt(badge.textContent.replace(/[^0-9]/g, '')) || 0;
+            count = Math.max(0, count - 1);
+            badge.textContent = count > 99 ? '99+' : count;
+            if (count === 0) badge.style.display = 'none';
+        }
+
+        // Redirection
+        window.location.href = url;
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        // En cas d'erreur on redirige quand même (mieux que rien)
+        window.location.href = url;
+    });
+}</script>
     @if(auth()->check())
         <script>
             // Chargement sécurisé de Pusher + Laravel Echo (uniquement si tu utilises les notifications en temps réel)

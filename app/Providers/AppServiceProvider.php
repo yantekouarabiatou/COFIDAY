@@ -6,20 +6,48 @@ use App\Models\Client;
 use App\Models\DailyEntry;
 use App\Models\Dossier;
 use App\Models\TimeEntry;
-use App\Observers\TimeEntryObserver;
+use App\Models\DemandeConge;
+use App\Models\LogActivite;
+use App\Models\SoldeConge;
+use App\Models\User;
 use App\Observers\UniversalModelObserver;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Blade;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 
 class AppServiceProvider extends ServiceProvider
 {
     public function boot()
     {
 
-        // Pour les messages flash SweetAlert
+        Gate::define('voir toutes les demandes de congés', function (User $user) {
+            return $user->hasAnyRole(['admin', 'rh', 'directeur-general', 'manager']);
+        });
+
+        Gate::define('approuver les demandes de congés', function (User $user) {
+            return $user->hasAnyRole(['admin', 'rh', 'directeur-general', 'manager']);
+        });
+        // Configuration des SweetAlert
+        $this->configureSweetAlert();
+
+        // Configuration des Gates
+        $this->configureGates();
+
+        // Enregistrement des observateurs
+        $this->registerObservers();
+
+        // Directives Blade
+        Blade::directive('adjustBrightness', function ($expression) {
+            return "<?php echo adjustBrightness{$expression}; ?>";
+        });
+
+        // Log de démarrage
+        Log::info('AppServiceProvider booté', ['time' => now()]);
+    }
+
+    private function configureSweetAlert()
+    {
         if (session('success')) {
             alert()->success('Succès !', session('success'));
         }
@@ -35,26 +63,58 @@ class AppServiceProvider extends ServiceProvider
         if (session('info')) {
             alert()->info('Information', session('info'));
         }
-        Gate::before(function ($user, $ability) {
+    }
 
-            // Liste des rôles qui ont le pouvoir absolu (God Mode)
+    private function configureGates()
+    {
+        Gate::before(function ($user, $ability) {
             $rolesToutPuissants = ['super-admin', 'admin'];
 
-            // 1. Vérification via Spatie (Méthode standard)
+            // Vérification via Spatie
             if ($user->hasAnyRole($rolesToutPuissants)) {
+                Log::info('Gate bypass - Spatie role', [
+                    'user_id' => $user->id,
+                    'ability' => $ability
+                ]);
                 return true;
             }
 
-            // 2. Vérification via votre relation role_id (Sécurité supplémentaire pour votre config)
+            // Vérification via role_id (votre système)
             if ($user->role && in_array($user->role->name, $rolesToutPuissants)) {
+                Log::info('Gate bypass - Custom role', [
+                    'user_id' => $user->id,
+                    'role' => $user->role->name,
+                    'ability' => $ability
+                ]);
                 return true;
             }
         });
-        // Enregistrez l'observateur pour les modèles spécifiques
+    }
 
+    private function registerObservers()
+    {
+        try {
+            // Observateur universel pour TOUS les modèles importants
+            $models = [
+                LogActivite::class,  // Logs d'activité
+                TimeEntry::class,     // Saisies de temps
+                DailyEntry::class,    // Feuilles de temps
+                Dossier::class,       // Dossiers
+                Client::class,        // Clients
+                DemandeConge::class,  // Demandes de congés
+                SoldeConge::class,    // Soldes de congés
+                User::class,          // Utilisateurs
+            ];
 
-        Blade::directive('adjustBrightness', function ($expression) {
-            return "<?php echo adjustBrightness{$expression}; ?>";
-        });
+            foreach ($models as $modelClass) {
+                $modelClass::observe(UniversalModelObserver::class);
+                Log::info("UniversalModelObserver enregistré pour {$modelClass}");
+            }
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de l\'enregistrement des observateurs', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
     }
 }

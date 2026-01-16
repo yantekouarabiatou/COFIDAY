@@ -52,7 +52,7 @@ class DemandesCongesSeeder extends Seeder
             'Raisons médicales',
             'Déplacement professionnel',
             'Célébration spéciale',
-            null, // Parfois pas de motif
+            'Célébration spéciale',
         ];
 
         // Administrateurs pour validation

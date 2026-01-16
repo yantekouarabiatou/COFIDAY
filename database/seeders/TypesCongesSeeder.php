@@ -57,7 +57,7 @@ class TypesCongesSeeder extends Seeder
                 'est_paye' => true,
                 'est_annuel' => false, // Payé mais pas annuel
                 'actif' => true,
-                'couleur' => '#083f2dff',
+                'couleur' => '#083f2d',
             ],
 
 

@@ -30,8 +30,8 @@ class UserSeeder extends Seeder
         $admin = User::updateOrCreate(
             ['username' => 'admin'], // clé unique
             [
-                'nom' => 'Admin',
-                'prenom' => 'Super',
+                'nom' => 'YANTE KOUA',
+                'prenom' => 'Rabiatou',
                 'email' => 'rabiatouyantekoua@gmail.com',
                 'password' => Hash::make('password'),
                 'poste_id' => Poste::where('intitule', 'Directeur Général')->first()?->id,
@@ -47,7 +47,7 @@ class UserSeeder extends Seeder
             [
                 'nom' => 'Dupont',
                 'prenom' => 'Marie',
-                'email' => 'rh@coftime.com',
+                'email' => 'rabiatouyantekoua+1@gmail.com',
                 'password' => Hash::make('password'),
                 'poste_id' => Poste::where('intitule', 'Responsable RH')->first()?->id,
                 'telephone' => '0698765432',
@@ -62,7 +62,7 @@ class UserSeeder extends Seeder
             [
                 'nom' => 'Martin',
                 'prenom' => 'Jean',
-                'email' => 'manager@coftime.com',
+                'email' => 'rabiatouyantekoua+2@gmaiil.com',
                 'password' => Hash::make('password'),
                 'poste_id' => Poste::where('intitule', 'Manager')->first()?->id,
                 'is_active' => true,
