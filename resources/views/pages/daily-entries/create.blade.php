@@ -112,7 +112,7 @@
                                                     <div class="form-group mb-0">
                                                         <label class="font-weight-bold">Heure fin <span class="text-danger">*</span></label>
                                                         <input type="time" name="time_entries[0][heure_fin]"
-                                                            class="form-control heure-fin text-center" value="18:30" required>
+                                                            class="form-control heure-fin text-center" value="12:30" required>
                                                     </div>
                                                 </div>
 

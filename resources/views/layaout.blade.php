@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <!-- blank.html  21 Nov 2019 03:54:41 GMT -->
 
 <head>
@@ -494,6 +494,14 @@
                                         </a>
                                     </li>
                                 @endcan
+
+                                @can('voir les congés')
+                                        <li class="{{ request()->routeIs('rapports.mensuel') ? 'active' : '' }}">
+                                            <a class="nav-link" href="{{ route('conges.dashboard') }}">
+                                                <i class="fas fa-tachometer-alt"></i> Tableau de bord
+                                            </a>
+                                        </li>
+                                    @endcan
                                 </ul>
                             </li>
                             @endcan
@@ -639,13 +647,7 @@
                                         </li>
                                     @endcan
 
-                                     @can(['voir les rapports mensuels', 'voir tous les temps'])
-                                        <li class="{{ request()->routeIs('rapports.mensuel') ? 'active' : '' }}">
-                                            <a class="nav-link" href="{{ route('conges.dashboard') }}">
-                                                <i class="fas fa-tachometer-alt"></i> Tableau de bord
-                                            </a>
-                                        </li>
-                                    @endcan
+                                     
                                 </ul>
                             </li>
                         @endcan
