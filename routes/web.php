@@ -84,6 +84,25 @@ Route::middleware(['auth'])->group(function () {
     // Cadeau Invitations
 
 
+    Route::get('/error_404', function () {
+        return view('errors.errors-404');
+    });
+
+    Route::get('/error_403', function () {
+        return view('errors.errors-403');
+    });
+
+    Route::get('/error_419', function () {
+        return view('errors.index');
+    });
+
+    Route::get('/error_500', function () {
+        return view('errors.errors-500');
+    });
+
+    Route::get('/error_503', function () {
+        return view('errors.errors-503');
+    });
     Route::middleware('auth')->prefix('notifications')->name('notifications.')->group(function () {
 
         Route::get('/', [NotificationController::class, 'index'])->name('index');

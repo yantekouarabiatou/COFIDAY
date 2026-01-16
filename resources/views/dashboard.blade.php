@@ -162,7 +162,7 @@ use App\Helpers\UserHelper;
                     <div class="row mt-4 pt-3 border-top">
                         <div class="col-md-4 text-center">
                             <div class="stats-box">
-                                <i class="fas fa-clock text-primary fa-2x mb-2"></i>
+                                <i class="fas fa-clock text-warning fa-2x mb-2"></i>
                                 <h4 class="mb-0" id="total-heures-30j">0h</h4>
                                 <p class="text-muted mb-0">Total 30 jours</p>
                             </div>

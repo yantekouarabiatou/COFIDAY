@@ -1,3 +1,7 @@
+@php
+use App\Helpers\UserHelper;
+@endphp
+
 @extends('layaout')
 
 @section('title', 'Statistiques Globales - Admin')
@@ -86,7 +90,7 @@
         <!-- Cartes statistiques globales -->
         <div class="row g-4 mb-5">
             <!-- Ligne 1 : 4 cartes -->
-            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6">
+            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 mt-4">
                 <div
                     class="card card-statistic border-0 shadow-lg hover-lift h-100 transition-all position-relative overflow-hidden">
                     <div class="card-icon-bg position-absolute top-0 end-0 opacity-10">
@@ -114,7 +118,7 @@
                 </div>
             </div>
 
-            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6">
+            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 mt-4">
                 <div
                     class="card card-statistic border-0 shadow-lg hover-lift h-100 transition-all position-relative overflow-hidden">
                     <div class="card-icon-bg position-absolute top-0 end-0 opacity-10">
@@ -142,7 +146,7 @@
                 </div>
             </div>
 
-            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6">
+            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 mt-4">
                 <div
                     class="card card-statistic border-0 shadow-lg hover-lift h-100 transition-all position-relative overflow-hidden">
                     <div class="card-icon-bg position-absolute top-0 end-0 opacity-10">
@@ -170,7 +174,7 @@
                 </div>
             </div>
 
-            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6">
+            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 mt-4">
                 <div
                     class="card card-statistic border-0 shadow-lg hover-lift h-100 transition-all position-relative overflow-hidden">
                     <div class="card-icon-bg position-absolute top-0 end-0 opacity-10">
@@ -199,7 +203,7 @@
             </div>
 
             <!-- Ligne 2 : 2 cartes restantes -->
-            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6">
+            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 mt-4">
                 <div
                     class="card card-statistic border-0 shadow-lg hover-lift h-100 transition-all position-relative overflow-hidden">
                     <div class="card-icon-bg position-absolute top-0 end-0 opacity-10">
@@ -226,7 +230,7 @@
                 </div>
             </div>
 
-            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6">
+            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 mt-4">
                 <div
                     class="card card-statistic border-0 shadow-lg hover-lift h-100 transition-all position-relative overflow-hidden">
                     <div class="card-icon-bg position-absolute top-0 end-0 opacity-10">
@@ -390,6 +394,12 @@
 
 @push('styles')
 <style>
+/* Carte gradient */
+.gradient-card {
+    background: linear-gradient(135deg, #244584 0%, #4b79c8 100%);
+    border: none;
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
 /* Cartes améliorées */
 .card-statistic {
     border-radius: 16px;
@@ -739,13 +749,23 @@
             });
         }
 
+        function decimalToHoursMinutes(decimal) {
+            const heures = Math.floor(decimal);
+            const minutes = Math.round((decimal - heures) * 60);
+
+            // Ajout du zéro si minutes < 10
+            const minutesFormatted = minutes.toString().padStart(2, '0');
+
+            return `${heures}h ${minutesFormatted}`;
+        }
+
         function updateGlobalStats(totaux) {
             $('#stat-employes').text(totaux.total_employes);
             $('#stat-employes-actifs').text(totaux.employes_actifs + ' actifs');
 
-            $('#stat-heures').text(totaux.total_heures + 'h');
+            $('#stat-heures').text(decimalToHoursMinutes(totaux.total_heures));
             $('#stat-moyenne').text(totaux.moyenne_heures_employe ?
-                'Moyenne: ' + totaux.moyenne_heures_employe + 'h/employé' : '');
+                'Moyenne: ' + decimalToHoursMinutes(totaux.moyenne_heures_employe) + '/employé' : '');
 
             $('#stat-dossiers').text(totaux.total_dossiers);
             $('#stat-dossiers-actifs').text(totaux.dossiers_actifs + ' actifs');
