@@ -2,136 +2,197 @@
 
 namespace App\Observers;
 
+use App\Models\TimeEntry;
+use App\Models\DailyEntry;
+use App\Models\Dossier;
+use App\Models\Client;
+use App\Models\DemandeConge;
+use App\Models\SoldeConge;
+use App\Models\User;
+use App\Models\LogActivite; // ← Important : importe ton modèle de log
 use App\Events\ModelActivityEvent;
-use App\Services\ActivityLogger;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class UniversalModelObserver
 {
     /**
-     * Création
+     * Handle model created event
      */
     public function created(Model $model)
     {
-        $description = "Création de " . $this->getModelName($model);
-        $this->logActivity('created', $model, $description);
-
-        $this->notifyUsers($model, 'created');
+        $this->logAndNotify($model, 'created');
     }
 
     /**
-     * Mise à jour
+     * Handle model updated event
      */
     public function updated(Model $model)
     {
-        $changes = $model->getChanges();
-
-        if (empty($changes)) {
-            return;
+        // Ne logger que si quelque chose a vraiment changé
+        if ($model->isDirty()) {
+            $this->logAndNotify($model, 'updated');
         }
-
-        // Anciennes valeurs uniquement pour les champs modifiés
-        $oldValues = [];
-        foreach ($changes as $key => $newValue) {
-            $oldValues[$key] = $model->getOriginal($key);
-        }
-
-        $modifiedFields = implode(', ', array_keys($changes));
-        $description = "Modification de " . $this->getModelName($model) . " ({$modifiedFields})";
-
-        $this->logActivity('updated', $model, $description, $oldValues, $changes);
-
-        $this->notifyUsers($model, 'updated');
     }
 
     /**
-     * Suppression
+     * Handle model deleted event
      */
     public function deleted(Model $model)
     {
-        $description = "Suppression de " . $this->getModelName($model);
-        $this->logActivity('deleted', $model, $description);
-
-        $this->notifyUsers($model, 'deleted');
+        $this->logAndNotify($model, 'deleted');
     }
 
     /**
-     * Restauration (soft delete)
+     * Handle model restored event (soft delete)
      */
     public function restored(Model $model)
     {
-        $description = "Restauration de " . $this->getModelName($model);
-        $this->logActivity('restored', $model, $description);
-
-        $this->notifyUsers($model, 'restored');
+        $this->logAndNotify($model, 'restored');
     }
 
     /**
-     * Suppression définitive
+     * Handle force deleted event
      */
     public function forceDeleted(Model $model)
     {
-        $description = "Suppression définitive de " . $this->getModelName($model);
-        $this->logActivity('force_deleted', $model, $description);
-
-        $this->notifyUsers($model, 'force_deleted');
+        $this->logAndNotify($model, 'forceDeleted');
     }
 
     /**
-     * Log via le service
+     * Fonction centrale : crée le log + déclenche la notification
      */
-    private function logActivity(string $action, Model $model, string $description = null, array $old = null, array $new = null)
+    private function logAndNotify(Model $model, string $action): void
     {
+
+        if ($model instanceof LogActivite) {
+            return; // ←←← ON NE LOG PAS LES LOGS !
+        }
         try {
-            ActivityLogger::log($action, $model, $description, $old, $new);
+            // 1. Création du log dans la table log_activites
+            $log = LogActivite::create([
+                'user_id'        => auth()->id() ?? null, // Qui a fait l'action
+                'action'         => $action,
+                'model_type'     => get_class($model),
+                'model_id'       => $model->getKey(),
+                'old_values'     => $action === 'updated' ? json_encode($model->getOriginal()) : null,
+                'new_values'     => $action === 'updated' ? json_encode($model->getAttributes()) : null,
+                'ip_address'     => request()->ip(),
+                'user_agent'     => request()->userAgent(),
+                'custom_message' => $this->getCustomMessage($model, $action),
+            ]);
+
+            Log::info('Log activité créé avec succès', [
+                'log_id'   => $log->id,
+                'model'    => get_class($model),
+                'model_id' => $model->getKey(),
+                'action'   => $action
+            ]);
+
+
+
+            // 2. Déterminer message personnalisé et destinataires supplémentaires
+            $customMessage = $this->getCustomMessage($model, $action);
+            $additionalRecipients = $this->getAdditionalRecipients($model, $action);
+
+            // 3. Déclencher l'événement (avec léger délai pour transaction DB)
+            dispatch(function () use ($model, $action, $customMessage, $additionalRecipients) {
+                event(new ModelActivityEvent(
+                    $model,
+                    $action,
+                    $customMessage,
+                    $additionalRecipients
+                ));
+            })->delay(now()->addSeconds(1)); // 1 seconde suffit largement
+
         } catch (\Exception $e) {
-            Log::error("Erreur log activité (gestion temps) : " . $e->getMessage(), [
-                'action' => $action,
-                'model' => get_class($model),
-                'model_id' => $model->getKey() ?? 'null',
+            Log::error('Échec création log activité', [
+                'model'   => get_class($model),
+                'action'  => $action,
+                'error'   => $e->getMessage(),
+                'trace'   => $e->getTraceAsString()
             ]);
         }
     }
 
     /**
-     * Notification via événement
+     * Message personnalisé selon modèle et action
      */
-    private function notifyUsers(Model $model, string $action)
-    {
-        try {
-            // Chargement des relations nécessaires selon le modèle
-            match (true) {
-                $model instanceof \App\Models\Conge => $model->loadMissing(['user', 'Conges.user']),
-                $model instanceof \App\Models\DailyEntry => $model->loadMissing(['user', 'timeEntries.dossier.client']),
-                $model instanceof \App\Models\TimeEntry  => $model->loadMissing(['user', 'dossier.client', 'dailyEntry.user']),
-                $model instanceof \App\Models\Dossier    => $model->loadMissing(['client', 'timeEntries.user']),
-                $model instanceof \App\Models\Client     => null,
-                default => $model->loadMissing('user'),
-            };
-
-            event(new ModelActivityEvent($model, $action));
-        } catch (\Exception $e) {
-            Log::error("Erreur notification gestion temps : " . $e->getMessage(), [
-                'model' => get_class($model),
-                'action' => $action,
-            ]);
-        }
-    }
-
-    /**
-     * Nom lisible du modèle
-     */
-    private function getModelName(Model $model): string
+    private function getCustomMessage($model, string $action): ?string
     {
         return match (true) {
-            $model instanceof \App\Models\Conge => 'Congé',
-            $model instanceof \App\Models\DailyEntry => 'feuille de temps',
-            $model instanceof \App\Models\TimeEntry  => 'activité temps',
-            $model instanceof \App\Models\Dossier    => 'dossier',
-            $model instanceof \App\Models\Client     => 'client',
-            default                                  => Str::lower(class_basename($model)),
+            $model instanceof TimeEntry => match ($action) {
+                'created' => "Nouvelle saisie de temps de {$model->heures_reelles}h sur le dossier {$model->dossier?->nom}",
+                'updated' => "Modification saisie temps ({$model->heures_reelles}h) sur {$model->dossier?->nom}",
+                'deleted' => "Suppression saisie temps sur {$model->dossier?->nom}",
+                default => null,
+            },
+
+            $model instanceof DailyEntry => match ($action) {
+                'created' => "Nouvelle feuille de temps pour le {$model->jour?->format('d/m/Y')}",
+                'updated' => "Feuille modifiée ({$model->jour?->format('d/m/Y')}, Statut: {$model->statut})",
+                'deleted' => "Feuille supprimée pour {$model->jour?->format('d/m/Y')}",
+                default => null,
+            },
+
+            $model instanceof DemandeConge => match ($action) {
+                'created' => "Nouvelle demande de congé soumise",
+                'updated' => "Demande modifiée (Statut: {$model->statut})",
+                'deleted' => "Demande de congé supprimée",
+                default => null,
+            },
+
+            default => null,
         };
+    }
+
+    /**
+     * Destinataires supplémentaires
+     */
+    private function getAdditionalRecipients($model, string $action): array
+    {
+        $recipients = [];
+
+        // Cas feuille de temps
+        if ($model instanceof DailyEntry) {
+            // Si la feuille est soumise → notifier le manager/responsable de l'utilisateur
+            if ($action === 'created' || ($action === 'updated' && $model->isDirty('statut') && $model->statut === 'soumis')) {
+                if ($model->user && $model->user->manager_id) {
+                    $recipients[] = $model->user->manager_id;
+                }
+
+                // Optionnel : notifier aussi tous les "Directeur Général" ou rôle spécifique
+                 $directeurs = User::role(['Directeur Général', 'admin', 'super-admin'])
+                  ->pluck('id')
+                  ->toArray();
+                 $recipients = array_merge($recipients, $directeurs);
+            }
+
+            // Si validée / refusée → notifier l'employé concerné
+            if ($action === 'updated' && $model->isDirty('statut')) {
+                if (in_array($model->statut, ['validé', 'refusé'])) {
+                    $recipients[] = $model->user_id; // l'employé qui a fait la feuille
+                }
+            }
+        }
+
+        // Cas congé (déjà partiellement présent)
+        if ($model instanceof DemandeConge) {
+            if ($action === 'created' || ($action === 'updated' && $model->isDirty('statut') && $model->statut === 'en_attente')) {
+                // Manager ou responsable des congés
+                if ($model->user && $model->user->manager_id) {
+                    $recipients[] = $model->user->manager_id;
+                }
+            }
+
+            // Validation → notifier le demandeur
+            if ($action === 'updated' && $model->isDirty('statut')) {
+                if (in_array($model->statut, ['approuve', 'refuse'])) {
+                    $recipients[] = $model->user_id;
+                }
+            }
+        }
+
+        return array_unique($recipients);
     }
 }

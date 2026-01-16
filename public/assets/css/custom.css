@@ -138,3 +138,40 @@
         margin-bottom: 10px;
     }
 }
+
+/* Optionnel : rendre l'icône plus visible sur mobile */
+@media (max-width: 767px) {
+    .settingPanelToggle {
+        right: 60px;
+        bottom: 15px;
+        width: 50px;
+        height: 50px;
+        font-size: 1.4rem;
+        background: rgba(74, 112, 183, 0.9);
+        color: white;
+        border-radius: 50%;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+
+    .settingPanelToggle i {
+        line-height: 50px;
+    }
+}
+
+.settingSidebar.show {
+    transform: translateX(0) !important;
+}
+
+.dropdown-item-unread-hover {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.dropdown-item-unread-hover:hover {
+    background-color: rgba(74, 112, 183, 0.08);
+}
+
+.notification-message {
+    line-height: 1.4;
+    margin-bottom: 4px;
+}

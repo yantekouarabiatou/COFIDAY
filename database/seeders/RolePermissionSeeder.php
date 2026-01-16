@@ -14,138 +14,286 @@ class RolePermissionSeeder extends Seeder
         // Reset cache des permissions
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // === LISTE COMPLÈTE DES PERMISSIONS ===
+        // =============================================
+        // LISTE COMPLÈTE ET ORGANISÉE DES PERMISSIONS
+        // =============================================
         $permissions = [
+
             // ================= UTILISATEURS =================
-            ['name' => 'voir les utilisateurs', 'group' => 'utilisateurs', 'description' => 'Voir la liste des utilisateurs'],
-            ['name' => 'créer des utilisateurs', 'group' => 'utilisateurs', 'description' => 'Créer un nouvel utilisateur'],
-            ['name' => 'modifier des utilisateurs', 'group' => 'utilisateurs', 'description' => 'Modifier un utilisateur'],
-            ['name' => 'supprimer des utilisateurs', 'group' => 'utilisateurs', 'description' => 'Supprimer un utilisateur'],
-            ['name' => 'assigner des rôles', 'group' => 'utilisateurs', 'description' => 'Assigner des rôles aux utilisateurs'],
+            ['name' => 'voir les utilisateurs', 'group' => 'utilisateurs'],
+            ['name' => 'créer des utilisateurs', 'group' => 'utilisateurs'],
+            ['name' => 'modifier des utilisateurs', 'group' => 'utilisateurs'],
+            ['name' => 'supprimer des utilisateurs', 'group' => 'utilisateurs'],
+            ['name' => 'assigner des rôles', 'group' => 'utilisateurs'],
 
             // ================= CLIENTS =================
-            ['name' => 'voir les clients', 'group' => 'Clients', 'description' => 'Voir la liste des clients'],
-            ['name' => 'créer des clients', 'group' => 'Clients', 'description' => 'Créer un nouveau client'],
-            ['name' => 'modifier des clients', 'group' => 'Clients', 'description' => 'Modifier un client'],
-            ['name' => 'supprimer des clients', 'group' => 'Clients', 'description' => 'Supprimer un client'],
+            ['name' => 'voir les clients', 'group' => 'clients'],
+            ['name' => 'créer des clients', 'group' => 'clients'],
+            ['name' => 'modifier des clients', 'group' => 'clients'],
+            ['name' => 'supprimer des clients', 'group' => 'clients'],
 
             // ================= DOSSIERS =================
-            ['name' => 'voir les dossiers', 'group' => 'Dossiers', 'description' => 'Voir la liste des dossiers'],
-            ['name' => 'créer des dossiers', 'group' => 'Dossiers', 'description' => 'Créer un nouveau dossier'],
-            ['name' => 'modifier des dossiers', 'group' => 'Dossiers', 'description' => 'Modifier un dossier'],
-            ['name' => 'supprimer des dossiers', 'group' => 'Dossiers', 'description' => 'Supprimer un dossier'],
+            ['name' => 'voir les dossiers', 'group' => 'dossiers'],
+            ['name' => 'créer des dossiers', 'group' => 'dossiers'],
+            ['name' => 'modifier des dossiers', 'group' => 'dossiers'],
+            ['name' => 'supprimer des dossiers', 'group' => 'dossiers'],
 
-            // ================= TEMPS =================
-            ['name' => 'voir les entrées journalières', 'group' => 'Temps', 'description' => 'Voir les entrées journalières'],
-            ['name' => 'voir tous les temps', 'group' => 'Temps', 'description' => 'Voir toutes les entrées temps'],
-            ['name' => 'créer des entrées journalières', 'group' => 'Temps', 'description' => 'Créer une nouvelle entrée journalière'],
-            ['name' => 'modifier des entrées journalières', 'group' => 'Temps', 'description' => 'Modifier une entrée journalière'],
-            ['name' => 'supprimer des entrées journalières', 'group' => 'Temps', 'description' => 'Supprimer une entrée journalière'],
+            // ================= TEMPS / FEUILLES DE TEMPS =================
+            ['name' => 'voir les entrées journalières', 'group' => 'temps'],
+            ['name' => 'voir tous les temps', 'group' => 'temps'],
+            ['name' => 'créer des entrées journalières', 'group' => 'temps'],
+            ['name' => 'modifier des entrées journalières', 'group' => 'temps'],
+            ['name' => 'supprimer des entrées journalières', 'group' => 'temps'],
+            ['name' => 'valider les feuilles de temps', 'group' => 'temps'],
+            ['name' => 'refuser les feuilles de temps', 'group' => 'temps'],
 
-            // ================= CONGÉS =================
-            ['name' => 'voir les congés', 'group' => 'Congés', 'description' => 'Voir la liste des congés'],
-            ['name' => 'créer des congés', 'group' => 'Congés', 'description' => 'Créer un nouveau congé'],
-            ['name' => 'modifier des congés', 'group' => 'Congés', 'description' => 'Modifier un congé'],
-            ['name' => 'supprimer des congés', 'group' => 'Congés', 'description' => 'Supprimer un congé'],
-            ['name' => 'approuver les congés', 'group' => 'Congés', 'description' => 'Approuver ou refuser un congé'],
+            // ================= CONGÉS - DEMANDES =================
+            ['name' => 'voir les demandes de congés', 'group' => 'conges'],
+            ['name' => 'voir toutes les demandes de congés', 'group' => 'conges'],
+            ['name' => 'créer des demandes de congés', 'group' => 'conges'],
+            ['name' => 'modifier des demandes de congés', 'group' => 'conges'],
+            ['name' => 'supprimer des demandes de congés', 'group' => 'conges'],
+            ['name' => 'approuver les demandes de congés', 'group' => 'conges'],
+            ['name' => 'refuser les demandes de congés', 'group' => 'conges'],
 
-            // ================= STATISTIQUES / EXPORT =================
-            ['name' => 'voir les statistiques', 'group' => 'statistiques', 'description' => 'Voir les statistiques'],
-            ['name' => 'exporter les données', 'group' => 'statistiques', 'description' => 'Exporter les données du système'],
-            ['name' => 'exporter les temps', 'group' => 'statistiques', 'description' => 'Exporter les temps enregistrés'],
-            ['name' => 'voir les rapports mensuels', 'group' => 'statistiques', 'description' => 'Voir les rapports mensuels'],
+            // ================= CONGÉS - SOLDES =================
+            ['name' => 'voir les soldes de congés', 'group' => 'conges_soldes'],
+            ['name' => 'voir tous les soldes de congés', 'group' => 'conges_soldes'],
+            ['name' => 'modifier les soldes de congés', 'group' => 'conges_soldes'],
+            ['name' => 'réinitialiser les soldes annuels', 'group' => 'conges_soldes'],
+
+            // ================= CONGÉS - DASHBOARD & RAPPORTS =================
+            ['name' => 'accéder au dashboard des congés', 'group' => 'conges_dashboard'],
+            ['name' => 'voir le calendrier des congés', 'group' => 'conges_dashboard'],
+            ['name' => 'voir les statistiques congés', 'group' => 'conges_dashboard'],
+
+            // ================= EXPORTS EXCEL / PDF =================
+            ['name' => 'exporter les temps en excel', 'group' => 'exports'],
+            ['name' => 'exporter les temps en pdf', 'group' => 'exports'],
+            ['name' => 'exporter les congés en excel', 'group' => 'exports'],
+            ['name' => 'exporter les congés en pdf', 'group' => 'exports'],
+            ['name' => 'exporter les soldes de congés', 'group' => 'exports'],
+
+            // ================= STATISTIQUES GÉNÉRALES =================
+            ['name' => 'voir les statistiques', 'group' => 'statistiques'],
+            ['name' => 'voir les statistiques générales', 'group' => 'statistiques'],
+            ['name' => 'voir les rapports mensuels temps', 'group' => 'statistiques'],
 
             // ================= PARAMÈTRES =================
-            ['name' => 'voir les paramètres', 'group' => 'paramètres', 'description' => 'Voir les paramètres du système'],
-            ['name' => 'modifier les paramètres', 'group' => 'paramètres', 'description' => 'Modifier les paramètres du système'],
+            ['name' => 'voir les paramètres', 'group' => 'parametres'],
+            ['name' => 'modifier les paramètres', 'group' => 'parametres'],
+            ['name' => 'access-settings', 'group' => 'parametres'],
 
-            // ================= DOCUMENTS =================
-            ['name' => 'voir les documents', 'group' => 'médias', 'description' => 'Voir les documents et médias'],
-            ['name' => 'télécharger les documents', 'group' => 'médias', 'description' => 'Télécharger les documents'],
-            ['name' => 'supprimer les documents', 'group' => 'médias', 'description' => 'Supprimer les documents'],
+            // ================= DOCUMENTS / MÉDIAS =================
+            ['name' => 'voir les documents', 'group' => 'medias'],
+            ['name' => 'télécharger les documents', 'group' => 'medias'],
+            ['name' => 'supprimer les documents', 'group' => 'medias'],
 
-            // ================= TABLEAUX DE BORD =================
-            ['name' => 'accéder au tableau de bord admin', 'group' => 'dashboard', 'description' => 'Accéder au tableau de bord admin'],
-            ['name' => 'accéder au tableau de bord utilisateur', 'group' => 'dashboard', 'description' => 'Accéder au tableau de bord utilisateur'],
+            // ================= DASHBOARDS =================
+            ['name' => 'accéder au tableau de bord admin', 'group' => 'dashboard'],
+            ['name' => 'accéder au tableau de bord utilisateur', 'group' => 'dashboard'],
 
             // ================= POSTES =================
-            ['name' => 'voir les postes', 'group' => 'postes', 'description' => 'Voir les postes'],
-            ['name' => 'créer des postes', 'group' => 'postes', 'description' => 'Créer un nouveau poste'],
-            ['name' => 'modifier des postes', 'group' => 'postes', 'description' => 'Modifier un poste'],
-            ['name' => 'supprimer des postes', 'group' => 'postes', 'description' => 'Supprimer un poste'],
+            ['name' => 'voir les postes', 'group' => 'postes'],
+            ['name' => 'gérer les postes', 'group' => 'postes'],
+            ['name' => 'créer des postes', 'group' => 'postes'],
+            ['name' => 'modifier des postes', 'group' => 'postes'],
+            ['name' => 'supprimer des postes', 'group' => 'postes'],
 
             // ================= RÔLES & PERMISSIONS =================
-            ['name' => 'voir les rôles', 'group' => 'rôles', 'description' => 'Voir la liste des rôles'],
-            ['name' => 'créer des rôles', 'group' => 'rôles', 'description' => 'Créer un nouveau rôle'],
-            ['name' => 'modifier des rôles', 'group' => 'rôles', 'description' => 'Modifier un rôle'],
-            ['name' => 'supprimer des rôles', 'group' => 'rôles', 'description' => 'Supprimer un rôle'],
-            ['name' => 'gérer les permissions', 'group' => 'rôles', 'description' => 'Attribuer des permissions aux rôles'],
-            ['name' => 'voir les permissions', 'group' => 'rôles_permissions', 'description' => 'Voir la liste complète des permissions'],
+            ['name' => 'voir les rôles', 'group' => 'roles_permissions'],
+            ['name' => 'gérer les rôles', 'group' => 'roles_permissions'],
+            ['name' => 'gérer les permissions', 'group' => 'roles_permissions'],
+            ['name' => 'voir les permissions', 'group' => 'roles_permissions'],
 
-            // ================= LOGS =================
-            ['name' => 'voir les logs', 'group' => 'Logs', 'description' => 'Voir les logs du système'],
-            ['name' => 'voir les logs système', 'group' => 'Logs', 'description' => 'Voir les logs système détaillés'],
-            ['name' => 'supprimer les logs', 'group' => 'Logs', 'description' => 'Supprimer les logs'],
-            ['name' => 'exporter les logs', 'group' => 'Logs', 'description' => 'Exporter les logs'],
+            // ================= LOGS & ACTIVITÉS =================
+            ['name' => 'voir les logs', 'group' => 'logs'],
+            ['name' => 'voir les logs système', 'group' => 'logs'],
+            ['name' => 'voir les activités', 'group' => 'logs'],
 
             // ================= NOTIFICATIONS =================
-            ['name' => 'voir les notifications', 'group' => 'notifications', 'description' => 'Voir les notifications'],
-            ['name' => 'marquer les notifications comme lues', 'group' => 'notifications', 'description' => 'Marquer comme lues'],
-            ['name' => 'supprimer les notifications', 'group' => 'notifications', 'description' => 'Supprimer les notifications'],
-            ['name' => 'envoyer des notifications', 'group' => 'notifications', 'description' => 'Envoyer des notifications'],
-            ['name' => 'gérer les notifications', 'group' => 'notifications', 'description' => 'Gérer les notifications'],
+            ['name' => 'voir les notifications', 'group' => 'notifications'],
+            ['name' => 'marquer les notifications comme lues', 'group' => 'notifications'],
+            ['name' => 'gérer les notifications', 'group' => 'notifications'],
         ];
 
-
-        // Création des permissions
-        foreach ($permissions as $permission) {
+        // Création / Mise à jour des permissions
+        foreach ($permissions as $perm) {
             Permission::updateOrCreate(
-                ['name' => $permission['name'], 'guard_name' => 'web'],
-                ['group' => $permission['group'], 'description' => $permission['description']]
+                ['name' => $perm['name'], 'guard_name' => 'web'],
+                ['group' => $perm['group'] ?? 'autre']
             );
         }
 
-        // ================= RÔLES =================
+        // =============================================
+        //          DÉFINITION DES RÔLES
+        // =============================================
 
-        // ADMIN → accès total
+        // SUPER-ADMIN / ADMIN → TOUT
         $admin = Role::firstOrCreate(['name' => 'admin']);
         $admin->syncPermissions(Permission::all());
 
-        // RH
+        // RH (Ressources Humaines)
         $rh = Role::firstOrCreate(['name' => 'rh']);
         $rh->syncPermissions([
-            'voir tous les temps',
+            // Utilisateurs
             'voir les utilisateurs',
-            'voir les congés',
-            'approuver les congés',
-            'exporter les temps',
-            'voir les rapports mensuels',
+            'voir les postes',
+
+            // Congés - complet
+            'voir les demandes de congés',
+            'voir toutes les demandes de congés',
+            'créer des demandes de congés',
+            'modifier des demandes de congés',
+            'supprimer des demandes de congés',
+            'approuver les demandes de congés',
+            'refuser les demandes de congés',
+            'voir les soldes de congés',
+            'voir tous les soldes de congés',
+            'modifier les soldes de congés',
+            'réinitialiser les soldes annuels',
+            'accéder au dashboard des congés',
+            'voir le calendrier des congés',
+            'voir les statistiques congés',
+
+            // Exports congés & temps
+            'exporter les congés en excel',
+            'exporter les congés en pdf',
+            'exporter les soldes de congés',
+            'exporter les temps en excel',
+
+            // Temps (lecture + validation)
+            'voir tous les temps',
+            'voir les rapports mensuels temps',
+            'valider les feuilles de temps',
+            'refuser les feuilles de temps',
+
+            // Notifications
             'voir les notifications',
             'marquer les notifications comme lues',
+            'gérer les notifications',
+
+            // Statistiques
+            'voir les statistiques',
+            'voir les statistiques générales',
         ]);
 
-        // MANAGER
+        // MANAGER / Responsable
         $manager = Role::firstOrCreate(['name' => 'manager']);
         $manager->syncPermissions([
+            // Temps
+            'voir les entrées journalières',
+            'voir tous les temps',
+            'valider les feuilles de temps',
+            'refuser les feuilles de temps',
+            'voir les rapports mensuels temps',
+
+            // Congés
+            'voir les demandes de congés',
+            'voir toutes les demandes de congés',
+            'approuver les demandes de congés',
+            'refuser les demandes de congés',
+            'voir les soldes de congés',
+            'voir le calendrier des congés',
+
+            // Exports
+            'exporter les temps en excel',
+            'exporter les temps en pdf',
+
+            // Notifications
+            'voir les notifications',
+            'marquer les notifications comme lues',
+
+            // Statistiques
+            'voir les statistiques',
+        ]);
+
+        // EMPLOYÉ / UTILISATEUR STANDARD
+        $employe = Role::firstOrCreate(['name' => 'employe']);
+        $employe->syncPermissions([
+            // Temps
             'voir les entrées journalières',
             'créer des entrées journalières',
             'modifier des entrées journalières',
-            'voir les congés',
-            'créer des congés',
-            'voir les dossiers',
-            'voir les clients',
+            'supprimer des entrées journalières',
+
+            // Congés
+            'voir les demandes de congés',
+            'créer des demandes de congés',
+            'modifier des demandes de congés',
+            'supprimer des demandes de congés',
+            'voir les soldes de congés',
+            'voir le calendrier des congés',
+
+            // Notifications
+            'voir les notifications',
+            'marquer les notifications comme lues',
+
+            // Dashboard utilisateur
+            'accéder au tableau de bord utilisateur',
+        ]);
+
+        // DIRECTEUR GÉNÉRAL
+        $dg = Role::firstOrCreate(['name' => 'directeur-general']);
+        $dg->syncPermissions([
+            // Temps
+            'voir tous les temps',
+            'voir les rapports mensuels temps',
+
+            // Congés
+            'voir toutes les demandes de congés',
+            'voir tous les soldes de congés',
+            'approuver les demandes de congés',
+            'refuser les demandes de congés',
+            'modifier les soldes de congés',
+            'accéder au dashboard des congés',
+            'voir le calendrier des congés',
+            'voir les statistiques congés',
+
+            // Exports
+            'exporter les congés en excel',
+            'exporter les congés en pdf',
+            'exporter les temps en excel',
+            'exporter les temps en pdf',
+            'exporter les soldes de congés',
+
+            // Statistiques
+            'voir les statistiques',
+            'voir les statistiques générales',
+
+            // Notifications
             'voir les notifications',
             'marquer les notifications comme lues',
         ]);
 
-        // EMPLOYÉ
-        $employe = Role::firstOrCreate(['name' => 'employe']);
-        $employe->syncPermissions([
-            'créer des entrées journalières',
-            'modifier des entrées journalières',
-            'créer des congés',
+        // AUDITEUR INTERNE (si nécessaire)
+        $auditeur = Role::firstOrCreate(['name' => 'auditeur']);
+        $auditeur->syncPermissions([
+            'voir les dossiers',
+            'voir tous les temps',
+            'voir les rapports mensuels temps',
+            'exporter les temps en excel',
+            'exporter les temps en pdf',
+            'voir les statistiques',
+            'voir les statistiques générales',
             'voir les notifications',
             'marquer les notifications comme lues',
         ]);
+
+        // RESPONSABLE CONFORMITÉ
+        $responsableConformite = Role::firstOrCreate(['name' => 'responsable-conformite']);
+        $responsableConformite->syncPermissions([
+            'voir les dossiers',
+            'voir tous les temps',
+            'voir les rapports mensuels temps',
+            'voir les statistiques',
+            'voir les statistiques générales',
+            'exporter les temps en excel',
+            'exporter les temps en pdf',
+            'voir les notifications',
+            'marquer les notifications comme lues',
+        ]);
+
+        $this->command->info('✅ Permissions et rôles créés avec succès !');
     }
 }

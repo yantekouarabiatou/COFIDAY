@@ -7,141 +7,157 @@ use App\Notifications\ActivityNotification;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Arr;
 
 class SendActivityNotification
 {
-    public function handle(ModelActivityEvent $event)
+    /**
+     * Handle the event.
+     */
+    public function handle(ModelActivityEvent $event): void
     {
         try {
             $model = $event->model;
             $action = $event->action;
 
             if (!$model) {
+                Log::warning('Modèle null dans ModelActivityEvent', ['event' => $event]);
                 return;
             }
 
-            Log::info('Notification gestion du temps', [
-                'model' => get_class($model),
-                'id' => $model->getKey(),
-                'action' => $action,
+            Log::info('Début envoi notification activité', [
+                'model_type' => get_class($model),
+                'model_id'   => $model->getKey(),
+                'action'     => $action,
+                'auth_user'  => auth()->id() ?? 'guest',
             ]);
 
-            // 1. Admins reçoivent tout
-            $admins = User::whereHas('roles', function ($q) {
-                $q->whereIn('name', ['super-admin', 'admin']);
+            // 1. Récupérer TOUS les admins (super-admin + admin) via Spatie
+            $admins = User::whereHas('roles', function ($query) {
+                $query->whereIn('name', ['super-admin', 'admin']);
             })->get();
 
-            // 2. Utilisateurs concernés selon le modèle
+            Log::info('Admins trouvés via Spatie Permission', ['count' => $admins->count()]);
+
+            // 2. Utilisateurs spécifiques liés au modèle (créateur, responsable, etc.)
             $specificUsers = $this->getSpecificRecipients($model);
 
-            // Fusion
-            $recipients = collect($admins)->merge($specificUsers);
+            // 3. Utilisateurs additionnels passés dans l'événement (optionnel)
+            $additionalUsers = collect();
+            if (!empty($event->additionalRecipients)) {
+                $additionalUsers = User::whereIn('id', Arr::wrap($event->additionalRecipients))
+                    ->get();
+            }
 
-            // 3. Exclure l'utilisateur courant seulement sur création (sauf admins)
+            // 4. Fusion et déduplication
+            $recipients = $admins
+                ->merge($specificUsers)
+                ->merge($additionalUsers)
+                ->unique('id')
+                ->values();
+
+            Log::info('Destinataires finaux avant exclusion', ['count' => $recipients->count()]);
+
+            // 5. Exclure l'utilisateur courant s'il n'est pas admin (pour les créations)
             $currentUserId = auth()->id();
-            if ($currentUserId && $this->shouldExcludeCurrentUser($action)) {
-                $recipients = $recipients->filter(fn($user) => $user->id !== $currentUserId);
-            }
+            if ($currentUserId && $action === 'created') {
+                $currentUser = auth()->user();
 
-            // Unicité
-            $recipients = $recipients->unique('id')->values();
+                $isAdmin = $currentUser && $currentUser->hasAnyRole(['super-admin', 'admin']);
 
-            if ($recipients->isEmpty()) {
-                return;
-            }
-
-            foreach ($recipients as $user) {
-                try {
-                    $user->notify(new ActivityNotification($model, $action));
-                    Log::info('Notification envoyée', ['user_id' => $user->id, 'action' => $action]);
-                } catch (\Exception $e) {
-                    Log::error('Échec notification', [
-                        'user_id' => $user->id,
-                        'error' => $e->getMessage()
+                if (!$isAdmin) {
+                    $recipients = $recipients->filter(fn($user) => $user->id !== $currentUserId);
+                    Log::info('Utilisateur courant exclu (non-admin lors de la création)', [
+                        'excluded_id' => $currentUserId
                     ]);
                 }
             }
 
+            if ($recipients->isEmpty()) {
+                Log::info('Aucun destinataire après filtrage et exclusion');
+                return;
+            }
+
+            // 6. Envoi des notifications
+            $notificationCount = 0;
+            foreach ($recipients as $user) {
+                try {
+                    $user->notify(new ActivityNotification($model, $action, $event->customMessage ?? null));
+                    $notificationCount++;
+
+                    Log::debug('Notification envoyée avec succès', [
+                        'to_user_id' => $user->id,
+                        'model'      => class_basename($model),
+                        'action'     => $action
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Échec envoi notification', [
+                        'user_id' => $user->id,
+                        'error'   => $e->getMessage(),
+                        'trace'   => $e->getTraceAsString()
+                    ]);
+                }
+            }
+
+            Log::info('Fin traitement notifications', ['envoyées' => $notificationCount]);
+
         } catch (\Exception $e) {
-            Log::error('Erreur critique notification gestion temps', [
+            Log::critical('Erreur critique dans SendActivityNotification', [
                 'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'file'    => $e->getFile(),
+                'line'    => $e->getLine(),
+                'trace'   => $e->getTraceAsString()
             ]);
         }
     }
 
+    /**
+     * Récupère les utilisateurs spécifiques à notifier selon le modèle
+     */
     private function getSpecificRecipients($model): Collection
     {
-        return match (true) {
-            $model instanceof \App\Models\DemandeConge => $this->getDailyEntryRecipients($model),
-            $model instanceof \App\Models\DailyEntry => $this->getDailyEntryRecipients($model),
-            $model instanceof \App\Models\TimeEntry  => $this->getTimeEntryRecipients($model),
-            $model instanceof \App\Models\Dossier    => $this->getDossierRecipients($model),
-            $model instanceof \App\Models\Client     => collect(), // pas d'utilisateur spécifique
-            default                                  => $this->getDefaultRecipients($model),
-        };
-    }
-
-    private function getDailyEntryRecipients($dailyEntry): Collection
-    {
         $users = collect();
 
-        if ($dailyEntry->user) {
-            $users->push($dailyEntry->user);
-        }
-
-        return $users->unique('id');
-    }
-
-    private function getTimeEntryRecipients($timeEntry): Collection
-    {
-        $users = collect();
-
-        // Celui qui a saisi l'activité
-        if ($timeEntry->user) {
-            $users->push($timeEntry->user);
-        }
-
-        // Celui de la feuille parent (au cas où un manager modifie)
-        if ($timeEntry->dailyEntry?->user && $timeEntry->dailyEntry->user_id !== $timeEntry->user_id) {
-            $users->push($timeEntry->dailyEntry->user);
-        }
-
-        return $users->unique('id');
-    }
-
-    private function getDossierRecipients($dossier): Collection
-    {
-        // Tous les utilisateurs ayant saisi du temps sur ce dossier
-        return $dossier->timeEntries->pluck('user')->filter()->unique('id');
-    }
-
-    private function getDefaultRecipients($model): Collection
-    {
-        $users = collect();
-
-        if (property_exists($model, 'user_id') && $model->user_id) {
-            $user = $model->user ?? User::find($model->user_id);
-            if ($user) {
-                $users->push($user);
+        try {
+            // Cas 1 : relation 'user' directe (ex: TimeEntry, DailyEntry, DemandeConge)
+            if (method_exists($model, 'user') && $model->user) {
+                $users->push($model->user);
             }
+
+            // Cas 2 : champ user_id classique
+            elseif (property_exists($model, 'user_id') && $model->user_id) {
+                $user = User::find($model->user_id);
+                if ($user) {
+                    $users->push($user);
+                }
+            }
+
+            // Cas 3 : si le modèle a un créateur (created_by)
+            if (property_exists($model, 'created_by') && $model->created_by) {
+                $creator = User::find($model->created_by);
+                if ($creator) {
+                    $users->push($creator);
+                }
+            }
+
+            // Optionnel : notifier le manager du principal concerné
+            if ($users->isNotEmpty()) {
+                $mainUser = $users->first();
+                if ($mainUser && $mainUser->manager_id) {
+                    $manager = User::find($mainUser->manager_id);
+                    if ($manager) {
+                        $users->push($manager);
+                    }
+                }
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la récupération des destinataires spécifiques', [
+                'model'   => get_class($model),
+                'error'   => $e->getMessage()
+            ]);
         }
 
-        return $users;
-    }
-
-    private function shouldExcludeCurrentUser(string $action): bool
-    {
-        $currentUser = auth()->user();
-
-        if (!$currentUser) {
-            return false;
-        }
-
-        if ($currentUser->hasRole(['super-admin', 'admin'])) {
-            return false; // admins reçoivent tout
-        }
-
-        return $action === 'created'; // les autres ne reçoivent pas sur leur propre création
+        return $users->unique('id');
     }
 }

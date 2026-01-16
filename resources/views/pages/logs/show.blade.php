@@ -38,7 +38,8 @@
                                             <th>Date & Heure</th>
                                             <td>
                                                 <strong>{{ $log->created_at->format('d/m/Y à H:i:s') }}</strong>
-                                                <small class="text-muted d-block">(il y a {{ $log->created_at->diffForHumans() }})</small>
+                                                <small class="text-muted d-block">(il y a
+                                                    {{ $log->created_at->diffForHumans() }})</small>
                                             </td>
                                         </tr>
                                         <tr>
@@ -72,10 +73,12 @@
                                             <th>Ressource</th>
                                             <td>
                                                 @if($log->loggable && $log->loggable->exists)
-                                                    <span class="badge badge-info">{{ $log->table_name ?? class_basename($log->loggable_type) }}</span>
+                                                    <span
+                                                        class="badge badge-info">{{ $log->table_name ?? class_basename($log->loggable_type) }}</span>
                                                     → <strong>{{ $log->reference }}</strong>
                                                     @if($log->url)
-                                                        <a href="{{ $log->url }}" target="_blank" class="btn btn-sm btn-success ml-2">
+                                                        <a href="{{ $log->url }}" target="_blank"
+                                                            class="btn btn-sm btn-success ml-2">
                                                             <i class="fas fa-external-link-alt"></i> Voir
                                                         </a>
                                                     @endif
@@ -94,17 +97,19 @@
                                         </tr>
                                         <tr>
                                             <th>User Agent</th>
-                                            <td><small class="text-muted text-break">{{ $log->user_agent ?? '-' }}</small></td>
+                                            <td><small class="text-muted text-break">{{ $log->user_agent ?? '-' }}</small>
+                                            </td>
                                         </tr>
 
-                                        <!-- Anciennes valeurs -->
-                                        @if($log->old_values && count($log->old_values) > 0)
-                                            <tr>
-                                                <th>Anciennes valeurs</th>
-                                                <td>
-                                                    <pre class="bg-light p-3 rounded small text-monospace">{!! nl2br(e(json_encode($log->old_values, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))) !!}</pre>
-                                                </td>
-                                            </tr>
+                                        @if($log->new_values && is_array($log->new_values) && count($log->new_values) > 0)
+                                                                    <tr>
+                                                                        <th>Nouvelles valeurs</th>
+                                                                        <td>
+                                                                            <pre class="bg-dark text-white p-3 rounded small text-monospace">
+                                                {!! nl2br(e(json_encode($log->new_values, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))) !!}
+                                            </pre>
+                                                                        </td>
+                                                                    </tr>
                                         @endif
 
                                         <!-- Nouvelles valeurs -->
@@ -112,7 +117,8 @@
                                             <tr>
                                                 <th>Nouvelles valeurs</th>
                                                 <td>
-                                                    <pre class="bg-dark text-white p-3 rounded small text-monospace">{!! nl2br(e(json_encode($log->new_values, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))) !!}</pre>
+                                                    <pre
+                                                        class="bg-dark text-white p-3 rounded small text-monospace">{!! nl2br(e(json_encode($log->new_values, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))) !!}</pre>
                                                 </td>
                                             </tr>
                                         @endif

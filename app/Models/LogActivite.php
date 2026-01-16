@@ -47,8 +47,14 @@ class LogActivite extends Model
                 return new class extends Model {
                     public $exists = false;
                     protected $attributes = ['id' => null];
-                    public function getKey() { return null; }
-                    public function __toString() { return 'Ressource supprimée'; }
+                    public function getKey()
+                    {
+                        return null;
+                    }
+                    public function __toString()
+                    {
+                        return 'Ressource supprimée';
+                    }
                 };
             });
     }
@@ -107,7 +113,7 @@ class LogActivite extends Model
             $this->loggable instanceof \App\Models\Dossier    => route('dossiers.show', $this->loggable),
             $this->loggable instanceof \App\Models\DailyEntry => route('daily-entries.show', $this->loggable),
             $this->loggable instanceof \App\Models\TimeEntry  => route('daily-entries.show', $this->loggable),
-            $this->loggable instanceof \App\Models\Conge      => route('conges.show', $this->loggable),
+            $this->loggable instanceof \App\Models\DemandeConge      => route('conges.show', $this->loggable),
             $this->loggable instanceof \App\Models\User       => route('users.show', $this->loggable),
             default                                           => null,
         };
@@ -131,5 +137,29 @@ class LogActivite extends Model
             ?? $model->email
             ?? ($model->jour?->format('d/m/Y') ?? null)
             ?? class_basename($model) . ' #' . $model->id;
+    }
+
+    public function getOldValuesAttribute($value)
+    {
+        if (is_string($value)) {
+            try {
+                return json_decode($value, true) ?? [];
+            } catch (\Exception) {
+                return [];
+            }
+        }
+        return $value ?? [];
+    }
+
+    public function getNewValuesAttribute($value)
+    {
+        if (is_string($value)) {
+            try {
+                return json_decode($value, true) ?? [];
+            } catch (\Exception) {
+                return [];
+            }
+        }
+        return $value ?? [];
     }
 }

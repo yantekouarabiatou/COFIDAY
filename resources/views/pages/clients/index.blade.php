@@ -62,7 +62,7 @@
                                 <thead>
                                     <tr>
                                         <th>#</th>
-                                        <th>Logo</th>
+                                        {{-- <th>Logo</th> --}}
                                         <th>Nom</th>
                                         <th>Contact</th>
                                         <th>Téléphone</th>
@@ -76,7 +76,7 @@
                                     @foreach($clients as $client)
                                     <tr data-statut="{{ $client->statut }}">
                                         <td>{{ $loop->iteration }}</td>
-                                        <td>
+                                        {{-- <td>
                                             @if($client->logo)
                                                 <div class="mr-3">
                                                     <img src="{{ asset('storage/' . $client->logo) }}"
@@ -85,7 +85,7 @@
                                                          style="width: 40px; height: 40px; object-fit: cover;">
                                                 </div>
                                             @endif
-                                        </td>
+                                        </td> --}}
                                         <td>
                                             <strong>{{ $client->nom }}</strong>
                                             @if($client->siege_social)

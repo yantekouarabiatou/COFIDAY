@@ -51,6 +51,14 @@ class ActivityNotification extends Notification
             'replanifie'    => "$causer a replanifié $ref",
             'cloture'       => "$causer a clôturé $ref",
             'relance'       => "$causer a relancé $ref",
+            'soumis'    => "$causer a soumis une feuille de temps pour le {$this->model->jour->format('d/m/Y')}",
+            'validé'    => "$causer a validé la feuille de temps du {$this->model->jour->format('d/m/Y')}",
+            'refusé'    => "$causer a refusé la feuille de temps du {$this->model->jour->format('d/m/Y')}",
+
+            // Congés
+            'crée'   => "$causer a soumis une demande de congé",
+            'approuveé'  => "$causer a approuvé votre demande de congé",
+            'refuseé'    => "$causer a refusé votre demande de congé",
             default         => "$causer a effectué une action sur $ref",
         };
 
@@ -80,7 +88,7 @@ class ActivityNotification extends Notification
             $userName = $this->model->user->prenom . ' ' . $this->model->user->nom ?? 'Utilisateur';
             $type = $this->model->typeConge->libelle ?? 'Congé';
             $dates = \Carbon\Carbon::parse($this->model->date_debut)->format('d/m') . ' - ' .
-                    \Carbon\Carbon::parse($this->model->date_fin)->format('d/m');
+                \Carbon\Carbon::parse($this->model->date_fin)->format('d/m');
             return "demande de $type pour $userName ($dates)";
         }
 
@@ -142,9 +150,9 @@ class ActivityNotification extends Notification
 
             // Historiques (redirige vers la demande)
             $this->model instanceof \App\Models\HistoriqueConge =>
-                $this->model->demandeConge
-                    ? route('conges.show', $this->model->demandeConge)
-                    : route('conges.index'),
+            $this->model->demandeConge
+                ? route('conges.show', $this->model->demandeConge)
+                : route('conges.index'),
 
             // Paramètres
             $this->model instanceof \App\Models\CompanySetting => route('settings.index'),
