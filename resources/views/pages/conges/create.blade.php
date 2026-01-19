@@ -303,6 +303,16 @@ $(document).ready(function() {
     $('#date_fin').attr('min', today);
 });
 
+function nombreDeJours(dateDebut, dateFin) {
+    const [y1, m1, d1] = dateDebut.split('-').map(Number);
+    const [y2, m2, d2] = dateFin.split('-').map(Number);
+
+    const start = Date.UTC(y1, m1 - 1, d1);
+    const end   = Date.UTC(y2, m2 - 1, d2);
+
+    return Math.floor((end - start) / 86400000) + 1;
+}
+
 // Fonction pour calculer les jours ouvrés
 function calculateDays() {
     var dateDebut = $('#date_debut').val();
@@ -331,6 +341,7 @@ function calculateDays() {
     var end = new Date(dateFin);
     var timeDiff = end.getTime() - start.getTime();
     var daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+
 
     // Soustraire les weekends (simplifié)
     var weekends = 0;

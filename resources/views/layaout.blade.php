@@ -600,6 +600,24 @@
                 </ul>
             </li>
         @endcan
+
+        {{-- Regles de Congés --}}
+        @can(['voir les dossiers', 'créer des dossiers'])
+            <li class="dropdown {{ request()->routeIs('admin.regles-conges.*') ? 'active' : '' }}">
+                <a href="#" class="menu-toggle nav-link has-dropdown {{ request()->routeIs('admin.regles-conges.*') ? 'active' : '' }}">
+                    <i class="fas fa-calendar-alt"></i><span>Règles de Congés</span>
+                </a>
+                <ul class="dropdown-menu" style="{{ request()->routeIs('admin.regles-conges.*') ? 'display: block;' : '' }}">
+                    @can('voir les dossiers')
+                        <li class="{{ request()->routeIs('admin.regles-conges.index') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('admin.regles-conges.index') }}">
+                                <i class="fas fa-list"></i> Liste des règles
+                            </a>
+                        </li>
+                    @endcan
+                </ul>
+            </li>
+        @endcan
     @endif
 
    {{-- GESTION DES LOGS --}}

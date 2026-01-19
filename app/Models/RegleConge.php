@@ -178,4 +178,21 @@ class RegleConge extends Model
     {
         return number_format($this->calculerJoursAcquisAnnuels(), 2, ',', ' ');
     }
+
+    public function getJoursFeriesArrayAttribute(): array
+    {
+        if (is_array($this->jours_feries)) {
+            return $this->jours_feries;
+        }
+
+        return json_decode($this->jours_feries, true) ?? [];
+    }
+    public function getPeriodesBloqueesArrayAttribute(): array
+    {
+        if (is_array($this->periodes_bloquees)) {
+            return $this->periodes_bloquees;
+        }
+
+        return json_decode($this->periodes_bloquees, true) ?? [];
+    }
 }
