@@ -63,6 +63,11 @@ class DemandeConge extends Model
         return $this->belongsTo(User::class, 'annule_par');
     }
 
+    public function superieurHierarchique()
+    {
+        return $this->belongsTo(User::class, 'superieur_hierarchique_id');
+    }
+
     /**
      * Scopes
      */

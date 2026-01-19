@@ -53,62 +53,6 @@
                                 <input type="text" id="date-range-filter" class="btn btn-outline-info" placeholder="Sélectionner une période" readonly>
                             </div>
 
-                            <!-- Dropdown filtres -->
-                            <div class="dropdown">
-                                <button class="btn btn-info dropdown-toggle" type="button" id="filterDropdown"
-                                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                    <i class="fas fa-filter"></i> Filtres
-                                </button>
-                                <div class="dropdown-menu" aria-labelledby="filterDropdown">
-                                    <div class="dropdown-header">Filtrer par type</div>
-                                    @foreach($typesConges as $type)
-                                    <div class="dropdown-item">
-                                        <div class="form-check">
-                                            <input class="form-check-input type-filter"
-                                                   type="checkbox"
-                                                   value="{{ $type->id }}"
-                                                   id="type-{{ $type->id }}"
-                                                   checked
-                                                   data-color="{{ $type->couleur ?? '#3B82F6' }}">
-                                            <label class="form-check-label" for="type-{{ $type->id }}">
-                                                <span class="badge" style="background-color: {{ $type->couleur ?? '#3B82F6' }}; color: white; padding: 2px 8px;">
-                                                    {{ $type->libelle }}
-                                                </span>
-                                            </label>
-                                        </div>
-                                    </div>
-                                    @endforeach
-                                    <div class="dropdown-divider"></div>
-                                    <div class="dropdown-header">Filtrer par statut</div>
-                                    <div class="dropdown-item">
-                                        <div class="form-check">
-                                            <input class="form-check-input status-filter"
-                                                   type="checkbox"
-                                                   value="approuve"
-                                                   id="status-approuve"
-                                                   checked>
-                                            <label class="form-check-label" for="status-approuve">
-                                                <span class="badge badge-success">Approuvés</span>
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <div class="dropdown-item">
-                                        <div class="form-check">
-                                            <input class="form-check-input status-filter"
-                                                   type="checkbox"
-                                                   value="en_attente"
-                                                   id="status-en_attente">
-                                            <label class="form-check-label" for="status-en_attente">
-                                                <span class="badge badge-warning">En attente</span>
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <div class="dropdown-divider"></div>
-                                    <button class="dropdown-item" type="button" id="reset-filters">
-                                        <i class="fas fa-redo"></i> Réinitialiser les filtres
-                                    </button>
-                                </div>
-                            </div>
                         </div>
                     </div>
 

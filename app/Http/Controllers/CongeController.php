@@ -104,14 +104,10 @@ class CongeController extends Controller
         }
 
         // Récupérer tous les utilisateurs (seulement pour les admins)
-        $users = collect(); // Collection vide par défaut
-
-        if ($user->hasRole('admin')) {
-            $users = User::select('id', 'nom', 'prenom', 'email')
-                ->orderBy('nom')
-                ->orderBy('prenom')
-                ->get();
-        }
+        $users = User::select('id', 'nom', 'prenom', 'email')
+            ->orderBy('nom')
+            ->orderBy('prenom')
+            ->get();
 
         return view('pages.conges.create', compact('typesConges', 'solde', 'users'));
     }
@@ -133,6 +129,7 @@ class CongeController extends Controller
                 'date_debut' => 'required|date|after_or_equal:today',
                 'date_fin' => 'required|date|after_or_equal:date_debut',
                 'motif' => 'required|string|max:1000',
+                'superieur_hierarchique_id' => 'required|exists:users,id',
             ]);
 
             // Calculer le nombre de jours ouvrés
@@ -176,6 +173,7 @@ class CongeController extends Controller
                 'nombre_jours' => $nombreJours,
                 'motif' => $request->motif,
                 'statut' => 'en_attente',
+                'superieur_hierarchique_id' => $request->superieur_hierarchique_id,
             ]);
 
             // Historique
@@ -204,9 +202,9 @@ class CongeController extends Controller
             // -----------------------------
             // 6. Envoi du mail
             // -----------------------------
-            $destinataire = 'adisiroko@gmail.com'; // Remplace par l'email réel du manager
+            $superieur = User::findOrFail($request->superieur_hierarchique_id); //Le supeieur hierachique manager
 
-            Mail::to($destinataire)->send(new LeaveRequestMail($demande, $pdfPath));
+            Mail::to($superieur->email)->send(new LeaveRequestMail($demande, $pdfPath));
 
             DB::commit();
 
@@ -295,7 +293,13 @@ class CongeController extends Controller
 
         $typesConges = TypeConge::where('actif', true)->get();
 
-        return view('pages.conges.edit', compact('demande', 'typesConges'));
+        // Récupérer tous les utilisateurs
+        $users = User::select('id', 'nom', 'prenom', 'email')
+            ->orderBy('nom')
+            ->orderBy('prenom')
+            ->get();
+
+        return view('pages.conges.edit', compact('demande', 'typesConges', 'users'));
     }
 
     /**
@@ -326,6 +330,7 @@ class CongeController extends Controller
                 'date_debut' => 'required|date|after_or_equal:today',
                 'date_fin' => 'required|date|after_or_equal:date_debut',
                 'motif' => 'required|string|max:1000',
+                'superieur_hierarchique_id' => 'required|exists:users,id',
             ]);
 
             // Récupérer le type de congé
@@ -383,6 +388,7 @@ class CongeController extends Controller
                 'date_fin' => $request->date_fin,
                 'nombre_jours' => $nombreJours,
                 'motif' => $request->motif,
+                'superieur_hierarchique_id' => $request->superieur_hierarchique_id,
             ]);
 
             // Historique
