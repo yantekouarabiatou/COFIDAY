@@ -810,7 +810,7 @@ class CongeController extends Controller
         // Si pas de solde pour l'année courante, en créer un
         if (!$soldeCourant) {
             $regles = RegleConge::first();
-            $joursAcquis = $regles ? $regles->jours_par_mois * 12 : 25;
+            $joursAcquis = $regles ? $regles->jours_par_mois * 12 : 24;
 
             $soldeCourant = SoldeConge::create([
                 'user_id' => $user->id,
@@ -876,7 +876,7 @@ class CongeController extends Controller
     private function creerSoldeInitial(int $userId, int $annee): SoldeConge
     {
         $regles = RegleConge::first();
-        $joursAcquis = $regles ? $regles->jours_par_mois * 12 : 25;
+        $joursAcquis = $regles ? $regles->jours_par_mois * 12 : 24;
 
         return SoldeConge::create([
             'user_id' => $userId,
