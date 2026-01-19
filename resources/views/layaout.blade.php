@@ -382,7 +382,7 @@
         @endcan
 
         {{-- Dossiers --}}
-        @can(['voir les dossiers', 'créer des dossiers'])
+        @can('voir les dossiers')
             <li class="dropdown {{ request()->routeIs('dossiers.*') || request()->routeIs('missions.*') ? 'active' : '' }}">
                 <a href="#" class="menu-toggle nav-link has-dropdown {{ request()->routeIs('dossiers.*') || request()->routeIs('missions.*') ? 'active' : '' }}">
                     <i class="fas fa-folder-open"></i><span>Dossiers</span>

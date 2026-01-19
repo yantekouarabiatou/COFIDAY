@@ -115,6 +115,23 @@ class RolePermissionSeeder extends Seeder
             ['name' => 'voir les notifications', 'group' => 'notifications'],
             ['name' => 'marquer les notifications comme lues', 'group' => 'notifications'],
             ['name' => 'gérer les notifications', 'group' => 'notifications'],
+
+            // ================= RAPPORTS & ANALYSES =================
+            ['name' => 'voir les rapports mensuels', 'group' => 'rapports'],
+            ['name' => 'générer des rapports', 'group' => 'rapports'],
+            ['name' => 'exporter les rapports', 'group' => 'rapports'],
+            ['name' => 'analyser les performances', 'group' => 'rapports'],
+
+            // ================= MISSIONS & ANALYSES =================
+            ['name' => 'analyser les missions', 'group' => 'missions'],
+            ['name' => 'voir les analyses par mission', 'group' => 'missions'],
+            ['name' => 'exporter les analyses', 'group' => 'missions'],
+
+            // ================= TEMPS - RAPPORTS AVANCÉS =================
+            ['name' => 'voir les rapports détaillés temps', 'group' => 'temps_rapports'],
+            ['name' => 'voir les synthèses mensuelles', 'group' => 'temps_rapports'],
+            ['name' => 'voir les répartitions par dossier', 'group' => 'temps_rapports'],
+            ['name' => 'voir les temps par collaborateur', 'group' => 'temps_rapports'],
         ];
 
         // Création / Mise à jour des permissions
@@ -168,6 +185,12 @@ class RolePermissionSeeder extends Seeder
             'valider les feuilles de temps',
             'refuser les feuilles de temps',
 
+            // Rapports temps
+            'voir les rapports détaillés temps',
+            'voir les synthèses mensuelles',
+            'voir les répartitions par dossier',
+            'voir les temps par collaborateur',
+
             // Notifications
             'voir les notifications',
             'marquer les notifications comme lues',
@@ -176,6 +199,11 @@ class RolePermissionSeeder extends Seeder
             // Statistiques
             'voir les statistiques',
             'voir les statistiques générales',
+
+            // Rapports
+            'voir les rapports mensuels',
+            'générer des rapports',
+            'exporter les rapports',
         ]);
 
         // MANAGER / Responsable
@@ -187,6 +215,12 @@ class RolePermissionSeeder extends Seeder
             'valider les feuilles de temps',
             'refuser les feuilles de temps',
             'voir les rapports mensuels temps',
+
+            // Rapports temps
+            'voir les rapports détaillés temps',
+            'voir les synthèses mensuelles',
+            'voir les répartitions par dossier',
+            'voir les temps par collaborateur',
 
             // Congés
             'voir les demandes de congés',
@@ -200,17 +234,25 @@ class RolePermissionSeeder extends Seeder
             'exporter les temps en excel',
             'exporter les temps en pdf',
 
+            // Missions & Analyses
+            'analyser les missions',
+            'voir les analyses par mission',
+
             // Notifications
             'voir les notifications',
             'marquer les notifications comme lues',
 
             // Statistiques
             'voir les statistiques',
+
+            // Rapports
+            'voir les rapports mensuels',
+            'générer des rapports',
         ]);
 
         // EMPLOYÉ / UTILISATEUR STANDARD
-        $employe = Role::firstOrCreate(['name' => 'employe']);
-        $employe->syncPermissions([
+        $collaborateur = Role::firstOrCreate(['name' => 'collaborateur']);
+        $collaborateur->syncPermissions([
             // Temps
             'voir les entrées journalières',
             'créer des entrées journalières',
@@ -231,6 +273,10 @@ class RolePermissionSeeder extends Seeder
 
             // Dashboard utilisateur
             'accéder au tableau de bord utilisateur',
+
+            // Rapports personnels
+            'voir les rapports mensuels', // Pour voir leurs propres rapports
+            'voir les synthèses mensuelles', // Pour voir leurs synthèses
         ]);
 
         // DIRECTEUR GÉNÉRAL
@@ -239,6 +285,12 @@ class RolePermissionSeeder extends Seeder
             // Temps
             'voir tous les temps',
             'voir les rapports mensuels temps',
+
+            // Rapports temps avancés
+            'voir les rapports détaillés temps',
+            'voir les synthèses mensuelles',
+            'voir les répartitions par dossier',
+            'voir les temps par collaborateur',
 
             // Congés
             'voir toutes les demandes de congés',
@@ -261,6 +313,17 @@ class RolePermissionSeeder extends Seeder
             'voir les statistiques',
             'voir les statistiques générales',
 
+            // Missions & Analyses
+            'analyser les missions',
+            'voir les analyses par mission',
+            'exporter les analyses',
+
+            // Rapports
+            'voir les rapports mensuels',
+            'générer des rapports',
+            'exporter les rapports',
+            'analyser les performances',
+
             // Notifications
             'voir les notifications',
             'marquer les notifications comme lues',
@@ -272,12 +335,24 @@ class RolePermissionSeeder extends Seeder
             'voir les dossiers',
             'voir tous les temps',
             'voir les rapports mensuels temps',
+
+            // Rapports temps
+            'voir les rapports détaillés temps',
+            'voir les synthèses mensuelles',
+            'voir les répartitions par dossier',
+            'voir les temps par collaborateur',
+
             'exporter les temps en excel',
             'exporter les temps en pdf',
             'voir les statistiques',
             'voir les statistiques générales',
             'voir les notifications',
             'marquer les notifications comme lues',
+
+            // Rapports
+            'voir les rapports mensuels',
+            'générer des rapports',
+            'exporter les rapports',
         ]);
 
         // RESPONSABLE CONFORMITÉ
@@ -286,10 +361,56 @@ class RolePermissionSeeder extends Seeder
             'voir les dossiers',
             'voir tous les temps',
             'voir les rapports mensuels temps',
+
+            // Rapports temps
+            'voir les rapports détaillés temps',
+            'voir les synthèses mensuelles',
+            'voir les répartitions par dossier',
+            'voir les temps par collaborateur',
+
             'voir les statistiques',
             'voir les statistiques générales',
             'exporter les temps en excel',
             'exporter les temps en pdf',
+            'voir les notifications',
+            'marquer les notifications comme lues',
+
+            // Rapports
+            'voir les rapports mensuels',
+            'générer des rapports',
+            'exporter les rapports',
+        ]);
+
+        // CONTROLEUR DE GESTION
+        $controleurGestion = Role::firstOrCreate(['name' => 'controleur-gestion']);
+        $controleurGestion->syncPermissions([
+            // Temps et rapports
+            'voir tous les temps',
+            'voir les rapports mensuels temps',
+            'voir les rapports détaillés temps',
+            'voir les synthèses mensuelles',
+            'voir les répartitions par dossier',
+            'voir les temps par collaborateur',
+
+            // Statistiques
+            'voir les statistiques',
+            'voir les statistiques générales',
+
+            // Exports
+            'exporter les temps en excel',
+            'exporter les temps en pdf',
+
+            // Missions & Analyses
+            'analyser les missions',
+            'voir les analyses par mission',
+
+            // Rapports
+            'voir les rapports mensuels',
+            'générer des rapports',
+            'exporter les rapports',
+            'analyser les performances',
+
+            // Notifications
             'voir les notifications',
             'marquer les notifications comme lues',
         ]);

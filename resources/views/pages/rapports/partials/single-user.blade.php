@@ -7,7 +7,7 @@ use App\Helpers\UserHelper;
         <div class="d-flex justify-content-between align-items-center">
             <div>
                 <h5 class="mb-1 font-weight-bold">
-                    <i class="fas fa-user-circle mr-2"></i>{{ $user->prenom ?? $user->nom . ' ' . $user->prenom }}
+                    <i class="fas fa-user-circle mr-2"></i>{{ $user->nom . ' ' . $user->prenom ?? $user->prenom }}
                 </h5>
                 <small class="text-white-50">
                     @if($entries->count() > 0)

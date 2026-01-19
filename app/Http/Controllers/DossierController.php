@@ -7,25 +7,32 @@ use App\Models\Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use App\DataTables\DossiersDataTable;
+use App\Models\User;
 use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+
 class DossierController extends Controller
 {
     public function index(DossiersDataTable $dataTable)
     {
-        // Utilise les scopes du modèle → tout en SQL, rapide et sans erreur
-        $totalDossiers      = Dossier::count();
+        // Récupérer les dossiers accessibles
+        $user = auth()->user();
 
-        $dossiersEnCours    = Dossier::enCours()->count();           // ouvert + en_cours
+        if ($user->hasRole(['admin', 'super-admin', 'rh', 'manager', 'directeur-general'])) {
+            $totalDossiers = Dossier::count();
+            $dossiersEnCours = Dossier::enCours()->count();
+            $dossiersEnRetard = Dossier::enRetard()->count();
+            $dossiersClotures = Dossier::cloture()->count();
+        } else {
+            $accessibleDossiers = $user->accessibleDossiers();
 
-        $dossiersEnRetard   = Dossier::enRetard()->count();         // ton scope parfait !
-
-        $dossiersClotures   = Dossier::cloture()->count();          // statut = 'cloture'
-
-        // Si tu veux aussi les archivés séparément (optionnel)
-        // $dossiersArchives = Dossier::where('statut', 'archive')->count();
+            $totalDossiers = $accessibleDossiers->count();
+            $dossiersEnCours = $accessibleDossiers->enCours()->count();
+            $dossiersEnRetard = $accessibleDossiers->enRetard()->count();
+            $dossiersClotures = $accessibleDossiers->cloture()->count();
+        }
 
         return $dataTable->render('pages.dossiers.index', compact(
             'totalDossiers',
@@ -37,7 +44,9 @@ class DossierController extends Controller
     public function create()
     {
         $clients = Client::whereIn('statut', ['actif', 'prospect'])->get();
-        return view('pages.dossiers.create', compact('clients'));
+        $collaborateurs = User::where('id', '!=', auth()->id())->get();
+
+        return view('pages.dossiers.create', compact('clients', 'collaborateurs'));
     }
 
     public function store(Request $request)
@@ -54,61 +63,100 @@ class DossierController extends Controller
             'date_cloture_reelle' => 'nullable|date|after_or_equal:date_ouverture',
             'budget' => 'nullable|numeric|min:0',
             'frais_dossier' => 'nullable|numeric|min:0',
-
             'heure_theorique_sans_weekend' => 'nullable|numeric|min:0',
             'heure_theorique_avec_weekend' => 'nullable|numeric|min:0',
-
             'document' => 'nullable|file|max:5120|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png',
             'notes' => 'nullable|string',
+            'collaborateurs' => 'nullable|array',
+            'collaborateurs.*' => 'exists:users,id',
         ]);
 
-        // Gestion du document
-        if ($request->hasFile('document')) {
-            $validated['document'] = $request->file('document')
-                ->store('dossiers/documents', 'public');
+        DB::beginTransaction();
+
+        try {
+            // Gestion du document
+            if ($request->hasFile('document')) {
+                $validated['document'] = $request->file('document')
+                    ->store('dossiers/documents', 'public');
+            }
+
+            // Ajouter le créateur
+            $validated['created_by'] = auth()->id();
+
+            $dossier = Dossier::create($validated);
+
+            // Ajouter les collaborateurs
+            if ($request->has('collaborateurs')) {
+                foreach ($request->collaborateurs as $collaborateurId) {
+                    $dossier->addCollaborateur($collaborateurId);
+                }
+            }
+
+            DB::commit();
+
+            Alert::success('Succès', 'Dossier créé avec succès.');
+            return redirect()->route('dossiers.show', $dossier);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Alert::error('Erreur', 'Une erreur est survenue lors de la création du dossier.');
+            return back()->withInput();
         }
-
-        $dossier = Dossier::create($validated);
-
-        // 3. SweetAlert succès
-        Alert::success('Succès', 'Dossier créé avec succès.');
-        return redirect()->route('dossiers.show', $dossier);
     }
-
 
     public function show(Dossier $dossier)
     {
-        return view('pages.dossiers.show', compact('dossier'));
+        // Vérifier l'accès
+        if (!$dossier->userCanAccess(auth()->id())) {
+            abort(403, 'Vous n\'avez pas accès à ce dossier.');
+        }
+
+        $collaborateurs = User::where('id', '!=', auth()->id())->get();
+        return view('pages.dossiers.show', compact('dossier', 'collaborateurs'));
     }
 
     public function edit(Dossier $dossier)
     {
+        // Vérifier l'accès
+        if (!$dossier->userCanAccess(auth()->id())) {
+            abort(403, 'Vous n\'avez pas accès à ce dossier.');
+        }
+
         $clients = Client::whereIn('statut', ['actif', 'prospect'])->get();
-        return view('pages.dossiers.edit', compact('dossier', 'clients'));
+        $collaborateurs = User::where('id', '!=', auth()->id())->get();
+
+        return view('pages.dossiers.edit', compact('dossier', 'clients', 'collaborateurs'));
     }
 
     public function update(Request $request, Dossier $dossier)
     {
+        // Vérifier l'accès
+        if (!$dossier->userCanAccess(auth()->id())) {
+            abort(403, 'Vous n\'avez pas accès à ce dossier.');
+        }
+
+        $validated = $request->validate([
+            'client_id' => 'required|exists:clients,id',
+            'nom' => 'required|string|max:255',
+            'reference' => 'required|string|max:50|unique:dossiers,reference,' . $dossier->id,
+            'type_dossier' => 'required|in:audit,conseil,formation,expertise,autre',
+            'statut' => 'required|in:ouvert,en_cours,suspendu,cloture,archive',
+            'description' => 'nullable|string',
+            'date_ouverture' => 'required|date',
+            'date_cloture_prevue' => 'nullable|date|after_or_equal:date_ouverture',
+            'date_cloture_reelle' => 'nullable|date|after_or_equal:date_ouverture',
+            'budget' => 'nullable|numeric|min:0',
+            'frais_dossier' => 'nullable|numeric|min:0',
+            'heure_theorique_sans_weekend' => 'nullable|numeric|min:0',
+            'heure_theorique_avec_weekend' => 'nullable|numeric|min:0',
+            'document' => 'nullable|file|max:5120|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png',
+            'notes' => 'nullable|string',
+            'collaborateurs' => 'nullable|array',
+            'collaborateurs.*' => 'exists:users,id',
+        ]);
+
         DB::beginTransaction();
 
         try {
-            $validated = $request->validate([
-                'client_id' => 'required|exists:clients,id',
-                'nom' => 'required|string|max:255',
-                'reference' => 'required|string|max:50|unique:dossiers,reference,' . $dossier->id,
-                'type_dossier' => 'required|in:audit,conseil,formation,expertise,autre',
-                'statut' => 'required|in:ouvert,en_cours,suspendu,cloture,archive',
-                'description' => 'nullable|string',
-                'date_ouverture' => 'required|date',
-                'date_cloture_prevue' => 'nullable|date|after_or_equal:date_ouverture',
-                'date_cloture_reelle' => 'nullable|date|after_or_equal:date_ouverture',
-                'budget' => 'nullable|numeric|min:0',
-                'frais_dossier' => 'nullable|numeric|min:0',
-                'heure_theorique_sans_weekend' => 'nullable|numeric|min:0',
-                'heure_theorique_avec_weekend' => 'nullable|numeric|min:0',
-                'document' => 'nullable|file|max:5120|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png',
-                'notes' => 'nullable|string',
-            ]);
 
             // Si les heures ne sont pas fournies manuellement, les calculer automatiquement
             if (
@@ -164,30 +212,85 @@ class DossierController extends Controller
                     'dossier_id' => $dossier->id,
                     'file_name' => $fileName
                 ]);
-            } else {
-                // Conserver le document existant si aucun nouveau n'est fourni
-                $validated['document'] = $dossier->document;
             }
+            // Gestion des collaborateurs
+            if ($request->has('collaborateurs')) {
+                $currentCollaborateurs = $dossier->collaborateurs->pluck('id')->toArray();
+                $newCollaborateurs = $request->collaborateurs;
 
-            // Mettre à jour le dossier
-            $dossier->update($validated);
+                // Supprimer les collaborateurs retirés
+                $toRemove = array_diff($currentCollaborateurs, $newCollaborateurs);
+                foreach ($toRemove as $userId) {
+                    $dossier->removeCollaborateur($userId);
+                }
+
+                // Ajouter les nouveaux collaborateurs
+                $toAdd = array_diff($newCollaborateurs, $currentCollaborateurs);
+                foreach ($toAdd as $userId) {
+                    $dossier->addCollaborateur($userId);
+                }
+            } else {
+                // Si aucun collaborateur n'est sélectionné, supprimer tous sauf le créateur
+                foreach ($dossier->collaborateurs as $collaborateur) {
+                    if ($collaborateur->id != $dossier->created_by) {
+                        $dossier->removeCollaborateur($collaborateur->id);
+                    }
+                }
+            }
 
             DB::commit();
 
             return redirect()->route('dossiers.show', $dossier)
                 ->with('success', 'Dossier mis à jour avec succès.');
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            DB::rollBack();
-            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur lors de la mise à jour du dossier', [
-                'dossier_id' => $dossier->id,
-                'error' => $e->getMessage()
-            ]);
-
             return back()->withInput()
                 ->with('error', 'Une erreur est survenue lors de la mise à jour du dossier.');
+        }
+    }
+
+    // Ajouter une méthode pour gérer les collaborateurs
+    public function gestionCollaborateurs(Request $request, Dossier $dossier)
+    {
+        // Vérifier l'accès
+        if (!$dossier->userCanAccess(auth()->id())) {
+            abort(403, 'Vous n\'avez pas accès à ce dossier.');
+        }
+
+        $request->validate([
+            'collaborateur_id' => 'required|exists:users,id',
+            'action' => 'required|in:add,remove,update_role',
+            'role' => 'nullable|string|max:50',
+        ]);
+
+        try {
+            switch ($request->action) {
+                case 'add':
+                    $dossier->addCollaborateur($request->collaborateur_id, $request->role ?? 'collaborateur');
+                    $message = 'Collaborateur ajouté avec succès.';
+                    break;
+
+                case 'remove':
+                    $dossier->removeCollaborateur($request->collaborateur_id);
+                    $message = 'Collaborateur retiré avec succès.';
+                    break;
+
+                case 'update_role':
+                    $dossier->updateCollaborateurRole($request->collaborateur_id, $request->role);
+                    $message = 'Rôle du collaborateur mis à jour.';
+                    break;
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'collaborateurs' => $dossier->collaborateurs
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Une erreur est survenue.'
+            ], 500);
         }
     }
 

@@ -21,13 +21,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot()
     {
 
-        Gate::define('voir toutes les demandes de congés', function (User $user) {
-            return $user->hasAnyRole(['admin', 'rh', 'directeur-general', 'manager']);
-        });
 
-        Gate::define('approuver les demandes de congés', function (User $user) {
-            return $user->hasAnyRole(['admin', 'rh', 'directeur-general', 'manager']);
-        });
         // Configuration des SweetAlert
         $this->configureSweetAlert();
 
@@ -103,13 +97,14 @@ class AppServiceProvider extends ServiceProvider
                 Client::class,        // Clients
                 DemandeConge::class,  // Demandes de congés
                 SoldeConge::class,    // Soldes de congés
-                User::class,          // Utilisateurs
+                \App\Models\User::class,          // Utilisateurs
             ];
 
             foreach ($models as $modelClass) {
                 $modelClass::observe(UniversalModelObserver::class);
                 Log::info("UniversalModelObserver enregistré pour {$modelClass}");
             }
+
         } catch (\Exception $e) {
             Log::error('Erreur lors de l\'enregistrement des observateurs', [
                 'message' => $e->getMessage(),

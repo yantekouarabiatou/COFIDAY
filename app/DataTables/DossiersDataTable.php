@@ -34,9 +34,22 @@ class DossiersDataTable extends DataTable
     /**
      * Get the query source of dataTable.
      */
-    public function query(Dossier $model)
+     public function query(Dossier $model)
     {
-        return $model->with('client')->newQuery();
+        $user = auth()->user();
+
+        if ($user->hasRole(['admin', 'super-admin', 'rh', 'manager', 'directeur-general'])) {
+            return $model->newQuery()->with('client');
+        } else {
+            return $model->newQuery()
+                ->where(function($q) use ($user) {
+                    $q->where('created_by', $user->id)
+                      ->orWhereHas('collaborateurs', function($subq) use ($user) {
+                          $subq->where('user_id', $user->id)->where('is_active', true);
+                      });
+                })
+                ->with('client');
+        }
     }
 
     /**

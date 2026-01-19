@@ -58,5 +58,5 @@ class Conge extends Model
     {
         return Carbon::parse($this->date_fin)->format('d/m/Y');
     }
-   
+
 }

@@ -77,15 +77,8 @@ class DailyEntryController extends Controller
         ));
     }
 
-    /**
-     * Afficher le formulaire de création
-     */
-    /**
-     * Afficher le formulaire de création
-     */
     public function create()
     {
-        // Récupérer l'utilisateur connecté
         $currentUser = Auth::user();
 
         // Vérifier s'il existe déjà une entrée pour aujourd'hui
@@ -94,24 +87,43 @@ class DailyEntryController extends Controller
             ->first();
 
         if ($todayEntry) {
-            // Rediriger vers l'édition si une entrée existe déjà pour aujourd'hui
             return redirect()
                 ->route('daily-entries.edit', $todayEntry)
-                ->with('info', 'Vous avez déjà une feuille de temps pour aujourd\'hui. Vous pouvez la modifier.');
+                ->with('info', 'Vous avez déjà une feuille de temps pour aujourd\'hui.');
         }
 
-        // Récupérer les dossiers actifs
-        $dossiers = Dossier::with('client')
-            ->whereIn('statut', ['ouvert', 'en_cours'])
-            ->orderBy('nom')
-            ->get();
+        // Récupérer les dossiers accessibles par l'utilisateur
+        if ($currentUser->hasRole(['admin', 'super-admin', 'manager', 'directeur-general'])) {
+            // Admins voient tous les dossiers actifs
+            $dossiers = Dossier::with('client')
+                ->whereIn('statut', ['ouvert', 'en_cours'])
+                ->orderBy('nom')
+                ->get();
+        } else {
+            // Collaborateurs ne voient que les dossiers qui leur sont associés
+            // Utiliser whereHas avec une closure plus précise
+            $dossiers = Dossier::with(['client', 'collaborateurs' => function ($query) use ($currentUser) {
+                $query->where('users.id', $currentUser->id);
+            }])
+                ->whereIn('statut', ['ouvert', 'en_cours'])
+                ->where(function ($query) use ($currentUser) {
+                    $query->where('created_by', $currentUser->id)
+                        ->orWhereHas('collaborateurs', function ($q) use ($currentUser) {
+                            // Utiliser l'accès au pivot
+                            $q->where('users.id', $currentUser->id)
+                                ->where('collaborateur_dossier.is_active', 1);
+                        });
+                })
+                ->orderBy('nom')
+                ->get();
+        }
 
-        // Récupérer les clients actifs pour le modal de création de dossier
+        // Récupérer les clients actifs
         $clients = Client::whereIn('statut', ['actif', 'prospect'])
             ->orderBy('nom')
             ->get();
 
-        // Pour la sélection des collaborateurs (si admin peut saisir pour d'autres)
+        // Pour la sélection des collaborateurs
         $users = User::where('is_active', 'actif')
             ->orderBy('prenom')
             ->get();
@@ -123,12 +135,7 @@ class DailyEntryController extends Controller
             'users'
         ));
     }
-    /**
-     * Enregistrer une nouvelle feuille de temps
-     */
-    /**
-     * Enregistrer une nouvelle feuille de temps
-     */
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -213,13 +220,34 @@ class DailyEntryController extends Controller
      */
     public function edit(DailyEntry $dailyEntry)
     {
+        // Vérifier que l'utilisateur peut éditer cette entrée
+        if (!$dailyEntry->userCanAccess(auth()->id())) {
+            abort(403, 'Accès non autorisé.');
+        }
+
         $dailyEntry->load('timeEntries');
 
         $currentUser = Auth::user();
-        $dossiers = Dossier::with('client')
-            ->whereIn('statut', ['ouvert', 'en_cours'])
-            ->orderBy('nom')
-            ->get();
+
+        // Même logique pour filtrer les dossiers
+        if ($currentUser->hasRole(['admin', 'super-admin', 'rh', 'manager', 'directeur-general'])) {
+            $dossiers = Dossier::with('client')
+                ->whereIn('statut', ['ouvert', 'en_cours'])
+                ->orderBy('nom')
+                ->get();
+        } else {
+            $dossiers = Dossier::with('client')
+                ->whereIn('statut', ['ouvert', 'en_cours'])
+                ->where(function ($query) use ($currentUser) {
+                    $query->where('created_by', $currentUser->id)
+                        ->orWhereHas('collaborateurs', function ($q) use ($currentUser) {
+                            $q->where('user_id', $currentUser->id)
+                                ->where('is_active', true);
+                        });
+                })
+                ->orderBy('nom')
+                ->get();
+        }
 
         $clients = Client::whereIn('statut', ['actif', 'prospect'])
             ->orderBy('nom')
@@ -555,7 +583,7 @@ class DailyEntryController extends Controller
         $filename = "feuille-temps-{$dateFile}.pdf";
 
         $pdf = Pdf::loadView('pages.daily-entries.export.pdf1', [
-            'entry' => $dailyEntry,  
+            'entry' => $dailyEntry,
             'logoBase64' => $logoBase64,
             'companySetting' => $companySetting,
         ])->setPaper('a4', 'portrait');
