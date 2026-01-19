@@ -14,7 +14,7 @@ class ReglesCongesSeeder extends Seeder
 
         if ($reglesExistantes === 0) {
             RegleConge::create([
-                'jours_par_mois' => 2.5,
+                'jours_par_mois' => 2,
                 'report_autorise' => true,
                 'limite_report' => 10,
                 'validation_multiple' => false,

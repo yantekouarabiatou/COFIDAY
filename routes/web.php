@@ -273,10 +273,35 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/utilisateur/{user}/dossier/{dossier}', [MissionAnalyseController::class, 'vueUtilisateur'])->name('missions.utilisateur.dossier');
     });
 
-    Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
-        Route::get('/regles-conges', [RegleCongeController::class, 'edit'])->name('regles-conges.edit');
-        Route::put('/regles-conges', [RegleCongeController::class, 'update'])->name('regles-conges.update');
-        Route::get('/api/regles-conges/jours-acquis', [RegleCongeController::class, 'getJoursAcquis']);
+    Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
+
+        // ================= RÈGLES DE CONGÉS =================
+
+        Route::get('regles-conges', [RegleCongeController::class, 'index'])
+            ->name('regles-conges.index');
+
+        Route::get('regles-conges/create', [RegleCongeController::class, 'create'])
+            ->name('regles-conges.create');
+
+        Route::post('regles-conges', [RegleCongeController::class, 'store'])
+            ->name('regles-conges.store');
+
+        Route::get('regles-conges/{regle}', [RegleCongeController::class, 'show'])
+            ->name('regles-conges.show');
+
+        Route::get('regles-conges/{regle}/edit', [RegleCongeController::class, 'edit'])
+            ->name('regles-conges.edit');
+
+        Route::put('regles-conges/{regle}', [RegleCongeController::class, 'update'])
+            ->name('regles-conges.update');
+
+        Route::delete('regles-conges/{regle}', [RegleCongeController::class, 'destroy'])
+            ->name('regles-conges.destroy');
+
+        // ================= API =================
+
+        Route::get('api/regles-conges/jours-acquis', [RegleCongeController::class, 'getJoursAcquis'])
+            ->name('regles-conges.jours-acquis');
     });
 
     Route::middleware(['auth'])->group(function () {
