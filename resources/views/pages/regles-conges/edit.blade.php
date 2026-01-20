@@ -85,20 +85,26 @@
                             <div class="mb-3">
                                 <label>Jours fériés</label>
                                 <div id="jours-feries-container">
-                                    @foreach($regles->jours_feries_array as $i => $jour)
                                     @php
-                                        [$mm, $dd] = explode('-', $jour['date']);
+                                        // Décoder les jours fériés JSON
+                                        $joursFeries = is_array($regles->jours_feries) 
+                                            ? $regles->jours_feries 
+                                            : json_decode($regles->jours_feries ?? '[]', true);
+                                        $joursFeries = is_array($joursFeries) ? $joursFeries : [];
                                     @endphp
+                                    
+                                    @foreach($joursFeries as $i => $jour)
                                         <div class="border p-2 mb-2 jours-item">
                                             <div class="row g-2 align-items-center">
                                                 <div class="col">
                                                     <input type="text" name="jours_feries[{{ $i }}][nom]" 
-                                                           class="form-control " placeholder="Nom" 
+                                                           class="form-control" placeholder="Nom" 
                                                            value="{{ $jour['nom'] ?? '' }}" required>
                                                 </div>
-                                                <div class="col input-group mb-2 jours-feries-item">
+                                                <div class="col">
                                                     <input type="text" name="jours_feries[{{ $i }}][date]"
-                                                           class="form-control jour-ferie" value="{{ $dd }}-{{ $mm }}" 
+                                                           class="form-control jour-ferie" 
+                                                           value="{{ isset($jour['date']) ? date('d-m', strtotime($jour['date'])) : '' }}" 
                                                            placeholder="JJ-MM" pattern="^\d{2}-\d{2}$" required>
                                                 </div>
                                                 <div class="col-auto">
@@ -122,7 +128,15 @@
                             <div class="mb-3">
                                 <label>Périodes bloquées</label>
                                 <div id="periodes-bloquees-container">
-                                    @foreach($regles->periodes_bloquees_array as $i => $periode)
+                                    @php
+                                        // Décoder les périodes bloquées JSON
+                                        $periodesBloquees = is_array($regles->periodes_bloquees) 
+                                            ? $regles->periodes_bloquees 
+                                            : json_decode($regles->periodes_bloquees ?? '[]', true);
+                                        $periodesBloquees = is_array($periodesBloquees) ? $periodesBloquees : [];
+                                    @endphp
+                                    
+                                    @foreach($periodesBloquees as $i => $periode)
                                         <div class="border p-2 mb-2 periodes-item">
                                             <div class="row g-2 align-items-center">
                                                 <div class="col">
@@ -133,12 +147,12 @@
                                                 <div class="col">
                                                     <input type="date" name="periodes_bloquees[{{ $i }}][debut]" 
                                                            class="form-control" placeholder="Début" 
-                                                           value="{{ $periode['debut'] ?? '' }}" required>
+                                                           value="{{ isset($periode['debut']) ? date('Y-m-d', strtotime($periode['debut'])) : '' }}" required>
                                                 </div>
                                                 <div class="col">
                                                     <input type="date" name="periodes_bloquees[{{ $i }}][fin]" 
                                                            class="form-control" placeholder="Fin" 
-                                                           value="{{ $periode['fin'] ?? '' }}" required>
+                                                           value="{{ isset($periode['fin']) ? date('Y-m-d', strtotime($periode['fin'])) : '' }}" required>
                                                 </div>
                                                 <div class="col">
                                                     <input type="text" name="periodes_bloquees[{{ $i }}][raison]" 
@@ -208,22 +222,29 @@ $(document).ready(function() {
     $('.select2').select2({ placeholder: 'Sélectionner...', allowClear: true });
 
     // Ajouter jour férié
+    let jourIndex = {{ count($joursFeries) }};
     $('#add-jour').on('click', function() {
         $('#jours-feries-container').append(`
-            <div class="input-group mb-2 jours-feries-item">
-                <input
-                    type="text"
-                    name="jours_feries[]"
-                    class="form-control jour-ferie"
-                    placeholder="JJ-MM"
-                    pattern="^\\d{2}-\\d{2}$"
-                    required
-                >
-                <button class="btn btn-danger remove-jour" type="button">
-                    <i class="fas fa-trash"></i>
-                </button>
+            <div class="border p-2 mb-2 jours-item">
+                <div class="row g-2 align-items-center">
+                    <div class="col">
+                        <input type="text" name="jours_feries[${jourIndex}][nom]" 
+                               class="form-control" placeholder="Nom" required>
+                    </div>
+                    <div class="col">
+                        <input type="text" name="jours_feries[${jourIndex}][date]"
+                               class="form-control jour-ferie" 
+                               placeholder="JJ-MM" pattern="^\\d{2}-\\d{2}$" required>
+                    </div>
+                    <div class="col-auto">
+                        <button class="btn btn-danger remove-jour" type="button">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
         `);
+        jourIndex++;
     });
 
     // Supprimer jour férié
@@ -232,7 +253,7 @@ $(document).ready(function() {
     });
 
     // Ajouter période bloquée
-    let periodeIndex = {{ count($regles->periodes_bloquees_array) }};
+    let periodeIndex = {{ count($periodesBloquees) }};
     $('#add-periode').on('click', function() {
         $('#periodes-bloquees-container').append(`
             <div class="border p-2 mb-2 periodes-item">
@@ -254,29 +275,28 @@ $(document).ready(function() {
     $(document).on('click', '.remove-periode', function() {
         $(this).closest('.periodes-item').remove();
     });
-});
 
-$('form').on('submit', function () {
-    $('.jour-ferie').each(function () {
-        let value = $(this).val().trim();
-
-        if (!value) return;
-
-        // JJ-MM → MM-DD
-        let parts = value.split('-');
-        if (parts.length === 2) {
-            let jj = parts[0];
-            let mm = parts[1];
-
-            // Sécurité basique
-            if (jj.length === 2 && mm.length === 2) {
-                $(this).val(mm + '-' + jj);
+    // Convertir format date avant soumission
+    $('form').on('submit', function(e) {
+        // Convertir les dates des jours fériés (JJ-MM → YYYY-MM-DD)
+        $('.jour-ferie').each(function() {
+            let value = $(this).val().trim();
+            if (!value) return;
+            
+            let parts = value.split('-');
+            if (parts.length === 2) {
+                let day = parts[0];
+                let month = parts[1];
+                let year = new Date().getFullYear();
+                
+                // Validation basique
+                if (day.length === 2 && month.length === 2) {
+                    $(this).val(year + '-' + month + '-' + day);
+                }
             }
-        }
+        });
     });
 });
-
 </script>
-
 @endpush
 @endsection
