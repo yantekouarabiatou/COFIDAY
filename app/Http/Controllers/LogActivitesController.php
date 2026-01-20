@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\LogActivite;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class LogActivitesController extends Controller
 {
@@ -13,13 +14,12 @@ class LogActivitesController extends Controller
     }
 
     /**
-     * Liste des logs d'activité
+     * Liste des logs d'activité (avec filtres et recherche)
      */
     public function index(Request $request)
     {
-        $user = auth()->user();
+        $user = Auth::user();
 
-        // Requête de base optimisée : on ne sélectionne QUE les colonnes nécessaires
         $query = LogActivite::query()
             ->select([
                 'id',
@@ -31,43 +31,77 @@ class LogActivitesController extends Controller
                 'ip_address',
                 'created_at',
             ])
-            ->with('user:id,prenom,nom') // On charge seulement les champs utiles de l'utilisateur
-            ->latest('created_at'); // ORDER BY created_at DESC
+            ->with('user:id,prenom,nom') // Chargement minimal
+            ->latest('created_at');
 
-        // Restriction selon le rôle
-        if (!$user->hasRole(['super-admin', 'admin'])) {
+        // Restriction stricte selon les rôles
+        if (!$user->hasAnyRole(['super-admin', 'admin'])) {
             $query->where('user_id', $user->id);
         }
 
-        // Pagination optimisée (50 par page)
-        $logs = $query->paginate(50);
+        // Filtres simples (très utiles pour les admins)
+        if ($user->hasAnyRole(['super-admin', 'admin'])) {
+            if ($request->filled('user_id')) {
+                $query->where('user_id', $request->user_id);
+            }
 
-        // Astuce : on garde l'URL propre pour la pagination
-        $logs->appends($request->all());
+            if ($request->filled('action')) {
+                $query->where('action', $request->action);
+            }
+
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->where('description', 'like', "%{$search}%")
+                      ->orWhereHas('user', function ($sub) use ($search) {
+                          $sub->where('prenom', 'like', "%{$search}%")
+                              ->orWhere('nom', 'like', "%{$search}%");
+                      });
+                });
+            }
+        }
+
+        // Pagination + conservation des filtres dans l'URL
+        $logs = $query->paginate(50)->appends($request->query());
 
         return view('pages.logs.index', compact('logs'));
     }
 
     /**
-     * Affichage d'un log détaillé
+     * Affichage détaillé d'un log d'activité
      */
     public function show(LogActivite $log)
     {
-        $user = auth()->user();
+        $user = Auth::user();
 
-        // Sécurité : un utilisateur normal ne voit que ses propres logs
-        if (!$user->hasRole(['super-admin', 'admin']) && $log->user_id !== $user->id) {
+        // Politique d'accès stricte
+        if (!$user->hasAnyRole(['super-admin', 'admin']) && $log->user_id !== $user->id) {
             abort(403, 'Accès refusé.');
         }
 
-        // Chargement intelligent des relations
+        // Chargement intelligent + sécurisé des relations
         $log->loadMissing([
-            'user:id,prenom,nom',
+            'user:id,prenom,nom,email,photo', // Plus d'infos utiles pour l'affichage
             'loggable' => function ($query) {
-                $query->withTrashed(); // Pour voir même les ressources supprimées
+                $query->withTrashed(); // Important pour voir les ressources supprimées
             }
         ]);
 
+        // Optionnel : enrichir avec des données supplémentaires si besoin
+        if ($log->loggable && method_exists($log->loggable, 'getReferenceAttribute')) {
+            $log->reference = $log->loggable->reference;
+        }
+
         return view('pages.logs.show', compact('log'));
     }
+
+    /**
+     * (Optionnel) Marquer tous les logs comme lus (si tu ajoutes un système de "lu")
+     * Peut être utile plus tard
+     */
+    // public function markAllAsRead()
+    // {
+    //     Auth::user()->logs()->update(['read_at' => now()]);
+    //     return back()->with('success', 'Tous les logs marqués comme lus.');
+    // }
 }

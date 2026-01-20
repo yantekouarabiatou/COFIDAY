@@ -156,8 +156,14 @@
                                 {{ $statistiques['derniere_entree']->jour->format('d/m/Y') }}
                             </h4>
                             <p class="mb-1">
-                                <strong>{{ $statistiques['derniere_entree']->heures_reelles }}h</strong>
-                                / {{ $statistiques['derniere_entree']->heures_theoriques }}h
+                                @php
+                                    $heures_reelles_derniere = floor($statistiques['derniere_entree']->heures_reelles);
+                                    $minutes_reelles_derniere = round(($statistiques['derniere_entree']->heures_reelles - $heures_reelles_derniere) * 60);
+                                    $heures_theoriques_derniere = floor($statistiques['derniere_entree']->heures_theoriques);
+                                    $minutes_theoriques_derniere = round(($statistiques['derniere_entree']->heures_theoriques - $heures_theoriques_derniere) * 60);
+                                @endphp
+                                <strong>{{ $heures_reelles_derniere }}h{{ $minutes_reelles_derniere > 0 ? $minutes_reelles_derniere . 'min' : '' }}</strong>
+                                / {{ $heures_theoriques_derniere }}h{{ $minutes_theoriques_derniere > 0 ? $minutes_theoriques_derniere . 'min' : '' }}
                             </p>
                             <span class="badge badge-{{ $statistiques['derniere_entree']->statut == 'validé' ? 'success' : ($statistiques['derniere_entree']->statut == 'soumis' ? 'info' : 'warning') }}">
                                 {{ ucfirst($statistiques['derniere_entree']->statut) }}
@@ -179,8 +185,14 @@
                                 <i class="fas fa-clock"></i>
                             </div>
                             <div class="card-wrap">
+                                @php
+                                    $heures_mois = floor($statistiques['heures_mois_en_cours']);
+                                    $minutes_mois = round(($statistiques['heures_mois_en_cours'] - $heures_mois) * 60);
+                                @endphp
                                 <div class="card-header"><h6>Heures ce mois</h6></div>
-                                <div class="card-body h4">{{ $statistiques['heures_mois_en_cours'] }}h</div>
+                                <div class="card-body">
+                                    <h4>{{ $heures_mois }}h{{ $minutes_mois > 0 ? ' ' . $minutes_mois . 'min' : '' }}</h4>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -207,7 +219,12 @@
                             <div class="card-wrap">
                                 <div class="card-header"><h6>Écart heures</h6></div>
                                 <div class="card-body h4">
-                                    {{ $statistiques['ecart_heures'] > 0 ? '+' : '' }}{{ $statistiques['ecart_heures'] }}h
+                                    @php
+                                        $heures_ecart = floor(abs($statistiques['ecart_heures']));
+                                        $minutes_ecart = round((abs($statistiques['ecart_heures']) - $heures_ecart) * 60);
+                                        $signe_ecart = $statistiques['ecart_heures'] > 0 ? '+' : ($statistiques['ecart_heures'] < 0 ? '-' : '');
+                                    @endphp
+                                    {{ $signe_ecart }}{{ $heures_ecart }}h{{ $minutes_ecart > 0 ? $minutes_ecart . 'min' : '' }}
                                 </div>
                             </div>
                         </div>
@@ -337,13 +354,22 @@
                                             </thead>
                                             <tbody>
                                                 @foreach($user->dailyEntries as $entry)
+                                                    @php
+                                                        $heures_reelles = floor($entry->heures_reelles);
+                                                        $minutes_reelles = round(($entry->heures_reelles - $heures_reelles) * 60);
+                                                        $heures_theoriques = floor($entry->heures_theoriques);
+                                                        $minutes_theoriques = round(($entry->heures_theoriques - $heures_theoriques) * 60);
+                                                        $heures_ecart_entry = floor(abs($entry->ecart));
+                                                        $minutes_ecart_entry = round((abs($entry->ecart) - $heures_ecart_entry) * 60);
+                                                        $signe_ecart_entry = $entry->ecart > 0 ? '+' : ($entry->ecart < 0 ? '-' : '');
+                                                    @endphp
                                                     <tr>
                                                         <td>{{ $entry->jour->format('d/m/Y') }}</td>
-                                                        <td><strong>{{ $entry->heures_reelles }}h</strong></td>
-                                                        <td>{{ $entry->heures_theoriques }}h</td>
+                                                        <td><strong>{{ $heures_reelles }}h{{ $minutes_reelles > 0 ? $minutes_reelles . 'min' : '' }}</strong></td>
+                                                        <td>{{ $heures_theoriques }}h{{ $minutes_theoriques > 0 ? $minutes_theoriques . 'min' : '' }}</td>
                                                         <td>
                                                             <span class="badge badge-{{ $entry->ecart >= 0 ? 'success' : 'danger' }}">
-                                                                {{ $entry->ecart > 0 ? '+' : '' }}{{ $entry->ecart }}h
+                                                                {{ $signe_ecart_entry }}{{ $heures_ecart_entry }}h{{ $minutes_ecart_entry > 0 ? $minutes_ecart_entry . 'min' : '' }}
                                                             </span>
                                                         </td>
                                                         <td>{!! $entry->statut_badge !!}</td>
@@ -382,6 +408,10 @@
                                             </thead>
                                             <tbody>
                                                 @foreach($user->timeEntries as $timeEntry)
+                                                    @php
+                                                        $heures_reelles_time = floor($timeEntry->heures_reelles);
+                                                        $minutes_reelles_time = round(($timeEntry->heures_reelles - $heures_reelles_time) * 60);
+                                                    @endphp
                                                     <tr>
                                                         <td>{{ $timeEntry->dailyEntry->jour->format('d/m/Y') }}</td>
                                                         <td>
@@ -393,7 +423,7 @@
                                                                 <span class="text-muted">-</span>
                                                             @endif
                                                         </td>
-                                                        <td><strong>{{ $timeEntry->heures_reelles }}h</strong></td>
+                                                        <td><strong>{{ $heures_reelles_time }}h{{ $minutes_reelles_time > 0 ? $minutes_reelles_time . 'min' : '' }}</strong></td>
                                                         <td>{{ $timeEntry->plage }}</td>
                                                         <td>
                                                             <small>{{ Str::limit($timeEntry->travaux, 50) }}</small>
@@ -429,7 +459,7 @@
                                             <tbody>
                                                 @foreach($user->conges as $conge)
                                                     <tr>
-                                                        <td>{{ ucfirst($conge->type_conge) }}</td>
+                                                        <td>{{ ucfirst($conge->typeConge->libelle) }}</td>
                                                         <td>{{ $conge->date_debut->format('d/m/Y') }}</td>
                                                         <td>{{ $conge->date_fin->format('d/m/Y') }}</td>
                                                         <td><strong>{{ $conge->nombre_jours }}</strong></td>

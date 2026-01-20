@@ -64,16 +64,26 @@
                         <div class="row text-center mb-4">
                             <div class="col-6">
                                 <h6 class="text-muted">Heures réelles</h6>
-                                <h3 class="text-dark mb-0">{{ $charge['heures_reelles'] }}h</h3>
+
+                                            @php
+                                                $heures = floor($charge['heures_reelles']);
+                                                $minutes = round(($charge['heures_reelles']- $heures) * 60);
+                                            @endphp
+                                <h4 class="text-dark mb-0">{{ $heures }}h {{ $minutes}} min</h4>
                             </div>
                             <div class="col-6">
                                 <h6 class="text-muted">Heures théoriques</h6>
-                                <h3 class="text-info mb-0">{{ $charge['heures_theoriques'] }}h</h3>
+                                   @php
+                                                $heures = floor($charge['heures_theoriques']);
+                                                $minutes = round(($charge['heures_theoriques']- $heures) * 60);
+                                    @endphp
+                                <h4 class="text-info mb-0">{{ $heures }}h {{ $minutes}} min</h4>
                             </div>
                         </div>
 
+                         {{ $heures }}h {{ $minutes }}min
                         @php
-                            $pourcentage = $charge['heures_theoriques'] > 0
+                            $pourcentage = floor($charge['heures_theoriques'] ) > 0
                                 ? min(100, ($charge['heures_reelles'] / $charge['heures_theoriques']) * 100)
                                 : 0;
                             $color = $pourcentage > 100 ? 'danger' : ($pourcentage >= 90 ? 'warning' : 'success');
@@ -132,7 +142,13 @@
                                                     <small class="text-muted">Ref: {{ $dossier->reference }}</small>
                                                 </td>
                                                 <td>{{ $dossier->client->nom ?? 'N/A' }}</td>
-                                                <td><span class="badge badge-primary badge-pill">{{ $mission['total_heures'] }}h</span></td>
+                                                 @php
+                                                $heures = floor(num: $mission['total_heures']);
+                                                $minutes = round(($mission['total_heures'] - $heures) * 60);
+                                               @endphp
+
+
+                                                <td><span class="badge badge-primary badge-pill">{{ $heures }}h {{ $minutes }}min</span></td>
                                                 <td>
                                                     {{ $derniereActivite->format('d/m/Y') }}<br>
                                                     <small class="text-{{ $statutCouleur }}">{{ $joursDepuis }} jour{{ $joursDepuis > 1 ? 's' : '' }}</small>
@@ -197,7 +213,13 @@
                                                 {{ $entry->dailyEntry->jour->format('d/m/Y') }}
                                             </strong>
                                             <span class="text-muted ml-2">({{ $entry->plage }})</span>
-                                            <span class="ml-3 text-muted">{{ $entry->heures_reelles }}h</span>
+                                             @php
+                                                $heures = floor($entry->heures_reelles);
+                                                $minutes = round(($entry->heures_reelles - $heures) * 60);
+                                            @endphp
+
+
+                                            <span class="ml-3 text-muted"> {{ $heures }}h {{ $minutes }}min</span>
                                         </div>
                                         <div class="dropdown">
                                             <a href="#" data-toggle="dropdown"><i class="fas fa-ellipsis-v"></i></a>

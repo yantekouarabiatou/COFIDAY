@@ -176,8 +176,13 @@ use App\Models\User;
                                             <td class="text-center align-middle">
                                                 <span class="badge badge-info">{{ $nbInterventions }}</span>
                                             </td>
+                                            @php
+                                                    $heures = floor(num: $heuresMoyennes);
+                                                    $minutes = round(($heuresMoyennes - $heures) * 60);
+                                            @endphp
                                             <td class="text-center align-middle">
-                                                <span class="text-muted">{{ number_format($heuresMoyennes, 1) }}h</span>
+                                                Heure moyenne
+                                                <span class="text-muted">{{ $heures}}h {{ $minutes }}mins</span>
                                             </td>
                                             <td class="text-center align-middle">
                                                 @if($derniereActivite)
@@ -315,7 +320,13 @@ use App\Models\User;
                                     </div>
                                     <div class="ml-3">
                                         <div class="card-title">Heures réelles</div>
-                                        <div class="card-value text-dark">{{ number_format($totalHeuresGlobal, 2) }}h</div>
+                                           @php
+                                                $heures = floor(num: $totalHeuresGlobal);
+                                                $minutes = round(($heures) * 60);
+                                            @endphp
+
+
+                                        <div class="card-value text-dark">{{ $heures }}h {{ $minutes }}min</div>
                                     </div>
                                 </div>
                             </div>

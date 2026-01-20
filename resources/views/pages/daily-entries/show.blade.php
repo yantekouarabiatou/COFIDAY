@@ -122,7 +122,7 @@
                                         </div>
                                         <div class="card-body">
                                             @php
-                                                $heures = floor($dailyEntry->heures_reelles);
+                                                $heures = floor(num: $dailyEntry->heures_reelles);
                                                 $minutes = round(($dailyEntry->heures_reelles - $heures) * 60);
                                             @endphp
 

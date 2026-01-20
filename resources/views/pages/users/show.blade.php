@@ -1,474 +1,564 @@
 @extends('layaout')
 
-@section('title', 'Détails Utilisateur')
+@section('title', 'Profil de ' . $user->nom)
 
 @section('content')
-    <section class="section">
-        <div class="section-body">
-            <div class="row">
-                <div class="col-12">
-                    <div class="card card-primary">
-                        <div class="card-header">
-                            <h4><i class="fas fa-eye"></i> Détails de l'utilisateur</h4>
-                            <div class="card-header-action">
-                                <a href="{{ route('users.index') }}" class="btn btn-secondary">
+<section class="section">
+    <div class="section-body">
+        <!-- Breadcrumb -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-body py-3">
+                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center">
+                            <nav aria-label="breadcrumb">
+                                <ol class="breadcrumb mb-0 bg-transparent">
+                                    <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
+                                    <li class="breadcrumb-item"><a href="{{ route('users.index') }}">Utilisateurs</a></li>
+                                    <li class="breadcrumb-item active">{{ $user->nom }}</li>
+                                </ol>
+                            </nav>
+
+                            <div class="mt-3 mt-md-0">
+                                @if(auth()->user()->hasRole('admin|super-admin') && auth()->id() != $user->id)
+                                    @if($user->is_active)
+                                        <form action="{{ route('user-profile.deactivate', $user->id) }}" method="POST" class="d-inline">
+                                            @csrf @method('PUT')
+                                            <button type="submit" class="btn btn-warning btn-sm"
+                                                    onclick="return confirm('Désactiver cet utilisateur ?')">
+                                                <i class="fas fa-user-slash"></i> Désactiver
+                                            </button>
+                                        </form>
+                                    @else
+                                        <form action="{{ route('user-profile.activate', $user->id) }}" method="POST" class="d-inline">
+                                            @csrf @method('PUT')
+                                            <button type="submit" class="btn btn-success btn-sm">
+                                                <i class="fas fa-user-check"></i> Activer
+                                            </button>
+                                        </form>
+                                    @endif
+                                @endif
+
+                                <a href="{{ route('users.index') }}" class="btn btn-outline-secondary btn-sm ml-2">
                                     <i class="fas fa-arrow-left"></i> Retour
                                 </a>
-                                @can('modifier des utilisateurs')
-                                <a href="{{ route('users.edit', $user) }}" class="btn btn-primary">
-                                    <i class="fas fa-edit"></i> Modifier
-                                </a>
-                                @endcan
-                            </div>
-                        </div>
-
-                        <div class="card-body">
-                            <div class="row">
-                                <!-- Informations principales -->
-                                <div class="col-md-8">
-                                    <div class="card shadow-sm border-0">
-                                        <div class="card-header bg-gradient-primary text-white py-3">
-                                            <h5 class="mb-0"><i class="fas fa-user-circle mr-2"></i>Informations de l'utilisateur</h5>
-                                        </div>
-                                        <div class="card-body p-4">
-                                            <!-- Photo et identité -->
-                                            <div class="row mb-4">
-                                                <div class="col-12">
-                                                    <div class="d-flex align-items-center bg-light-primary p-4 rounded">
-                                                        <!-- Photo ou Avatar -->
-                                                        <div class="user-avatar-large mr-4">
-                                                            @if($user->photo)
-                                                                <img src="{{ Storage::url($user->photo) }}" alt="{{ $user->nom }}" class="rounded-circle">
-                                                            @else
-                                                                <div class="avatar-initials bg-primary text-white">
-                                                                    {{ strtoupper(substr($user->nom, 0, 1) . substr($user->prenom, 0, 1)) }}
-                                                                </div>
-                                                            @endif
-                                                        </div>
-                                                        
-                                                        <div class="flex-grow-1">
-                                                            <h3 class="font-weight-bold text-dark mb-2">
-                                                                {{ $user->nom }} {{ $user->prenom }}
-                                                            </h3>
-                                                            <div class="d-flex align-items-center mb-2">
-                                                                @switch($user->is_active)
-                                                                    @case('1')
-                                                                        <span class="badge badge-success py-2 px-3 mr-2"><i class="fas fa-circle mr-1"></i> Actif</span>
-                                                                        @break
-                                                                    @case('0')
-                                                                        <span class="badge badge-warning py-2 px-3 mr-2"><i class="fas fa-circle mr-1"></i> Inactif</span>
-                                                                        @break
-                                                                    @default
-                                                                        <span class="badge badge-light">-</span>
-                                                                @endswitch
-                                                                <span class="badge badge-info py-2 px-3">
-                                                                    <i class="fas fa-user-tag mr-1"></i>
-                                                                    {{ ucfirst($user->role?->name ?? 'user') }}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Nom et Prénom -->
-                                            <div class="row">
-                                                <div class="col-md-6 mb-4">
-                                                    <div class="info-item border-right pr-4">
-                                                        <div class="d-flex align-items-center mb-2">
-                                                            <div class="icon-circle bg-primary text-white mr-3">
-                                                                <i class="fas fa-user"></i>
-                                                            </div>
-                                                            <div>
-                                                                <label class="text-muted small mb-0">Nom</label>
-                                                                <h6 class="font-weight-bold text-dark mb-0">{{ $user->nom }}</h6>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                
-                                                <div class="col-md-6 mb-4">
-                                                    <div class="info-item">
-                                                        <div class="d-flex align-items-center mb-2">
-                                                            <div class="icon-circle bg-success text-white mr-3">
-                                                                <i class="fas fa-user"></i>
-                                                            </div>
-                                                            <div>
-                                                                <label class="text-muted small mb-0">Prénom</label>
-                                                                <h6 class="font-weight-bold text-dark mb-0">{{ $user->prenom }}</h6>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Username et Email -->
-                                            <div class="row mb-4">
-                                                <div class="col-md-6 mb-3">
-                                                    <div class="info-highlight bg-light-warning border-warning border-left-3 p-3 rounded">
-                                                        <div class="d-flex align-items-center">
-                                                            <div class="icon-circle bg-warning text-white mr-3">
-                                                                <i class="fas fa-at"></i>
-                                                            </div>
-                                                            <div>
-                                                                <label class="text-muted small mb-1">Nom d'utilisateur</label>
-                                                                <h6 class="font-weight-bold text-dark mb-0">{{ $user->username }}</h6>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div class="col-md-6 mb-3">
-                                                    <div class="info-highlight bg-light-info border-info border-left-3 p-3 rounded">
-                                                        <div class="d-flex align-items-center">
-                                                            <div class="icon-circle bg-info text-white mr-3">
-                                                                <i class="fas fa-envelope"></i>
-                                                            </div>
-                                                            <div>
-                                                                <label class="text-muted small mb-1">Email</label>
-                                                                <h6 class="font-weight-bold text-dark mb-0">{{ $user->email }}</h6>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Poste et Téléphone -->
-                                            <div class="row">
-                                                <div class="col-md-6 mb-4">
-                                                    <div class="info-card bg-light-primary p-3 rounded text-center">
-                                                        <div class="mb-2">
-                                                            <i class="fas fa-briefcase fa-2x text-primary"></i>
-                                                        </div>
-                                                        <label class="text-muted small mb-1">Poste</label>
-                                                        <h5 class="font-weight-bold text-dark mb-0">
-                                                            {{ $user->poste->libelle ?? $user->poste->intitule ?? 'Non défini' }}
-                                                        </h5>
-                                                    </div>
-                                                </div>
-                                                
-                                                <div class="col-md-6 mb-4">
-                                                    <div class="info-card bg-light-success p-3 rounded text-center">
-                                                        <div class="mb-2">
-                                                            <i class="fas fa-phone fa-2x text-success"></i>
-                                                        </div>
-                                                        <label class="text-muted small mb-1">Téléphone</label>
-                                                        <h5 class="font-weight-bold text-dark mb-0">
-                                                            {{ $user->telephone ?? 'Non renseigné' }}
-                                                        </h5>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Notes -->
-                                            @if($user->notes)
-                                            <div class="row">
-                                                <div class="col-12">
-                                                    <div class="info-section bg-light-info p-3 rounded">
-                                                        <div class="d-flex align-items-start mb-2">
-                                                            <div class="icon-circle bg-info text-white mr-3 mt-1">
-                                                                <i class="fas fa-sticky-note"></i>
-                                                            </div>
-                                                            <div class="flex-grow-1">
-                                                                <label class="text-muted small mb-1">Notes / Observations</label>
-                                                                <p class="text-dark mb-0 line-height-2">{{ $user->notes }}</p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Informations complémentaires -->
-                                <div class="col-md-4">
-                                    <!-- Créateur -->
-                                    <div class="card shadow-sm border-0 mb-4">
-                                        <div class="card-header bg-gradient-success text-white py-3">
-                                            <h5 class="mb-0"><i class="fas fa-user-shield mr-2"></i>Créé par</h5>
-                                        </div>
-                                        <div class="card-body p-4">
-                                            @if($user->creator)
-                                            <div class="text-center mb-4">
-                                                <div class="avatar-circle-small bg-success mx-auto mb-3">
-                                                    @if($user->creator->photo)
-                                                        <img src="{{ Storage::url($user->creator->photo) }}" alt="{{ $user->creator->nom }}" class="rounded-circle w-100 h-100">
-                                                    @else
-                                                        <div class="avatar-initials-small text-white">
-                                                            {{ strtoupper(substr($user->creator->nom, 0, 1) . substr($user->creator->prenom, 0, 1)) }}
-                                                        </div>
-                                                    @endif
-                                                </div>
-                                                <h6 class="font-weight-bold text-dark mb-1">
-                                                    {{ $user->creator->nom }} {{ $user->creator->prenom }}
-                                                </h6>
-                                                <p class="text-muted small mb-0">{{ $user->creator->email }}</p>
-                                            </div>
-                                            
-                                            <div class="user-stats">
-                                                <div class="stat-item d-flex justify-content-between align-items-center py-2 border-bottom">
-                                                    <span class="text-muted">Poste</span>
-                                                    <span class="font-weight-bold text-dark">
-                                                        {{ $user->creator->poste->intitule ?? 'N/A' }}
-                                                    </span>
-                                                </div>
-                                                <!-- <div class="stat-item d-flex justify-content-between align-items-center py-2">
-                                                    <span class="text-muted">Rôle</span>
-                                                    <span class="badge badge-info">{{ ucfirst($user->creator->role ?? 'user') }}</span>
-                                                </div> -->
-                                            </div>
-                                            @else
-                                            <div class="text-center text-muted">
-                                                <i class="fas fa-user-slash fa-3x mb-3 opacity-50"></i>
-                                                <p>Information non disponible</p>
-                                            </div>
-                                            @endif
-                                        </div>
-                                    </div>
-
-                                    <!-- Statistiques -->
-                                    <div class="card shadow-sm border-0">
-                                        <div class="card-header bg-gradient-info text-white py-3">
-                                            <h5 class="mb-0"><i class="fas fa-chart-bar mr-2"></i>Statistiques</h5>
-                                        </div>
-                                        <div class="card-body p-4">
-                                            <div class="stat-box text-center mb-3 p-3 bg-light rounded">
-                                                <div class="stat-icon bg-primary text-white rounded-circle mx-auto mb-2">
-                                                    <i class="fas fa-tasks"></i>
-                                                </div>
-                                                <h4 class="font-weight-bold text-primary mb-0">0</h4>
-                                                <small class="text-muted">Tâches assignées</small>
-                                            </div>
-
-                                            <div class="stat-box text-center mb-3 p-3 bg-light rounded">
-                                                <div class="stat-icon bg-success text-white rounded-circle mx-auto mb-2">
-                                                    <i class="fas fa-check-circle"></i>
-                                                </div>
-                                                <h4 class="font-weight-bold text-success mb-0">0</h4>
-                                                <small class="text-muted">Tâches complétées</small>
-                                            </div>
-
-                                            <div class="stat-box text-center p-3 bg-light rounded">
-                                                <div class="stat-icon bg-warning text-white rounded-circle mx-auto mb-2">
-                                                    <i class="fas fa-clock"></i>
-                                                </div>
-                                                <h4 class="font-weight-bold text-warning mb-0">0</h4>
-                                                <small class="text-muted">En cours</small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Métadonnées -->
-                            <div class="row mt-4">
-                                <div class="col-12">
-                                    <div class="card bg-light border-0">
-                                        <div class="card-body py-3">
-                                            <div class="row text-center">
-                                                <div class="col-md-4">
-                                                    <div class="metadata-item">
-                                                        <i class="fas fa-calendar-plus text-primary mb-2"></i>
-                                                        <div class="text-muted small">Compte créé le</div>
-                                                        <div class="font-weight-bold text-dark">
-                                                            {{ $user->created_at->format('d/m/Y à H:i') }}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <div class="metadata-item">
-                                                        <i class="fas fa-calendar-check text-success mb-2"></i>
-                                                        <div class="text-muted small">Dernière modification</div>
-                                                        <div class="font-weight-bold text-dark">
-                                                            {{ $user->updated_at->format('d/m/Y à H:i') }}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <div class="metadata-item">
-                                                        <i class="fas fa-sign-in-alt text-info mb-2"></i>
-                                                        <div class="text-muted small">Dernière connexion</div>
-                                                        <div class="font-weight-bold text-dark">
-                                                            {{ $user->updated_at ? $user->updated_at->format('d/m/Y à H:i') : 'Jamais connecté' }}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </section>
+
+        <div class="row">
+            <!-- Colonne gauche: Profil utilisateur -->
+            <div class="col-lg-4">
+                <!-- Carte profil -->
+                <div class="card card-primary shadow-sm">
+                    <div class="card-body text-center py-5">
+                        @if($user->photo)
+                            <img src="{{ asset('storage/' . $user->photo) }}"
+                                 alt="Photo de {{ $user->nom }}"
+                                 class="rounded-circle mb-3 shadow"
+                                 style="width: 160px; height: 160px; object-fit: cover;">
+                        @else
+                            <div class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center mb-3 shadow"
+                                 style="width: 160px; height: 160px; font-size: 60px; border: 3px solid #dee2e6;">
+                                <i class="fas fa-user text-muted"></i>
+                            </div>
+                        @endif
+
+                        <h4 class="mb-1">{{ $user->prenom }} {{ $user->nom }}</h4>
+                        <p class="text-muted mb-2">{{ $user->poste?->intitule ?? 'Poste non défini' }}</p>
+
+                        <div class="mb-3">
+                            <span class="badge badge-lg {{ $user->is_active ? 'badge-success' : 'badge-danger' }}">
+                                {{ $user->is_active ? 'ACTIF' : 'INACTIF' }}
+                            </span>
+
+                            @php
+                                $role = $user->roles->first();
+                                $roleNames = [
+                                    'super-admin'            => 'Super Administrateur',
+                                    'admin'                  => 'Administrateur',
+                                    'responsable-conformite' => 'Responsable Conformité',
+                                    'auditeur'               => 'Auditeur Interne',
+                                    'gestionnaire-plaintes'  => 'Gestionnaire des Plaintes',
+                                    'agent'                  => 'Agent de Traitement',
+                                    'user'                   => 'Utilisateur Standard',
+                                ];
+                                $displayRole = 'Aucun rôle';
+                                if ($role) {
+                                    $displayRole = $roleNames[$role->name] ?? ucwords(str_replace('-', ' ', $role->name));
+                                }
+                            @endphp
+
+                            <span class="badge badge-info ml-2">
+                                {{ $displayRole }}
+                            </span>
+                        </div>
+
+                        @if($user->photo)
+                            <a href="{{ route('user-profile.download-photo', $user->id) }}"
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-download"></i> Télécharger la photo
+                            </a>
+                        @endif
+                    </div>
+
+                    <div class="card-footer bg-light">
+                        <div class="row text-center small">
+                            <div class="col border-right">
+                                <div class="text-muted">Téléphone</div>
+                                <strong class="d-block">{{ $user->telephone ?? '-' }}</strong>
+                            </div>
+                            <div class="col">
+                                <div class="text-muted">Email</div>
+                                <strong class="d-block text-truncate" style="max-width: 150px;">{{ $user->email }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Informations du compte -->
+                <div class="card card-primary mt-4">
+                    <div class="card-header">
+                        <h5><i class="fas fa-user-circle mr-2"></i>Informations du compte</h5>
+                    </div>
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item d-flex justify-content-between px-3">
+                            <span class="text-muted">Nom d'utilisateur</span>
+                            <span class="font-weight-bold">{{ $user->username }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between px-3">
+                            <span class="text-muted">Créé le</span>
+                            <span>{{ $user->created_at->format('d/m/Y à H:i') }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between px-3">
+                            <span class="text-muted">Créé par</span>
+                            <span>{{ $user->creator->fullName ?? 'Système' }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between px-3">
+                            <span class="text-muted">Dernière modification</span>
+                            <span>{{ $user->updated_at->format('d/m/Y à H:i') }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dernière activité -->
+                @if($statistiques['derniere_entree'])
+                <div class="card card-primary mt-4">
+                    <div class="card-header">
+                        <h5><i class="fas fa-clock mr-2"></i>Dernière saisie</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="text-center">
+                            <h4 class="text-info mb-2">
+                                {{ $statistiques['derniere_entree']->jour->format('d/m/Y') }}
+                            </h4>
+                            <p class="mb-1">
+                                <strong>{{ $statistiques['derniere_entree']->heures_reelles }}h</strong>
+                                / {{ $statistiques['derniere_entree']->heures_theoriques }}h
+                            </p>
+                            <span class="badge badge-{{ $statistiques['derniere_entree']->statut == 'validé' ? 'success' : ($statistiques['derniere_entree']->statut == 'soumis' ? 'info' : 'warning') }}">
+                                {{ ucfirst($statistiques['derniere_entree']->statut) }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                @endif
+            </div>
+
+            <!-- Colonne droite: Statistiques et activités -->
+            <div class="col-lg-8">
+                <!-- Statistiques de temps -->
+                <div class="row mb-4">
+                    <!-- Heures du mois -->
+                    <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
+                        <div class="card card-statistic-2">
+                            <div class="card-icon bg-primary">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="card-wrap">
+                                <div class="card-header"><h6>Heures ce mois</h6></div>
+                                <div class="card-body h4">{{ $statistiques['heures_mois_en_cours'] }}h</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Taux de réalisation -->
+                    <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
+                        <div class="card card-statistic-2">
+                            <div class="card-icon {{ $statistiques['taux_realisation'] >= 100 ? 'bg-success' : 'bg-warning' }}">
+                                <i class="fas fa-percentage"></i>
+                            </div>
+                            <div class="card-wrap">
+                                <div class="card-header"><h6>Taux réalisation</h6></div>
+                                <div class="card-body h4">{{ $statistiques['taux_realisation'] }}%</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Écart heures -->
+                    <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
+                        <div class="card card-statistic-2">
+                            <div class="card-icon {{ $statistiques['ecart_heures'] >= 0 ? 'bg-success' : 'bg-danger' }}">
+                                <i class="fas fa-balance-scale"></i>
+                            </div>
+                            <div class="card-wrap">
+                                <div class="card-header"><h6>Écart heures</h6></div>
+                                <div class="card-body h4">
+                                    {{ $statistiques['ecart_heures'] > 0 ? '+' : '' }}{{ $statistiques['ecart_heures'] }}h
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Journées validées -->
+                    <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
+                        <div class="card card-statistic-2">
+                            <div class="card-icon bg-success">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="card-wrap">
+                                <div class="card-header"><h6>Journées validées</h6></div>
+                                <div class="card-body h4">{{ $statistiques['journees_validees'] }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Journées en attente -->
+                    <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
+                        <div class="card card-statistic-2">
+                            <div class="card-icon bg-info">
+                                <i class="fas fa-hourglass-half"></i>
+                            </div>
+                            <div class="card-wrap">
+                                <div class="card-header"><h6>En attente</h6></div>
+                                <div class="card-body h4">{{ $statistiques['journees_en_attente'] }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Congés pris -->
+                    <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
+                        <div class="card card-statistic-2">
+                            <div class="card-icon bg-warning">
+                                <i class="fas fa-umbrella-beach"></i>
+                            </div>
+                            <div class="card-wrap">
+                                <div class="card-header"><h6>Congés pris</h6></div>
+                                <div class="card-body h4">{{ $statistiques['conges_pris'] }} jours</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Total saisies -->
+                    <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
+                        <div class="card card-statistic-2">
+                            <div class="card-icon bg-secondary">
+                                <i class="fas fa-calendar-alt"></i>
+                            </div>
+                            <div class="card-wrap">
+                                <div class="card-header"><h6>Total journées</h6></div>
+                                <div class="card-body h4">{{ $statistiques['total_daily_entries'] }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Total TimeEntries -->
+                    <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
+                        <div class="card card-statistic-2">
+                            <div class="card-icon bg-info">
+                                <i class="fas fa-tasks"></i>
+                            </div>
+                            <div class="card-wrap">
+                                <div class="card-header"><h6>Saisies temps</h6></div>
+                                <div class="card-body h4">{{ $statistiques['total_time_entries'] }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Congés en attente -->
+                    <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
+                        <div class="card card-statistic-2">
+                            <div class="card-icon bg-danger">
+                                <i class="fas fa-clipboard-list"></i>
+                            </div>
+                            <div class="card-wrap">
+                                <div class="card-header"><h6>Congés en attente</h6></div>
+                                <div class="card-body h4">{{ $statistiques['conges_en_attente'] }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Activités récentes -->
+                <div class="card">
+                    <div class="card-header">
+                        <h4><i class="fas fa-history mr-2"></i>Activités récentes</h4>
+                    </div>
+                    <div class="card-body">
+                        <ul class="nav nav-tabs" id="activityTab" role="tablist">
+                            <li class="nav-item">
+                                <a class="nav-link active" id="daily-tab" data-toggle="tab" href="#daily" role="tab">
+                                    <i class="fas fa-calendar-day mr-1"></i> Journées
+                                    <span class="badge badge-primary ml-2">{{ $user->dailyEntries->count() }}</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="time-tab" data-toggle="tab" href="#time" role="tab">
+                                    <i class="fas fa-clock mr-1"></i> Saisies temps
+                                    <span class="badge badge-info ml-2">{{ $user->timeEntries->count() }}</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="conges-tab" data-toggle="tab" href="#conges" role="tab">
+                                    <i class="fas fa-umbrella-beach mr-1"></i> Congés
+                                    <span class="badge badge-warning ml-2">{{ $user->conges->count() }}</span>
+                                </a>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content mt-4">
+                            <!-- Onglet Journées -->
+                            <div class="tab-pane fade show active" id="daily" role="tabpanel">
+                                @if($user->dailyEntries->count() > 0)
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date</th>
+                                                    <th>Heures réelles</th>
+                                                    <th>Heures théoriques</th>
+                                                    <th>Écart</th>
+                                                    <th>Statut</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach($user->dailyEntries as $entry)
+                                                    <tr>
+                                                        <td>{{ $entry->jour->format('d/m/Y') }}</td>
+                                                        <td><strong>{{ $entry->heures_reelles }}h</strong></td>
+                                                        <td>{{ $entry->heures_theoriques }}h</td>
+                                                        <td>
+                                                            <span class="badge badge-{{ $entry->ecart >= 0 ? 'success' : 'danger' }}">
+                                                                {{ $entry->ecart > 0 ? '+' : '' }}{{ $entry->ecart }}h
+                                                            </span>
+                                                        </td>
+                                                        <td>{!! $entry->statut_badge !!}</td>
+                                                        <td>
+                                                            <a href="{{ route('daily-entries.show', $entry->id) }}"
+                                                               class="btn btn-sm btn-info" title="Voir détails">
+                                                                <i class="fas fa-eye"></i>
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                @else
+                                    <div class="text-center text-muted py-4">
+                                        <i class="fas fa-calendar-times fa-3x mb-3"></i>
+                                        <p>Aucune journée enregistrée</p>
+                                    </div>
+                                @endif
+                            </div>
+
+                            <!-- Onglet Saisies temps -->
+                            <div class="tab-pane fade" id="time" role="tabpanel">
+                                @if($user->timeEntries->count() > 0)
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date</th>
+                                                    <th>Dossier</th>
+                                                    <th>Heures</th>
+                                                    <th>Plage horaire</th>
+                                                    <th>Travaux</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach($user->timeEntries as $timeEntry)
+                                                    <tr>
+                                                        <td>{{ $timeEntry->dailyEntry->jour->format('d/m/Y') }}</td>
+                                                        <td>
+                                                            @if($timeEntry->dossier)
+                                                                <a href="{{ route('dossiers.show', $timeEntry->dossier_id) }}">
+                                                                    {{ $timeEntry->dossier->nom }}
+                                                                </a>
+                                                            @else
+                                                                <span class="text-muted">-</span>
+                                                            @endif
+                                                        </td>
+                                                        <td><strong>{{ $timeEntry->heures_reelles }}h</strong></td>
+                                                        <td>{{ $timeEntry->plage }}</td>
+                                                        <td>
+                                                            <small>{{ Str::limit($timeEntry->travaux, 50) }}</small>
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                @else
+                                    <div class="text-center text-muted py-4">
+                                        <i class="fas fa-clock fa-3x mb-3"></i>
+                                        <p>Aucune saisie de temps enregistrée</p>
+                                    </div>
+                                @endif
+                            </div>
+
+                            <!-- Onglet Congés -->
+                            <div class="tab-pane fade" id="conges" role="tabpanel">
+                                @if($user->conges->count() > 0)
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Type</th>
+                                                    <th>Date début</th>
+                                                    <th>Date fin</th>
+                                                    <th>Nombre de jours</th>
+                                                    <th>Statut</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach($user->conges as $conge)
+                                                    <tr>
+                                                        <td>{{ ucfirst($conge->typeConge->libelle) }}</td>
+                                                        <td>{{ $conge->date_debut->format('d/m/Y') }}</td>
+                                                        <td>{{ $conge->date_fin->format('d/m/Y') }}</td>
+                                                        <td><strong>{{ $conge->nombre_jours }}</strong></td>
+                                                        <td>
+                                                            <span class="badge badge-{{ $conge->statut == 'approuvé' ? 'success' : ($conge->statut == 'en_attente' ? 'warning' : 'success') }}">
+                                                                {{ ucfirst($conge->statut) }}
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <a href="{{ route('conges.show', $conge->id) }}"
+                                                               class="btn btn-sm btn-info" title="Voir détails">
+                                                                <i class="fas fa-eye"></i>
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                @else
+                                    <div class="text-center text-muted py-4">
+                                        <i class="fas fa-umbrella-beach fa-3x mb-3"></i>
+                                        <p>Aucun congé enregistré</p>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Administration -->
+                <div class="card mt-4">
+                    <div class="card-header bg-dark text-white">
+                        <h5><i class="fas fa-user-cog mr-2"></i>Administration</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex flex-wrap gap-2">
+                            <a href="{{ route('user-profile.edit', $user->id) }}" class="btn btn-primary">
+                                <i class="fas fa-edit"></i> Éditer le profil
+                            </a>
+
+                            @if(auth()->user()->hasRole('admin|super-admin'))
+                                <a href="{{ route('user-profile.export-temps', ['id' => $user->id, 'format' => 'pdf']) }}"
+                                   class="btn btn-danger">
+                                    <i class="fas fa-file-pdf"></i> Export PDF
+                                </a>
+                                <a href="{{ route('user-profile.export-temps', ['id' => $user->id, 'format' => 'excel']) }}"
+                                   class="btn btn-success">
+                                    <i class="fas fa-file-excel"></i> Export Excel
+                                </a>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 @endsection
 
-@push('styles')
+@section('scripts')
+<script>
+    $(document).ready(function() {
+        // Activation des onglets
+        $('#activityTab a').on('click', function (e) {
+            e.preventDefault();
+            $(this).tab('show');
+        });
+
+        // Animation des cartes statistiques au survol
+        $('.card-statistic-2').hover(
+            function() {
+                $(this).addClass('shadow-lg');
+            },
+            function() {
+                $(this).removeClass('shadow-lg');
+            }
+        );
+
+        // Initialisation des tooltips
+        $('[data-toggle="tooltip"]').tooltip();
+
+        // Animation du pourcentage de réalisation
+        const tauxElement = $('.card-statistic-2 .h4:contains("%")');
+        if (tauxElement.length > 0) {
+            const taux = parseFloat(tauxElement.text());
+            if (taux >= 100) {
+                tauxElement.closest('.card-statistic-2').addClass('border-success');
+            } else if (taux >= 80) {
+                tauxElement.closest('.card-statistic-2').addClass('border-warning');
+            }
+        }
+    });
+</script>
+@endsection
+
+@section('styles')
 <style>
-    .bg-gradient-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    .card-statistic-2 {
+        transition: transform 0.3s, box-shadow 0.3s;
     }
-    
-    .bg-gradient-success {
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
+
+    .card-statistic-2:hover {
+        transform: translateY(-5px);
     }
-    
-    .bg-gradient-info {
-        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%) !important;
+
+    .tab-content {
+        min-height: 300px;
     }
-    
-    .icon-circle {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
+
+    .badge-lg {
+        font-size: 0.9rem;
+        padding: 0.5rem 0.75rem;
     }
-    
-    .user-avatar-large {
-        width: 120px;
-        height: 120px;
-        flex-shrink: 0;
+
+    .gap-2 {
+        gap: 0.5rem;
     }
-    
-    .user-avatar-large img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
+
+    .table td {
+        vertical-align: middle;
     }
-    
-    .avatar-initials {
-        width: 120px;
-        height: 120px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2.5rem;
-        font-weight: bold;
+
+    .border-success {
+        border-left: 4px solid #28a745 !important;
     }
-    
-    .avatar-circle-small {
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
-    }
-    
-    .avatar-initials-small {
-        width: 100%;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        font-weight: bold;
-    }
-    
-    .stat-icon {
-        width: 50px;
-        height: 50px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.2rem;
-    }
-    
-    .info-highlight {
-        border-left: 4px solid !important;
-    }
-    
-    .border-left-3 {
-        border-left-width: 3px !important;
-    }
-    
-    .info-card {
-        transition: transform 0.2s ease-in-out;
-    }
-    
-    .info-card:hover {
-        transform: translateY(-2px);
-    }
-    
-    .bg-light-primary {
-        background-color: rgba(102, 126, 234, 0.1) !important;
-    }
-    
-    .bg-light-success {
-        background-color: rgba(16, 185, 129, 0.1) !important;
-    }
-    
-    .bg-light-warning {
-        background-color: rgba(245, 158, 11, 0.1) !important;
-    }
-    
-    .bg-light-info {
-        background-color: rgba(6, 182, 212, 0.1) !important;
-    }
-    
-    .line-height-2 {
-        line-height: 1.6;
-    }
-    
-    .metadata-item {
-        padding: 0.5rem;
-    }
-    
-    .user-stats {
-        background: #f8f9fa;
-        border-radius: 8px;
-        padding: 0.75rem;
-    }
-    
-    .stat-item:last-child {
-        border-bottom: none !important;
-    }
-    
-    .shadow-sm {
-        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
-    }
-    
-    .stat-box {
-        border: 1px solid #e9ecef;
-    }
-    
-    .opacity-50 {
-        opacity: 0.5;
-    }
-    
-    @media (max-width: 768px) {
-        .border-right {
-            border-right: none !important;
-            padding-right: 0 !important;
-            margin-bottom: 1rem;
-        }
-        
-        .user-avatar-large {
-            width: 80px;
-            height: 80px;
-        }
-        
-        .avatar-initials {
-            width: 80px;
-            height: 80px;
-            font-size: 1.8rem;
-        }
-        
-        .icon-circle {
-            width: 35px;
-            height: 35px;
-            font-size: 0.9rem;
-        }
+
+    .border-warning {
+        border-left: 4px solid #ffc107 !important;
     }
 </style>
-@endpush
+@endsection
