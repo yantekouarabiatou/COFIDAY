@@ -76,7 +76,7 @@ class RegleCongeController extends Controller
         $regles->update($data);
 
         Alert::success('Succès', 'Les règles de congés ont été mises à jour.');
-        return back();
+        return redirect()->route('admin.regles-conges.index');
     }
 
     public function getJoursAcquis()
@@ -100,26 +100,7 @@ class RegleCongeController extends Controller
         Alert::success('Succès', 'Les règles de congés ont été supprimées.');
         return redirect()->route('admin.regles-conges.index');
     }
-
-    /**
-     * ======================
-     * API – Jours acquis
-     * ======================
-     */
-    // public function getJoursAcquis()
-    // {
-    //     $regles = RegleConge::getRegles();
-
-    //     return response()->json([
-    //         'jours_par_mois' => $regles->jours_par_mois,
-    //         'jours_annuels'  => $regles->calculerJoursAcquisAnnuels(),
-    //         'formatted' => [
-    //             'mensuel' => $regles->getJoursParMoisFormatted(),
-    //             'annuel'  => $regles->getJoursAcquisAnnuelsFormatted(),
-    //         ]
-    //     ]);
-    // }
-
+    
     /**
      * ======================
      * Méthode centrale

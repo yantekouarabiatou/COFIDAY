@@ -86,18 +86,36 @@
                                 <label>Jours fériés</label>
                                 <div id="jours-feries-container">
                                     @foreach($regles->jours_feries_array as $i => $jour)
-                                        <div class="input-group mb-2 jours-feries-item">
-                                            <input type="text" name="jours_feries[]" class="form-control"
-                                                   value="{{ $jour }}" placeholder="MM-DD" required>
-                                            <button class="btn btn-danger remove-jour" type="button">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
+                                    @php
+                                        [$mm, $dd] = explode('-', $jour['date']);
+                                    @endphp
+                                        <div class="border p-2 mb-2 jours-item">
+                                            <div class="row g-2 align-items-center">
+                                                <div class="col">
+                                                    <input type="text" name="jours_feries[{{ $i }}][nom]" 
+                                                           class="form-control " placeholder="Nom" 
+                                                           value="{{ $jour['nom'] ?? '' }}" required>
+                                                </div>
+                                                <div class="col input-group mb-2 jours-feries-item">
+                                                    <input type="text" name="jours_feries[{{ $i }}][date]"
+                                                           class="form-control jour-ferie" value="{{ $dd }}-{{ $mm }}" 
+                                                           placeholder="JJ-MM" pattern="^\d{2}-\d{2}$" required>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <button class="btn btn-danger remove-jour" type="button">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
                                     @endforeach
                                 </div>
                                 <button type="button" id="add-jour" class="btn btn-secondary btn-sm mt-2">
                                     <i class="fas fa-plus"></i> Ajouter un jour férié
                                 </button>
+                                <small class="text-muted">
+                                    Format attendu : <strong>JJ-MM</strong> (ex : 01-05 pour le 1er mai)
+                                </small>
                             </div>
 
                             <!-- Périodes bloquées -->
@@ -193,7 +211,14 @@ $(document).ready(function() {
     $('#add-jour').on('click', function() {
         $('#jours-feries-container').append(`
             <div class="input-group mb-2 jours-feries-item">
-                <input type="text" name="jours_feries[]" class="form-control" placeholder="MM-DD" required>
+                <input
+                    type="text"
+                    name="jours_feries[]"
+                    class="form-control jour-ferie"
+                    placeholder="JJ-MM"
+                    pattern="^\\d{2}-\\d{2}$"
+                    required
+                >
                 <button class="btn btn-danger remove-jour" type="button">
                     <i class="fas fa-trash"></i>
                 </button>
@@ -203,7 +228,7 @@ $(document).ready(function() {
 
     // Supprimer jour férié
     $(document).on('click', '.remove-jour', function() {
-        $(this).closest('.jours-feries-item').remove();
+        $(this).closest('.jours-item').remove();
     });
 
     // Ajouter période bloquée
@@ -230,6 +255,28 @@ $(document).ready(function() {
         $(this).closest('.periodes-item').remove();
     });
 });
+
+$('form').on('submit', function () {
+    $('.jour-ferie').each(function () {
+        let value = $(this).val().trim();
+
+        if (!value) return;
+
+        // JJ-MM → MM-DD
+        let parts = value.split('-');
+        if (parts.length === 2) {
+            let jj = parts[0];
+            let mm = parts[1];
+
+            // Sécurité basique
+            if (jj.length === 2 && mm.length === 2) {
+                $(this).val(mm + '-' + jj);
+            }
+        }
+    });
+});
+
 </script>
+
 @endpush
 @endsection

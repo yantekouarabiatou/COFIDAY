@@ -46,14 +46,34 @@ class RegleConge extends Model
                 'limite_report' => 10,
                 'validation_multiple' => false,
                 'jours_feries' => json_encode([
-                    '01-01', // Nouvel An
-                    '01-05', // Fête du Travail
-                    '08-05', // Victoire 1945
-                    '07-14', // Fête Nationale
-                    '08-15', // Assomption
-                    '11-01', // Toussaint
-                    '11-11', // Armistice
-                    '12-25', // Noël
+                    [
+                        'date'=>'01-01', 
+                        'nom'=>'Nouvel An'],
+                    [
+                        'date'=>'01-08', 
+                        'nom'=>'Vodun days'],
+                    [
+                        'date'=>'01-09', 
+                        'nom'=>'Vodun days'],
+                    [
+                        'date'=>'01-10',   
+                        'nom'=>'Vodun days'],
+                    [
+                        'date'=>'05-01', 
+                        'nom'=>'Fête du Travail'],
+                    [
+                        'date'=>'08-01', 
+                        'nom'=>'Fête Nationale'],
+                    [
+                        'date'=>'08-15', 
+                        'nom'=>'Assomption'],
+                    [
+                        'date'=>'11-01', 
+                        'nom'=>'Toussaint'],
+                    [
+                        'date'=>'12-25', 
+                        'nom'=>'Noël'
+                    ]
                 ]),
                 'periodes_bloquees' => json_encode([
                     [
