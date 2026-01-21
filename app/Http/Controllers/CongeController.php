@@ -184,7 +184,7 @@ class CongeController extends Controller
                 'commentaire' => 'Demande initiale soumise',
             ]);
 
-                        // -----------------------------
+            // -----------------------------
             // 5. Génération du PDF
             // -----------------------------
             $pdf = Pdf::loadView('pdfs.leave_request', [
@@ -204,7 +204,7 @@ class CongeController extends Controller
             // -----------------------------
             $superieur = User::findOrFail($request->superieur_hierarchique_id); //Le supeieur hierachique manager
 
-            Mail::to($superieur->email)->send(new LeaveRequestMail($demande, $pdfPath));
+            Mail::to($superieur->email)->send(new LeaveRequestMail($demande, $superieur, $pdfPath));
 
             DB::commit();
 
@@ -398,6 +398,27 @@ class CongeController extends Controller
                 'effectue_par' => $user->id,
                 'commentaire' => 'Demande modifiée par l\'employé',
             ]);
+                                    // -----------------------------
+            // 5. Génération du PDF
+            // -----------------------------
+            $pdf = Pdf::loadView('pdfs.leave_request', [
+                'leave' => $demande,
+            ]);
+
+            $pdfPath = storage_path("app/temp/demande_{$demande->id}.pdf");
+
+            if (!is_dir(dirname($pdfPath))) {
+                mkdir(dirname($pdfPath), 0755, true);
+            }
+
+            $pdf->save($pdfPath);
+
+            // -----------------------------
+            // 6. Envoi du mail
+            // -----------------------------
+            $superieur = User::findOrFail($request->superieur_hierarchique_id); //Le supeieur hierachique manager
+
+            Mail::to($superieur->email)->send(new LeaveRequestMail($demande, $superieur, $pdfPath));
 
             DB::commit();
 
