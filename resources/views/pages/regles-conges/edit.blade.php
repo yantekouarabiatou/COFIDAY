@@ -93,13 +93,15 @@
                                             <div class="row g-2 align-items-center">
                                                 <div class="col">
                                                     <input type="text" name="jours_feries[{{ $i }}][nom]" 
-                                                           class="form-control " placeholder="Nom" 
+                                                           class="form-control" placeholder="Nom" 
                                                            value="{{ $jour['nom'] ?? '' }}" required>
                                                 </div>
-                                                <div class="col input-group mb-2 jours-feries-item">
+                                                <div class="col input-group">
                                                     <input type="text" name="jours_feries[{{ $i }}][date]"
-                                                           class="form-control jour-ferie" value="{{ $dd }}-{{ $mm }}" 
-                                                           placeholder="JJ-MM" pattern="^\d{2}-\d{2}$" required>
+                                                           class="form-control datepicker-jj-mm" 
+                                                           value="{{ $dd }}-{{ $mm }}" 
+                                                           placeholder="JJ-MM" required readonly>
+                                                    <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
                                                 </div>
                                                 <div class="col-auto">
                                                     <button class="btn btn-danger remove-jour" type="button">
@@ -113,9 +115,6 @@
                                 <button type="button" id="add-jour" class="btn btn-secondary btn-sm mt-2">
                                     <i class="fas fa-plus"></i> Ajouter un jour férié
                                 </button>
-                                <small class="text-muted">
-                                    Format attendu : <strong>JJ-MM</strong> (ex : 01-05 pour le 1er mai)
-                                </small>
                             </div>
 
                             <!-- Périodes bloquées -->
@@ -201,29 +200,48 @@
     </div>
 </section>
 
+@push('styles')
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+@endpush
+
 @push('scripts')
 <script src="{{ asset('assets/bundles/select2/dist/js/select2.full.min.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://npmcdn.com/flatpickr/dist/l10n/fr.js"></script>
 <script>
 $(document).ready(function() {
     $('.select2').select2({ placeholder: 'Sélectionner...', allowClear: true });
 
+    // Initialiser les datepickers existants
+    initDatepickers();
+
     // Ajouter jour férié
     $('#add-jour').on('click', function() {
+        const index = $('#jours-feries-container .jours-item').length;
         $('#jours-feries-container').append(`
-            <div class="input-group mb-2 jours-feries-item">
-                <input
-                    type="text"
-                    name="jours_feries[]"
-                    class="form-control jour-ferie"
-                    placeholder="JJ-MM"
-                    pattern="^\\d{2}-\\d{2}$"
-                    required
-                >
-                <button class="btn btn-danger remove-jour" type="button">
-                    <i class="fas fa-trash"></i>
-                </button>
+            <div class="border p-2 mb-2 jours-item">
+                <div class="row g-2 align-items-center">
+                    <div class="col">
+                        <input type="text" name="jours_feries[${index}][nom]" 
+                               class="form-control" placeholder="Nom" required>
+                    </div>
+                    <div class="col input-group">
+                        <input type="text" name="jours_feries[${index}][date]"
+                               class="form-control datepicker-jj-mm" 
+                               placeholder="JJ-MM" required readonly>
+                        <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                    </div>
+                    <div class="col-auto">
+                        <button class="btn btn-danger remove-jour" type="button">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
         `);
+        
+        // Initialiser le nouveau datepicker
+        initDatepicker($('#jours-feries-container .jours-item:last .datepicker-jj-mm'));
     });
 
     // Supprimer jour férié
@@ -254,29 +272,61 @@ $(document).ready(function() {
     $(document).on('click', '.remove-periode', function() {
         $(this).closest('.periodes-item').remove();
     });
+
+    // Fonction pour initialiser un datepicker
+    function initDatepicker(element) {
+        element.flatpickr({
+            locale: "fr",
+            dateFormat: "d-m",
+            minDate: "today",
+            disableMobile: true,
+            onChange: function(selectedDates, dateStr, instance) {
+                // Validation basique du format JJ-MM
+                if (dateStr) {
+                    const parts = dateStr.split('-');
+                    if (parts.length === 2) {
+                        const day = parseInt(parts[0]);
+                        const month = parseInt(parts[1]);
+                        
+                        if (day < 1 || day > 31 || month < 1 || month > 12) {
+                            element.val('');
+                            alert('Date invalide. Format attendu : JJ-MM (ex: 01-05 pour le 1er mai)');
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Fonction pour initialiser tous les datepickers
+    function initDatepickers() {
+        $('.datepicker-jj-mm').each(function() {
+            initDatepicker($(this));
+        });
+    }
 });
 
+// Conversion du format JJ-MM en MM-JJ pour le backend
 $('form').on('submit', function () {
-    $('.jour-ferie').each(function () {
+    $('.datepicker-jj-mm').each(function () {
         let value = $(this).val().trim();
 
         if (!value) return;
 
-        // JJ-MM → MM-DD
+        // JJ-MM → MM-DD (format attendu par le backend)
         let parts = value.split('-');
         if (parts.length === 2) {
-            let jj = parts[0];
-            let mm = parts[1];
+            let jj = parts[0].padStart(2, '0');
+            let mm = parts[1].padStart(2, '0');
 
             // Sécurité basique
             if (jj.length === 2 && mm.length === 2) {
+                // Convertir en format MM-JJ pour le backend
                 $(this).val(mm + '-' + jj);
             }
         }
     });
 });
-
 </script>
-
 @endpush
 @endsection
