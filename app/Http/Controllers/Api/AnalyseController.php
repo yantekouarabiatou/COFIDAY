@@ -3,117 +3,182 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
-use App\Models\Dossier;
-use App\Models\TimeEntry;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class AnalyseController extends Controller
 {
-    /**
-     * Récupérer les données des personnels pour les graphiques
-     */
-    public function getPersonnelData(Request $request)
-    {
-        $date = $request->get('date', now()->toDateString());
-
-        // Récupérer les personnels avec leurs heures
-        $personnels = User::with(['timeEntries' => function ($query) use ($date) {
-            $query->whereDate('created_at', $date);
-        }])->get();
-
-        $data = [
-            'personnels' => $personnels->map(function ($user) {
-                $heures = $user->timeEntries->sum('heures_reelles');
-                return [
-                    'id' => $user->id,
-                    'nom_complet' => $user->prenom . ' ' . $user->nom,
-                    'nom_abrege' => $user->prenom . ' ' . substr($user->nom, 0, 1) . '.',
-                    'heures' => $heures,
-                ];
-            }),
-            'statistiques' => [
-                'charge_normale' => $personnels->filter(fn($p) => $p->timeEntries->sum('heures_reelles') <= 6)->count(),
-                'charge_moyenne' => $personnels->filter(fn($p) => $p->timeEntries->sum('heures_reelles') > 6 && $p->timeEntries->sum('heures_reelles') <= 8)->count(),
-                'surcharge' => $personnels->filter(fn($p) => $p->timeEntries->sum('heures_reelles') > 8)->count(),
-            ],
-            'total_heures' => $personnels->sum(function($p) {
-                return $p->timeEntries->sum('heures_reelles');
-            }),
-            'total_personnels' => $personnels->count(),
-        ];
-
-        return response()->json([
-            'success' => true,
-            'data' => $data
-        ]);
+   // Dans votre CongeController.php
+private function estJourOuvrable($date)
+{
+    $date = Carbon::parse($date);
+    
+    // Vérifier si c'est un week-end
+    if ($date->isWeekend()) {
+        return false;
     }
+    
+    // Vérifier si c'est un jour férié
+    $regles = RegleConge::first();
+    if ($regles && $regles->jours_feries) {
+        $joursFeries = json_decode($regles->jours_feries, true);
+        if (is_array($joursFeries)) {
+            $dateStr = $date->format('m-d'); // Format MM-JJ
+            foreach ($joursFeries as $jour) {
+                if (isset($jour['date']) && $jour['date'] === $dateStr) {
+                    return false;
+                }
+            }
+        }
+    }
+    
+    return true;
+}
 
-    /**
-     * Récupérer les données d'évolution sur 7 jours
-     */
-    public function getEvolutionData(Request $request)
-    {
-        $endDate = $request->get('date', now()->toDateString());
-        $startDate = Carbon::parse($endDate)->subDays(6)->toDateString();
+private function estPeriodeBloquee($date)
+{
+    $regles = RegleConge::first();
+    if (!$regles || !$regles->periodes_bloquees) {
+        return false;
+    }
+    
+    $periodesBloquees = json_decode($regles->periodes_bloquees, true);
+    if (!is_array($periodesBloquees)) {
+        return false;
+    }
+    
+    $date = Carbon::parse($date);
+    
+    foreach ($periodesBloquees as $periode) {
+        if (isset($periode['debut']) && isset($periode['fin'])) {
+            $debut = Carbon::parse($periode['debut']);
+            $fin = Carbon::parse($periode['fin']);
+            
+            if ($date->between($debut, $fin)) {
+                return true;
+            }
+        }
+    }
+    
+    return false;
+}
 
-        $evolution = [];
+private function verifierJoursAutorises($dateDebut, $dateFin)
+{
+    $joursNonOuvrables = [];
+    $date = Carbon::parse($dateDebut);
+    $fin = Carbon::parse($dateFin);
+    
+    while ($date->lte($fin)) {
+        if (!$this->estJourOuvrable($date)) {
+            $joursNonOuvrables[] = $date->format('d/m/Y');
+        } elseif ($this->estPeriodeBloquee($date)) {
+            $joursNonOuvrables[] = $date->format('d/m/Y') . ' (période bloquée)';
+        }
+        $date->addDay();
+    }
+    
+    return $joursNonOuvrables;
+}
 
-        for ($i = 6; $i >= 0; $i--) {
-            $date = Carbon::parse($endDate)->subDays($i);
-            $dateStr = $date->toDateString();
+// Modifiez la méthode store()
+public function store(Request $request)
+{
+    DB::beginTransaction();
 
-            // Récupérer les heures pour cette date
-            $totalHeures = TimeEntry::whereDate('created_at', $dateStr)
-                ->sum('heures_reelles');
+    try {
+        $user = Auth::user();
+        $anneeCourante = now()->year;
 
-            $evolution[] = [
-                'date' => $dateStr,
-                'label' => $date->locale('fr')->translatedFormat('D'),
-                'heures' => $totalHeures,
-            ];
+        // Validation
+        $validated = $request->validate([
+            'type_conge_id' => 'required|exists:types_conges,id',
+            'date_debut' => 'required|date|after_or_equal:today',
+            'date_fin' => 'required|date|after_or_equal:date_debut',
+            'motif' => 'required|string|max:1000',
+            'superieur_hierarchique_id' => 'required|exists:users,id',
+        ]);
+
+        $dateDebut = Carbon::parse($request->date_debut);
+        $dateFin = Carbon::parse($request->date_fin);
+        
+        // Vérifier les jours non ouvrables
+        $joursNonOuvrables = $this->verifierJoursAutorises($dateDebut, $dateFin);
+        
+        if (!empty($joursNonOuvrables)) {
+            $message = "Les congés ne peuvent pas être pris sur les jours suivants :<br>";
+            $message .= implode("<br>", array_unique($joursNonOuvrables));
+            Alert::error('Erreur', $message);
+            return back()->withInput();
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => $evolution
-        ]);
-    }
+        // Calculer le nombre de jours ouvrés
+        $nombreJours = $this->calculerJoursOuvres($dateDebut, $dateFin);
 
-    /**
-     * Récupérer les données d'un dossier spécifique
-     */
-    public function getDossierData($dossierId)
-    {
-        $dossier = Dossier::with(['timeEntries.user', 'collaborateurs'])->find($dossierId);
+        // Le reste du code reste inchangé...
+        $typeConge = TypeConge::findOrFail($request->type_conge_id);
 
-        if (!$dossier) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Dossier non trouvé'
-            ], 404);
+        if ($typeConge->nombre_jours_max && $nombreJours > $typeConge->nombre_jours_max) {
+            Alert::error('Erreur', "Ce type de congé ne peut pas dépasser {$typeConge->nombre_jours_max} jours.");
+            return back()->withInput();
         }
 
-        // Vérifier l'accès
-        if (!Auth::user()->hasRole(['admin', 'super-admin']) &&
-            !$dossier->userCanAccess(Auth::id())) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Accès non autorisé'
-            ], 403);
+        // Continuer avec le reste de votre méthode store...
+        // ...
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Alert::error('Erreur', 'Une erreur est survenue lors de la soumission de la demande.');
+        return back()->withInput();
+    }
+}
+
+// Modifiez également la méthode update() de la même façon
+public function update(Request $request, DemandeConge $demande)
+{
+    DB::beginTransaction();
+
+    try {
+        $user = Auth::user();
+        $anneeCourante = now()->year;
+
+        // Sécurité
+        if ($demande->user_id !== $user->id) {
+            abort(403, 'Accès non autorisé');
         }
 
-        $data = [
-            'dossier' => $dossier,
-            'total_heures' => $dossier->timeEntries->sum('heures_reelles'),
-            'collaborateurs_count' => $dossier->collaborateurs->count(),
-        ];
+        // Empêcher la modification si la demande n'est plus en attente
+        if ($demande->statut !== 'en_attente') {
+            Alert::warning('Information', 'Vous ne pouvez pas modifier une demande déjà traitée.');
+            return redirect()->route('conges.show', $demande);
+        }
 
-        return response()->json([
-            'success' => true,
-            'data' => $data
+        // Validation
+        $validated = $request->validate([
+            'type_conge_id' => 'required|exists:types_conges,id',
+            'date_debut' => 'required|date|after_or_equal:today',
+            'date_fin' => 'required|date|after_or_equal:date_debut',
+            'motif' => 'required|string|max:1000',
+            'superieur_hierarchique_id' => 'required|exists:users,id',
         ]);
+
+        $dateDebut = Carbon::parse($request->date_debut);
+        $dateFin = Carbon::parse($request->date_fin);
+        
+        // Vérifier les jours non ouvrables
+        $joursNonOuvrables = $this->verifierJoursAutorises($dateDebut, $dateFin);
+        
+        if (!empty($joursNonOuvrables)) {
+            $message = "Les congés ne peuvent pas être pris sur les jours suivants :<br>";
+            $message .= implode("<br>", array_unique($joursNonOuvrables));
+            Alert::error('Erreur', $message);
+            return back()->withInput();
+        }
+
+        // Le reste du code reste inchangé...
+        // ...
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Alert::error('Erreur', 'Une erreur est survenue lors de la modification de la demande.');
+        return back()->withInput();
     }
+}
 }

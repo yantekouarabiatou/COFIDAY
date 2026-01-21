@@ -694,6 +694,97 @@
 
                 return `${hours}h ${minutes.toString().padStart(2, '0')}min`;
             }
+
+            
+        // Validation des dates côté client
+        $('#date_debut, #date_fin').on('change', function() {
+            validateCongeDates();
         });
+        
+        function validateCongeDates() {
+            let dateDebut = $('#date_debut').val();
+            let dateFin = $('#date_fin').val();
+            
+            if (!dateDebut || !dateFin) return;
+            
+            // Vérifier si date début est un jour ouvrable
+            let dateDebutObj = new Date(dateDebut);
+            let dayOfWeek = dateDebutObj.getDay();
+            
+            // 0 = Dimanche, 6 = Samedi
+            if (dayOfWeek === 0 || dayOfWeek === 6) {
+                showDateError('date_debut', 'La date de début ne peut pas être un week-end');
+                return false;
+            }
+            
+            // Vérifier si date fin est un jour ouvrable
+            let dateFinObj = new Date(dateFin);
+            dayOfWeek = dateFinObj.getDay();
+            
+            if (dayOfWeek === 0 || dayOfWeek === 6) {
+                showDateError('date_fin', 'La date de fin ne peut pas être un week-end');
+                return false;
+            }
+            
+            // Vous pourriez aussi faire une requête AJAX pour vérifier
+            // les jours fériés côté serveur
+            checkFeriesFromServer(dateDebut, dateFin);
+            
+            return true;
+        }
+        
+        function showDateError(fieldId, message) {
+            let field = $('#' + fieldId);
+            let errorDiv = field.next('.ferie-error');
+            
+            if (errorDiv.length === 0) {
+                errorDiv = $('<div class="text-danger small mt-1 ferie-error"></div>');
+                field.after(errorDiv);
+            }
+            
+            errorDiv.text(message);
+            field.addClass('is-invalid');
+            
+            // Retirer l'erreur après 5 secondes
+            setTimeout(function() {
+                errorDiv.remove();
+                field.removeClass('is-invalid');
+            }, 5000);
+        }
+        
+        function checkFeriesFromServer(dateDebut, dateFin) {
+            $.ajax({
+                url: '/api/check-feries',
+                method: 'POST',
+                data: {
+                    date_debut: dateDebut,
+                    date_fin: dateFin,
+                    _token: '{{ csrf_token() }}'
+                },
+                success: function(response) {
+                    if (response.has_feries) {
+                        let message = "Attention : Les périodes suivantes sont des jours fériés :<br>";
+                        message += response.feries.join('<br>');
+                        
+                        Swal.fire({
+                            title: 'Jours fériés détectés',
+                            html: message,
+                            icon: 'warning',
+                            confirmButtonText: 'Compris'
+                        });
+                    }
+                }
+            });
+        }
+        
+        // Empêcher la soumission si validation échoue
+        $('form').on('submit', function(e) {
+            if (!validateCongeDates()) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+            });
     </script>
 @endpush
