@@ -120,23 +120,44 @@ use App\Models\User;
                                 </thead>
                                 <tbody>
                                     @forelse($personnelsAvecTemps as $personnelData)
-                                        @php
-                                            $personnel = $personnelData->user;
-                                            $chargeTotal = $personnelData->total_heures ?? 0;
-                                            $nbInterventions = $personnelData->nb_interventions ?? 0;
-                                            $heuresMoyennes = $nbInterventions > 0 ? $chargeTotal / $nbInterventions : 0;
-                                            $derniereActivite = \App\Models\TimeEntry::where('user_id', $personnel->id)
-                                                ->where('dossier_id', $dossier->id)
-                                                ->latest()
-                                                ->first();
+                                       @php
+    $personnel = $personnelData->user;
 
-                                            $totalHeuresGlobal += $chargeTotal;
-                                            $totalInterventions += $nbInterventions;
+    $totalHeures = $personnelData->total_heures ?? 0;
 
-                                            // Calcul du pourcentage par rapport aux heures théoriques
-                                            $heuresTheoriques = $dossier->heure_theorique_sans_weekend ?? $dossier->heure_theorique_avec_weekend ?? 1;
-                                            $pourcentage = $heuresTheoriques > 0 ? ($chargeTotal / $heuresTheoriques) * 100 : 0;
-                                        @endphp
+    $heures = floor($totalHeures);
+    $minutes = round(($totalHeures - $heures) * 60);
+
+    // Valeur affichable
+    $chargeTotalFormat = sprintf('%dh %02dmin', $heures, $minutes);
+
+    // Valeur numérique en heures décimales
+    $chargeTotalNumerique = $totalHeures;
+
+    $nbInterventions = $personnelData->nb_interventions ?? 0;
+
+    $heuresMoyennes = $nbInterventions > 0 
+        ? $chargeTotalNumerique / $nbInterventions 
+        : 0;
+
+    $derniereActivite = \App\Models\TimeEntry::where('user_id', $personnel->id)
+        ->where('dossier_id', $dossier->id)
+        ->latest()
+        ->first();
+
+    $totalHeuresGlobal += $chargeTotalNumerique;
+    $totalInterventions += $nbInterventions;
+
+    // Calcul du pourcentage
+    $heuresTheoriques = $dossier->heure_theorique_sans_weekend 
+        ?? $dossier->heure_theorique_avec_weekend 
+        ?? 1;
+
+    $pourcentage = $heuresTheoriques > 0 
+        ? ($chargeTotalNumerique / $heuresTheoriques) * 100 
+        : 0;
+@endphp
+
                                         <tr>
                                             <td>
                                                 <div class="d-flex align-items-center">
@@ -165,7 +186,7 @@ use App\Models\User;
                                             <td class="text-center align-middle">
                                                 <div class="d-flex flex-column align-items-center">
                                                     <span class="badge badge-primary badge-pill px-3 py-2 mb-1">
-                                                        {{ number_format($chargeTotal, 2) }}h
+                                                        {{ $chargeTotalFormat }}
                                                     </span>
                                                     <div class="progress" style="height: 6px; width: 80px;">
                                                         <div class="progress-bar bg-primary" role="progressbar"
@@ -182,7 +203,8 @@ use App\Models\User;
                                             @endphp
                                             <td class="text-center align-middle">
                                                 Heure moyenne
-                                                <span class="text-muted">{{ $heures}}h {{ $minutes }}mins</span>
+
+                                                <span class="text-muted">{{ $heures}}h {{ $minutes }}min</span>
                                             </td>
                                             <td class="text-center align-middle">
                                                 @if($derniereActivite)
