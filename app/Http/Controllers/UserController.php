@@ -16,11 +16,14 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use App\Mail\UserCreatedMail;
 use App\Mail\UserUpdateMail;
+use App\Models\User as ModelsUser;
 use Exception;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class UserController extends Controller
 {
-        public function __construct()
+    public function __construct()
     {
         $this->middleware('auth');
 
@@ -53,12 +56,38 @@ class UserController extends Controller
     {
         $users = User::with('poste')->latest()->get();
         $postes = Poste::orderBy('intitule')->get(); // Tous les postes pour le select
-        return view('pages.users.index', compact('users','postes'));
+        return view('pages.users.index', compact('users', 'postes'));
     }
 
-    public function show(User $user)
+    public function show($id)
     {
-        return view('pages.users.show', compact('user'));
+        // Vérifier les permissions
+        if (!Auth::user()->hasRole('admin|super-admin') && Auth::id() != $id) {
+            abort(403, 'Accès non autorisé');
+        }
+
+        $user = User::with([
+            'poste',
+            'creator',
+            'roles', // Charger les rôles Spatie
+            'dailyEntries' => function ($query) {
+                $query->latest('jour')->limit(10);
+            },
+            'timeEntries' => function ($query) {
+                $query->with('dossier')->latest()->limit(10);
+            },
+            'conges' => function ($query) {
+                $query->latest()->limit(5);
+            }
+        ])->findOrFail($id);
+
+        // Récupérer la liste des postes
+        $postes = Poste::orderBy('intitule')->get();
+
+        // Calculer les statistiques
+        $statistiques = $this->calculerStatistiquesTemps($user);
+
+        return view('profile.show', compact('user', 'postes', 'statistiques'));
     }
 
     /**
@@ -88,7 +117,7 @@ class UserController extends Controller
             'role_id' => 'required|exists:roles,id',
             'is_active' => 'required|in:0,1',
             'photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-        ],[
+        ], [
             'nom.required' => 'Le nom est obligatoire',
             'prenom.required' => 'Le prénom est obligatoire',
             'username.required' => "Le nom d'utilisateur est obligatoire",
@@ -136,7 +165,7 @@ class UserController extends Controller
             // =========================================================
             // On récupère l'objet Rôle depuis son ID
             $role = Role::findById($validated['role_id']);
-            
+
             // On l'assigne à l'utilisateur (remplit la table model_has_roles)
             $user->assignRole($role);
 
@@ -145,7 +174,6 @@ class UserController extends Controller
 
             Alert::success('Succès', 'Utilisateur créé avec succès !')->persistent('OK');
             return redirect()->back();
-
         } catch (Exception $e) {
 
             if (isset($photoPath) && Storage::disk('public')->exists($photoPath)) {
@@ -192,7 +220,7 @@ class UserController extends Controller
             'is_active' => 'required|in:0,1',
             'password' => 'nullable|string|min:8|confirmed',
             'photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-        ],[
+        ], [
             'nom.required' => 'Le nom est obligatoire',
             'prenom.required' => 'Le prénom est obligatoire',
             'username.required' => "Le nom d'utilisateur est obligatoire",
@@ -209,66 +237,65 @@ class UserController extends Controller
             'photo.max' => 'La photo ne doit pas dépasser 2 Mo',
         ]);
         try {
-                $oldPhotoPath = $user->photo;
-                $newPhotoPath = null;
+            $oldPhotoPath = $user->photo;
+            $newPhotoPath = null;
 
-                // Gestion upload
-                if ($request->hasFile('photo')) {
-                    $photo = $request->file('photo');
-                    $photoName = 'user_' . time() . '_' . uniqid() . '.' . $photo->getClientOriginalExtension();
-                    $newPhotoPath = $photo->storeAs('photos/users', $photoName, 'public');
+            // Gestion upload
+            if ($request->hasFile('photo')) {
+                $photo = $request->file('photo');
+                $photoName = 'user_' . time() . '_' . uniqid() . '.' . $photo->getClientOriginalExtension();
+                $newPhotoPath = $photo->storeAs('photos/users', $photoName, 'public');
 
-                    // Suppression ancienne photo
-                    if ($oldPhotoPath && Storage::disk('public')->exists($oldPhotoPath)) {
-                        Storage::disk('public')->delete($oldPhotoPath);
-                    }
+                // Suppression ancienne photo
+                if ($oldPhotoPath && Storage::disk('public')->exists($oldPhotoPath)) {
+                    Storage::disk('public')->delete($oldPhotoPath);
                 }
-
-                $updateData = [
-                    'nom' => $validated['nom'],
-                    'prenom' => $validated['prenom'],
-                    'username' => $validated['username'],
-                    'email' => $validated['email'],
-                    'poste_id' => $validated['poste_id'],
-                    'telephone' => $validated['telephone'] ?? null,
-                    'role_id' => $validated['role_id'],
-                    'is_active' => $validated['is_active'],
-                ];
-
-                if ($newPhotoPath) {
-                    $updateData['photo'] = $newPhotoPath;
-                }
-
-                if (!empty($validated['password'])) {
-                    $updateData['password'] = Hash::make($validated['password']);
-                }
-
-                $user->update($updateData);
-
-                // =========================================================
-                // 2. SYNCHRONISATION SPATIE
-                // =========================================================
-                // On récupère le nouveau rôle choisi
-                $role = Role::findById($validated['role_id']);
-                
-                // On remplace tous les anciens rôles par celui-ci
-                $user->syncRoles($role);
-
-                // Envoyer un mail à l'utilisateur
-                Mail::to($user->email)->send(new UserUpdateMail($user,auth()->user()->nom . ' ' . auth()->user()->prenom));
-                Alert::success('Succès', "L'utilisateur a été mis à jour avec succès.");
-                return redirect()->route('users.index');
-
-            } catch (\Exception $e) {
-
-                if (isset($newPhotoPath) && Storage::disk('public')->exists($newPhotoPath)) {
-                    Storage::disk('public')->delete($newPhotoPath);
-                }
-
-                Alert::error('Erreur', 'Erreur lors de la modification : ' . $e->getMessage());
-                return redirect()->back()
-                    ->withInput();
             }
+
+            $updateData = [
+                'nom' => $validated['nom'],
+                'prenom' => $validated['prenom'],
+                'username' => $validated['username'],
+                'email' => $validated['email'],
+                'poste_id' => $validated['poste_id'],
+                'telephone' => $validated['telephone'] ?? null,
+                'role_id' => $validated['role_id'],
+                'is_active' => $validated['is_active'],
+            ];
+
+            if ($newPhotoPath) {
+                $updateData['photo'] = $newPhotoPath;
+            }
+
+            if (!empty($validated['password'])) {
+                $updateData['password'] = Hash::make($validated['password']);
+            }
+
+            $user->update($updateData);
+
+            // =========================================================
+            // 2. SYNCHRONISATION SPATIE
+            // =========================================================
+            // On récupère le nouveau rôle choisi
+            $role = Role::findById($validated['role_id']);
+
+            // On remplace tous les anciens rôles par celui-ci
+            $user->syncRoles($role);
+
+            // Envoyer un mail à l'utilisateur
+            Mail::to($user->email)->send(new UserUpdateMail($user, auth()->user()->nom . ' ' . auth()->user()->prenom));
+            Alert::success('Succès', "L'utilisateur a été mis à jour avec succès.");
+            return redirect()->route('users.index');
+        } catch (\Exception $e) {
+
+            if (isset($newPhotoPath) && Storage::disk('public')->exists($newPhotoPath)) {
+                Storage::disk('public')->delete($newPhotoPath);
+            }
+
+            Alert::error('Erreur', 'Erreur lors de la modification : ' . $e->getMessage());
+            return redirect()->back()
+                ->withInput();
+        }
     }
 
     /**
@@ -310,7 +337,6 @@ class UserController extends Controller
             // 7. Message de succès
             Alert::success('Succès', "✅ L'utilisateur {$userName} a été supprimé avec succès !");
             return redirect()->route('users.index');
-
         } catch (Exception $e) {
             // Log de l'erreur
             Log::error('Erreur suppression utilisateur: ' . $e->getMessage());
@@ -334,4 +360,83 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * Calculer les statistiques de temps pour un utilisateur
+     */
+    private function calculerStatistiquesTemps($user)
+    {
+        $now = Carbon::now();
+        $debutMois = $now->copy()->startOfMonth();
+        $finMois = $now->copy()->endOfMonth();
+
+        // Statistiques globales
+        $totalDailyEntries = $user->dailyEntries()->count();
+        $totalTimeEntries = $user->timeEntries()->count();
+        $totalConges = $user->conges()->count();
+
+        // Heures du mois en cours
+        $heuresMoisEnCours = $user->dailyEntries()
+            ->whereBetween('jour', [$debutMois, $finMois])
+            ->sum('heures_reelles');
+
+        // Heures théoriques du mois
+        $heuresTheoriquesMois = $user->dailyEntries()
+            ->whereBetween('jour', [$debutMois, $finMois])
+            ->sum('heures_theoriques');
+
+        // Écart heures (réelles - théoriques)
+        $ecartHeures = $heuresMoisEnCours - $heuresTheoriquesMois;
+
+        // Taux de réalisation
+        $tauxRealisation = $heuresTheoriquesMois > 0
+            ? round(($heuresMoisEnCours / $heuresTheoriquesMois) * 100, 1)
+            : 0;
+
+        // Jours de congés pris cette année (calculé depuis les dates)
+        $debutAnnee = $now->copy()->startOfYear();
+        $congesApprouves = $user->conges()
+            ->whereBetween('date_debut', [$debutAnnee, $now])
+            ->get();
+
+        // Calculer le total des jours de congé
+        $congesPris = $congesApprouves->sum(function ($conge) {
+            if ($conge->date_debut && $conge->date_fin) {
+                return $conge->date_debut->diffInDays($conge->date_fin) + 1;
+            }
+            return 0;
+        });
+
+        // Congés en attente
+        $congesEnAttente = $user->conges()
+            ->count();
+
+        // Dernière entrée de temps
+        $derniereEntree = $user->dailyEntries()
+            ->latest('jour')
+            ->first();
+
+        // Journées validées ce mois
+        $journeesValidees = $user->dailyEntries()
+            ->whereBetween('jour', [$debutMois, $finMois])
+            ->count();
+
+        // Journées en attente
+        $journeesEnAttente = $user->dailyEntries()
+            ->count();
+
+        return [
+            'total_daily_entries' => $totalDailyEntries,
+            'total_time_entries' => $totalTimeEntries,
+            'total_conges' => $totalConges,
+            'heures_mois_en_cours' => round($heuresMoisEnCours, 2),
+            'heures_theoriques_mois' => round($heuresTheoriquesMois, 2),
+            'ecart_heures' => round($ecartHeures, 2),
+            'taux_realisation' => $tauxRealisation,
+            'conges_pris' => $congesPris,
+            'conges_en_attente' => $congesEnAttente,
+            'derniere_entree' => $derniereEntree,
+            'journees_validees' => $journeesValidees,
+            'journees_en_attente' => $journeesEnAttente,
+        ];
+    }
 }

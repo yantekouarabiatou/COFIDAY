@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
+use App\Models\User;
+
 
 class Dossier extends Model
 {
@@ -280,5 +282,114 @@ class Dossier extends Model
         }
 
         return $query->get();
+    }
+    // Dans Dossier.php
+    public function collaborateurs()
+    {
+        return $this->belongsToMany(User::class, 'collaborateur_dossier')
+            ->withPivot('role', 'is_active', 'added_at', 'removed_at')
+            ->wherePivot('is_active', true)
+            ->withTimestamps();
+    }
+
+    // ET/OU ajoutez cette méthode pour les requêtes personnalisées
+    public function collaborateursActifs()
+    {
+        return $this->belongsToMany(User::class, 'collaborateur_dossier')
+            ->withPivot('role', 'is_active', 'added_at', 'removed_at')
+            ->wherePivot('is_active', 1) // Utiliser 1 au lieu de true pour MySQL
+            ->withTimestamps();
+    }
+
+    // Tous les collaborateurs (actifs et inactifs)
+    public function allCollaborateurs()
+    {
+        return $this->belongsToMany(User::class, 'collaborateur_dossier')
+            ->withPivot('role', 'is_active', 'added_at', 'removed_at')
+            ->withTimestamps();
+    }
+
+    // Vérifier si un utilisateur est collaborateur sur ce dossier
+    public function isCollaborateur($userId)
+    {
+        return $this->collaborateurs()->where('user_id', $userId)->exists();
+    }
+
+    // Ajouter un collaborateur
+    public function addCollaborateur($userId, $role = 'collaborateur')
+    {
+        if (!$this->isCollaborateur($userId)) {
+            $this->collaborateurs()->attach($userId, [
+                'role' => $role,
+                'is_active' => true,
+                'added_at' => now()
+            ]);
+            return true;
+        }
+        return false;
+    }
+
+    // Supprimer un collaborateur (désactiver)
+    public function removeCollaborateur($userId)
+    {
+        $this->allCollaborateurs()->updateExistingPivot($userId, [
+            'is_active' => false,
+            'removed_at' => now()
+        ]);
+    }
+
+    // Dans le modèle Dossier.php
+
+    /**
+     * Scope pour les dossiers accessibles par un utilisateur
+     */
+    public function scopeAccessibleBy($query, $userId = null)
+    {
+        if (!$userId) {
+            $userId = auth()->id();
+        }
+
+        $user = User::find($userId);
+
+        // Les administrateurs et rôles spécifiques voient tous les dossiers
+        if ($user->hasRole(['admin', 'super-admin', 'manager', 'directeur-general'])) {
+            return $query;
+        }
+
+        // Les utilisateurs normaux voient :
+        // 1. Les dossiers où ils sont collaborateurs
+        // 2. Les dossiers qu'ils ont créés
+        return $query->where(function ($q) use ($userId) {
+            $q->where('created_by', $userId)
+                ->orWhereHas('collaborateurs', function ($subq) use ($userId) {
+                    $subq->where('user_id', $userId)
+                        ->where('is_active', true);
+                });
+        });
+    }
+
+    /**
+     * Vérifier si un utilisateur a accès au dossier
+     */
+    public function userCanAccess($userId = null)
+    {
+        if (!$userId) {
+            $userId = auth()->id();
+        }
+
+        $user = User::find($userId);
+
+        // Les administrateurs ont toujours accès
+        if ($user->hasRole(['admin', 'super-admin', 'manager', 'directeur-general'])) {
+            return true;
+        }
+
+        // Vérifier si l'utilisateur est créateur
+        if ($this->created_by == $userId) {
+            return true;
+        }
+
+        // Vérifier si l'utilisateur est collaborateur actif
+        return $this->collaborateurs()->where('user_id', $userId)->where('is_active', true)->exists();
     }
 }

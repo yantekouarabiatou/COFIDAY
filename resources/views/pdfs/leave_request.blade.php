@@ -13,6 +13,16 @@
             margin: 40px 50px;
         }
 
+        .logo-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .logo {
+            max-width: 140px;
+            height: auto;
+        }
+        
         .header, .recipient {
             text-align: right;
             margin-bottom: 30px;
@@ -61,6 +71,13 @@
 
 <body>
 
+        <!-- LOGO -->
+    <div class="logo-container">
+        <img src="https://cofima.cc/wp-content/uploads/2020/09/logo-cofima-bon.jpg"
+             alt="Logo COFIMA"
+             class="logo">
+    </div>
+
     <!-- EN-TÊTE (Lieu et date) -->
     <div class="header">
         <p>{{ $lieu ?? 'Cotonou' }}, le {{ $date ?? date('d/m/Y') }}</p>
@@ -79,9 +96,8 @@
     <div class="recipient">
         <p>
             À l’attention de<br>
-            <strong>{{ $validator_name ?? 'Monsieur / Madame le Responsable' }}</strong><br>
-            {{ $validator_poste ?? '—' }}<br>
-            {{ $validator_email ?? '' }}
+            <strong>{{ $superieur->nom }} {{ $superieur->prenom ?? 'Madame / Monsieur' }},</strong><br>
+            {{ $superieur->poste->intitule ?? '—' }}<br>
         </p>
     </div>
 

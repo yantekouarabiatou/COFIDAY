@@ -63,6 +63,30 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="form-group">
+                                        <label>Collaborateurs</label>
+                                        <select name="collaborateurs[]"
+                                                class="form-control select2 @error('collaborateurs') is-invalid @enderror"
+                                                multiple="multiple">
+                                            @foreach($collaborateurs as $collaborateur)
+                                                <option value="{{ $collaborateur->id }}"
+                                                    {{ in_array($collaborateur->id, $dossier->collaborateurs->pluck('id')->toArray()) ? 'selected' : '' }}>
+                                                    {{ $collaborateur->nom }} {{ $collaborateur->prenom }}
+                                                    @if($collaborateur->poste)
+                                                        ({{ $collaborateur->poste->intitule }})
+                                                    @endif
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        <small class="text-muted">Sélectionnez les collaborateurs qui auront accès à ce dossier</small>
+                                        @error('collaborateurs')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
 
                             <div class="row">
                                 <div class="col-md-4">

@@ -112,9 +112,217 @@ class CongeController extends Controller
         return view('pages.conges.create', compact('typesConges', 'solde', 'users'));
     }
 
-    /**
-     * Soumettre une nouvelle demande de congé
-     */
+    // Dans votre CongeController.php
+    private function estJourOuvrable($date)
+    {
+        $date = Carbon::parse($date);
+
+        // Vérifier si c'est un week-end
+        if ($date->isWeekend()) {
+            return false;
+        }
+
+        // Vérifier si c'est un jour férié
+        $regles = RegleConge::first();
+        if ($regles && $regles->jours_feries) {
+            $joursFeries = json_decode($regles->jours_feries, true);
+            if (is_array($joursFeries)) {
+                $dateStr = $date->format('m-d'); // Format MM-JJ
+                foreach ($joursFeries as $jour) {
+                    if (isset($jour['date']) && $jour['date'] === $dateStr) {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private function estPeriodeBloquee($date)
+    {
+        $regles = RegleConge::first();
+        if (!$regles || !$regles->periodes_bloquees) {
+            return false;
+        }
+
+        $periodesBloquees = json_decode($regles->periodes_bloquees, true);
+        if (!is_array($periodesBloquees)) {
+            return false;
+        }
+
+        $date = Carbon::parse($date);
+
+        foreach ($periodesBloquees as $periode) {
+            if (isset($periode['debut']) && isset($periode['fin'])) {
+                $debut = Carbon::parse($periode['debut']);
+                $fin = Carbon::parse($periode['fin']);
+
+                if ($date->between($debut, $fin)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private function verifierJoursAutorises($dateDebut, $dateFin)
+    {
+        $joursNonOuvrables = [];
+        $date = Carbon::parse($dateDebut);
+        $fin = Carbon::parse($dateFin);
+
+        while ($date->lte($fin)) {
+            if (!$this->estJourOuvrable($date)) {
+                $joursNonOuvrables[] = $date->format('d/m/Y');
+            } elseif ($this->estPeriodeBloquee($date)) {
+                $joursNonOuvrables[] = $date->format('d/m/Y') . ' (période bloquée)';
+            }
+            $date->addDay();
+        }
+
+        return $joursNonOuvrables;
+    }
+
+
+    // Ajoutez ces méthodes privées dans votre contrôleur
+    private function verifierJoursOuvrables($dateDebut, $dateFin)
+    {
+        $joursNonOuvrables = [];
+        $date = Carbon::parse($dateDebut);
+        $fin = Carbon::parse($dateFin);
+
+        while ($date->lte($fin)) {
+            // Vérifier si c'est un week-end
+            if ($date->isWeekend()) {
+                $joursNonOuvrables[] = [
+                    'date' => $date->format('d/m/Y'),
+                    'raison' => 'Week-end'
+                ];
+            } else {
+                // Vérifier si c'est un jour férié
+                $regles = RegleConge::first();
+                if ($regles && $regles->jours_feries) {
+                    $joursFeries = is_array($regles->jours_feries)
+                        ? $regles->jours_feries
+                        : json_decode($regles->jours_feries, true);
+
+                    if (is_array($joursFeries)) {
+                        $dateStr = $date->format('m-d'); // Format MM-DD
+                        foreach ($joursFeries as $jour) {
+                            if (isset($jour['date']) && $jour['date'] === $dateStr) {
+                                $joursNonOuvrables[] = [
+                                    'date' => $date->format('d/m/Y'),
+                                    'raison' => $jour['nom'] ?? 'Jour férié'
+                                ];
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Vérifier si c'est dans une période bloquée
+                if ($regles && $regles->periodes_bloquees) {
+                    $periodesBloquees = is_array($regles->periodes_bloquees)
+                        ? $regles->periodes_bloquees
+                        : json_decode($regles->periodes_bloquees, true);
+
+                    if (is_array($periodesBloquees)) {
+                        foreach ($periodesBloquees as $periode) {
+                            if (isset($periode['debut']) && isset($periode['fin'])) {
+                                try {
+                                    $debutPeriode = Carbon::parse($periode['debut']);
+                                    $finPeriode = Carbon::parse($periode['fin']);
+
+                                    if ($date->between($debutPeriode, $finPeriode)) {
+                                        $joursNonOuvrables[] = [
+                                            'date' => $date->format('d/m/Y'),
+                                            'raison' => $periode['nom'] ?? 'Période bloquée'
+                                        ];
+                                        break;
+                                    }
+                                } catch (\Exception $e) {
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            $date->addDay();
+        }
+
+        return $joursNonOuvrables;
+    }
+    // Modifiez la méthode store()
+    // Dans votre CongeController.php
+
+    // REMPLACEZ ou MODIFIEZ ces méthodes :
+
+    private function calculerJoursOuvres(Carbon $start, Carbon $end)
+    {
+        $jours = 0;
+        $current = $start->copy();
+
+        while ($current->lte($end)) {
+            // Vérifier si c'est un jour ouvrable (lundi à vendredi hors jours fériés)
+            if ($this->estJourOuvrable($current)) {
+                $jours++;
+            }
+            $current->addDay();
+        }
+
+        return $jours;
+    }
+
+    // SUPPRIMEZ ou MODIFIEZ la méthode verifierJoursOuvrables pour ne plus bloquer
+    // À la place, utilisez cette méthode pour simplement informer
+
+    private function getJoursNonOuvrablesInfo($dateDebut, $dateFin)
+    {
+        $joursNonOuvrables = [];
+        $date = Carbon::parse($dateDebut);
+        $fin = Carbon::parse($dateFin);
+
+        while ($date->lte($fin)) {
+            // Vérifier si c'est un week-end
+            if ($date->isWeekend()) {
+                $joursNonOuvrables[] = [
+                    'date' => $date->format('d/m/Y'),
+                    'raison' => 'Week-end'
+                ];
+            } else {
+                // Vérifier si c'est un jour férié
+                $regles = RegleConge::first();
+                if ($regles && $regles->jours_feries) {
+                    $joursFeries = is_array($regles->jours_feries)
+                        ? $regles->jours_feries
+                        : json_decode($regles->jours_feries, true);
+
+                    if (is_array($joursFeries)) {
+                        $dateStr = $date->format('m-d');
+                        foreach ($joursFeries as $jour) {
+                            if (isset($jour['date']) && $jour['date'] === $dateStr) {
+                                $joursNonOuvrables[] = [
+                                    'date' => $date->format('d/m/Y'),
+                                    'raison' => $jour['nom'] ?? 'Jour férié'
+                                ];
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            $date->addDay();
+        }
+
+        return $joursNonOuvrables;
+    }
+
+    // MODIFIEZ la méthode store() pour ne pas bloquer
     public function store(Request $request)
     {
         DB::beginTransaction();
@@ -130,12 +338,17 @@ class CongeController extends Controller
                 'date_fin' => 'required|date|after_or_equal:date_debut',
                 'motif' => 'required|string|max:1000',
                 'superieur_hierarchique_id' => 'required|exists:users,id',
+                'nombre_jours' => 'required|numeric|min:0.5' // AJOUTEZ cette validation
             ]);
 
-            // Calculer le nombre de jours ouvrés
             $dateDebut = Carbon::parse($request->date_debut);
             $dateFin = Carbon::parse($request->date_fin);
-            $nombreJours = $this->calculerJoursOuvres($dateDebut, $dateFin);
+
+            // Calculer le nombre de jours ouvrés côté serveur (pour vérification)
+            $nombreJoursCalcule = $this->calculerJoursOuvres($dateDebut, $dateFin);
+
+            // Utiliser le nombre de jours envoyé depuis le formulaire (calculé côté client)
+            $nombreJours = $request->nombre_jours;
 
             // Vérifier les limites du type de congé
             $typeConge = TypeConge::findOrFail($request->type_conge_id);
@@ -167,13 +380,13 @@ class CongeController extends Controller
             // Créer la demande (statut = en_attente par défaut)
             $demande = DemandeConge::create([
                 'user_id' => $user->id,
+                'superieur_hierarchique_id' => $request->superieur_hierarchique_id,
                 'type_conge_id' => $request->type_conge_id,
                 'date_debut' => $request->date_debut,
                 'date_fin' => $request->date_fin,
                 'nombre_jours' => $nombreJours,
                 'motif' => $request->motif,
                 'statut' => 'en_attente',
-                'superieur_hierarchique_id' => $request->superieur_hierarchique_id,
             ]);
 
             // Historique
@@ -184,11 +397,13 @@ class CongeController extends Controller
                 'commentaire' => 'Demande initiale soumise',
             ]);
 
+            $superieur = User::findOrFail($request->superieur_hierarchique_id);
             // -----------------------------
             // 5. Génération du PDF
             // -----------------------------
             $pdf = Pdf::loadView('pdfs.leave_request', [
                 'leave' => $demande,
+                'superieur' => $superieur,
             ]);
 
             $pdfPath = storage_path("app/temp/demande_{$demande->id}.pdf");
@@ -200,10 +415,8 @@ class CongeController extends Controller
             $pdf->save($pdfPath);
 
             // -----------------------------
-            // 6. Envoi du mail
+            // Envoi du mail
             // -----------------------------
-            $superieur = User::findOrFail($request->superieur_hierarchique_id); //Le supeieur hierachique manager
-
             Mail::to($superieur->email)->send(new LeaveRequestMail($demande, $superieur, $pdfPath));
 
             DB::commit();
@@ -212,9 +425,32 @@ class CongeController extends Controller
             return redirect()->route('conges.index');
         } catch (\Exception $e) {
             DB::rollBack();
-            Alert::error('Erreur', 'Une erreur est survenue lors de la soumission de la demande.');
+            Alert::error('Erreur', 'Une erreur est survenue lors de la soumission de la demande. ' . $e->getMessage());
             return back()->withInput();
         }
+    }
+
+
+
+    // AJOUTEZ cette méthode pour récupérer les jours fériés
+    public function getFeries()
+    {
+        $regles = RegleConge::first();
+        $joursFeries = [];
+
+        if ($regles && $regles->jours_feries) {
+            $joursFeries = is_array($regles->jours_feries)
+                ? $regles->jours_feries
+                : json_decode($regles->jours_feries, true);
+
+            if (!$joursFeries) {
+                $joursFeries = [];
+            }
+        }
+
+        return response()->json([
+            'jours_feries' => $joursFeries
+        ]);
     }
 
     /**
@@ -305,6 +541,9 @@ class CongeController extends Controller
     /**
      * Mettre à jour une demande
      */
+
+    // Modifiez la méthode update()
+    // MODIFIEZ aussi la méthode update() de la même façon
     public function update(Request $request, DemandeConge $demande)
     {
         DB::beginTransaction();
@@ -331,15 +570,16 @@ class CongeController extends Controller
                 'date_fin' => 'required|date|after_or_equal:date_debut',
                 'motif' => 'required|string|max:1000',
                 'superieur_hierarchique_id' => 'required|exists:users,id',
+                'nombre_jours' => 'required|numeric|min:0.5' // AJOUTEZ cette validation
             ]);
+
+            $dateDebut = Carbon::parse($request->date_debut);
+            $dateFin = Carbon::parse($request->date_fin);
+            // Utiliser le nombre de jours envoyé depuis le formulaire
+            $nombreJours = $request->nombre_jours;
 
             // Récupérer le type de congé
             $typeConge = TypeConge::findOrFail($request->type_conge_id);
-
-            // Calculer le nombre de jours
-            $dateDebut = Carbon::parse($request->date_debut);
-            $dateFin = Carbon::parse($request->date_fin);
-            $nombreJours = $this->calculerJoursOuvres($dateDebut, $dateFin);
 
             // Vérifier les limites du type de congé
             if ($typeConge->nombre_jours_max && $nombreJours > $typeConge->nombre_jours_max) {
@@ -383,12 +623,12 @@ class CongeController extends Controller
 
             // Mettre à jour la demande
             $demande->update([
+                'superieur_hierarchique_id' => $request->superieur_hierarchique_id,
                 'type_conge_id' => $request->type_conge_id,
                 'date_debut' => $request->date_debut,
                 'date_fin' => $request->date_fin,
                 'nombre_jours' => $nombreJours,
                 'motif' => $request->motif,
-                'superieur_hierarchique_id' => $request->superieur_hierarchique_id,
             ]);
 
             // Historique
@@ -398,11 +638,14 @@ class CongeController extends Controller
                 'effectue_par' => $user->id,
                 'commentaire' => 'Demande modifiée par l\'employé',
             ]);
-                                    // -----------------------------
+
+            $superieur = User::findOrFail($request->superieur_hierarchique_id); //Le supeieur hierachique manager
+            // -----------------------------
             // 5. Génération du PDF
             // -----------------------------
             $pdf = Pdf::loadView('pdfs.leave_request', [
                 'leave' => $demande,
+                'superieur' => $superieur,
             ]);
 
             $pdfPath = storage_path("app/temp/demande_{$demande->id}.pdf");
@@ -416,7 +659,6 @@ class CongeController extends Controller
             // -----------------------------
             // 6. Envoi du mail
             // -----------------------------
-            $superieur = User::findOrFail($request->superieur_hierarchique_id); //Le supeieur hierachique manager
 
             Mail::to($superieur->email)->send(new LeaveRequestMail($demande, $superieur, $pdfPath));
 
@@ -562,7 +804,6 @@ class CongeController extends Controller
 
                 Mail::to($demandeur->email)
                     ->send(new LeaveApprovedMail($demande));
-
             } else {
 
                 Mail::to($demandeur->email)
@@ -837,7 +1078,7 @@ class CongeController extends Controller
         // Si pas de solde pour l'année courante, en créer un
         if (!$soldeCourant) {
             $regles = RegleConge::first();
-            $joursAcquis = $regles ? $regles->jours_par_mois * 12 : 25;
+            $joursAcquis = $regles ? $regles->jours_par_mois * 12 : 24;
 
             $soldeCourant = SoldeConge::create([
                 'user_id' => $user->id,
@@ -867,28 +1108,7 @@ class CongeController extends Controller
             'demandesCongesPayes'
         ));
     }
-    /**
-     * Calculer les jours ouvrés entre deux dates
-     */
-    /**
-     * Calculer les jours ouvrés entre deux dates (exclut weekends)
-     */
-    private function calculerJoursOuvres(Carbon $start, Carbon $end)
-    {
-        $jours = 0;
-        $current = $start->copy();
-
-        while ($current->lte($end)) {
-            // Ne compter que les jours de semaine (lundi à vendredi)
-            if (!$current->isWeekend()) {
-                $jours++;
-            }
-            $current->addDay();
-        }
-
-        return $jours;
-    }
-
+    
     /**
      * Calculer les jours calendaires (inclut weekends)
      */
@@ -903,7 +1123,7 @@ class CongeController extends Controller
     private function creerSoldeInitial(int $userId, int $annee): SoldeConge
     {
         $regles = RegleConge::first();
-        $joursAcquis = $regles ? $regles->jours_par_mois * 12 : 25;
+        $joursAcquis = $regles ? $regles->jours_par_mois * 12 : 24;
 
         return SoldeConge::create([
             'user_id' => $userId,

@@ -203,6 +203,27 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/create-dossier-quick', [DailyEntryController::class, 'createDossierQuick'])->name('create-dossier-quick');
     });
 
+
+    // Ajoutez cette route APRES la route resource
+    Route::post('/dossiers/{dossier}/collaborateurs/gestion', [DossierController::class, 'gestionCollaborateurs'])
+        ->name('dossiers.collaborateurs.gestion');
+
+    // OU si vous voulez regrouper :
+    Route::prefix('dossiers')->name('dossiers.')->group(function () {
+        Route::resource('/', DossierController::class)->names([
+            'index' => 'index',
+            'create' => 'create',
+            'store' => 'store',
+            'show' => 'show',
+            'edit' => 'edit',
+            'update' => 'update',
+            'destroy' => 'destroy',
+        ]);
+
+        Route::post('/{dossier}/collaborateurs/gestion', [DossierController::class, 'gestionCollaborateurs'])
+            ->name('collaborateurs.gestion');
+    });
+
     Route::middleware('auth')
         ->prefix('profile')
         ->name('user-profile.')
@@ -258,11 +279,17 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{setting}', [CompanySettingController::class, 'update'])->name('settings.update');
     })->middleware('auth'); // Appliquez les middlewares nécessaires
 
-    // Routes pour l'analyse des missions
-    // routes/web.php
 
-    Route::prefix('missions')->group(function () {
+
+    Route::middleware(['auth', 'dossier.access'])->group(function () {
         Route::get('/analyse', [MissionAnalyseController::class, 'index'])->name('missions.analyse');
+        // Analyse GET (pour les liens rapides vers un dossier spécifique)
+        Route::get('/missions/analyse/{dossier}', [MissionAnalyseController::class, 'show'])
+            ->name('missions.analyse.show');
+
+        // Analyse POST (pour les formulaires avec filtres)
+        Route::post('/missions/analyse/filtrer', [MissionAnalyseController::class, 'filtrerPersonnels'])
+            ->name('missions.filtrer');
         Route::post('/analyse/filtrer', [MissionAnalyseController::class, 'filtrerPersonnels'])->name('missions.filtrer');
         Route::get('/utilisateur/{user}', [MissionAnalyseController::class, 'vueUtilisateur'])->name('missions.utilisateur');
         Route::get('/utilisateur/{user}/dossier/{dossier}', [MissionAnalyseController::class, 'vueUtilisateur'])->name('missions.utilisateur.dossier');
@@ -332,6 +359,10 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['auth', 'role:admin'])->group(function () {
         Route::post('/conges/solde/{user}/ajuster', [CongeController::class, 'ajusterSolde'])->name('conges.ajuster-solde');
     });
+
+    Route::get('/conges/get-feries', [CongeController::class, 'getFeries'])
+        ->name('conges.get-feries')
+        ->middleware('auth');
     // Route API à créer dans routes/api.php
     Route::get('/personnel-details', function (Request $request) {
         $personnel = User::with(['poste', 'timeEntries' => function ($q) use ($request) {

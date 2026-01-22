@@ -23,6 +23,7 @@ class RegleConge extends Model
         'couleur_calendrier'
     ];
 
+
     protected $casts = [
         'jours_par_mois' => 'decimal:2',
         'report_autorise' => 'boolean',

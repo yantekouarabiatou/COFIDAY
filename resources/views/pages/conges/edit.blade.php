@@ -61,52 +61,16 @@
                         </div>
                         @endif
 
-                        <!-- Détails actuels -->
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5>Détails actuels de la demande</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-3">
-                                        <strong>Type :</strong><br>
-                                        <span class="badge badge-info">{{ $demande->typeConge->libelle }}</span>
-                                        @if($demande->typeConge->est_annuel)
-                                            <span class="badge badge-success ml-1">Annuel</span>
-                                        @elseif($demande->typeConge->est_paye)
-                                            <span class="badge badge-primary ml-1">Payé</span>
-                                        @else
-                                            <span class="badge badge-secondary ml-1">Non payé</span>
-                                        @endif
-                                    </div>
-                                    <div class="col-md-3">
-                                        <strong>Statut :</strong><br>
-                                        @switch($demande->statut)
-                                            @case('en_attente')
-                                                <span class="badge badge-warning">En attente</span>
-                                                @break
-                                            @case('approuve')
-                                                <span class="badge badge-success">Approuvé</span>
-                                                @break
-                                            @case('refuse')
-                                                <span class="badge badge-danger">Refusé</span>
-                                                @break
-                                            @case('annule')
-                                                <span class="badge badge-secondary">Annulé</span>
-                                                @break
-                                        @endswitch
-                                    </div>
-                                    <div class="col-md-3">
-                                        <strong>Période :</strong><br>
-                                        {{ \Carbon\Carbon::parse($demande->date_debut)->format('d/m/Y') }}
-                                        au {{ \Carbon\Carbon::parse($demande->date_fin)->format('d/m/Y') }}
-                                    </div>
-                                    <div class="col-md-3">
-                                        <strong>Durée :</strong><br>
-                                        {{ $demande->nombre_jours }} jour(s)
-                                    </div>
-                                </div>
-                            </div>
+                        <!-- Information sur le calcul -->
+                        <div class="alert alert-info">
+                            <i class="fas fa-calculator"></i>
+                            <strong>Mode de calcul :</strong>
+                            <ul class="mb-0 mt-1">
+                                <li>Seuls les <strong>jours ouvrés (lundi à vendredi)</strong> sont comptabilisés</li>
+                                <li>Les <strong>week-ends (samedi et dimanche)</strong> sont exclus du calcul</li>
+                                <li>Les <strong>jours fériés</strong> sont exclus du calcul</li>
+                                <li>Le nombre de jours affiché correspond aux <strong>jours ouvrés uniquement</strong></li>
+                            </ul>
                         </div>
 
                         @if($demande->statut === 'en_attente')
@@ -114,14 +78,16 @@
                             @csrf
                             @method('PUT')
 
+                            <!-- Champ hidden pour envoyer le nombre de jours calculé -->
+                            <input type="hidden" name="nombre_jours" id="nombre_jours_hidden" value="{{ old('nombre_jours', $demande->nombre_jours) }}">
+
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label>Type de congé <span class="text-danger">*</span></label>
                                         <select name="type_conge_id" id="type_conge_id"
                                                 class="form-control select2 @error('type_conge_id') is-invalid @enderror"
-                                                required
-                                                onchange="updateTypeCongeInfo()">
+                                                required>
                                             <option value="">Sélectionner un type</option>
                                             @foreach($typesConges as $type)
                                                 <option value="{{ $type->id }}"
@@ -152,19 +118,19 @@
                                     <div class="form-group">
                                         <label>Nombre de jours <span class="text-danger">*</span></label>
                                         <div class="input-group">
-                                            <input type="number" name="nombre_jours" id="nombre_jours"
-                                                   class="form-control @error('nombre_jours') is-invalid @enderror"
+                                            <input type="number" id="nombre_jours_display"
+                                                   class="form-control-plaintext"
                                                    value="{{ old('nombre_jours', $demande->nombre_jours) }}"
-                                                   step="0.5" min="0.5" max="90" readonly>
+                                                   readonly>
                                             <div class="input-group-append">
-                                                <span class="input-group-text">jours</span>
+                                                <span class="input-group-text">jours ouvrés</span>
                                             </div>
                                         </div>
                                         <small class="form-text text-muted">
-                                            Calculé automatiquement en fonction des dates
+                                            Calculé automatiquement (jours ouvrés uniquement)
                                         </small>
                                         @error('nombre_jours')
-                                            <div class="invalid-feedback">{{ $message }}</div>
+                                            <div class="text-danger small">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
@@ -178,10 +144,11 @@
                                                class="form-control @error('date_debut') is-invalid @enderror"
                                                value="{{ old('date_debut', $demande->date_debut->format('Y-m-d')) }}"
                                                min="{{ date('Y-m-d') }}"
-                                               onchange="calculateDays()" required>
+                                               required>
                                         @error('date_debut')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
+                                        <div id="date_debut_info" class="text-info small mt-1" style="display: none;"></div>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
@@ -191,14 +158,14 @@
                                                class="form-control @error('date_fin') is-invalid @enderror"
                                                value="{{ old('date_fin', $demande->date_fin->format('Y-m-d')) }}"
                                                min="{{ date('Y-m-d') }}"
-                                               onchange="calculateDays()" required>
+                                               required>
                                         @error('date_fin')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
+                                        <div id="date_fin_info" class="text-info small mt-1" style="display: none;"></div>
                                     </div>
                                 </div>
                             </div>
-
 
                             <div class="row">
                                 <div class="col-md-6">
@@ -206,7 +173,6 @@
                                         <label for="superieur_hierarchique_id">
                                             Supérieur hiérarchique <span class="text-danger">*</span>
                                         </label>
-
                                         <select
                                             name="superieur_hierarchique_id"
                                             id="superieur_hierarchique_id"
@@ -214,7 +180,6 @@
                                             required
                                         >
                                             <option value="">Sélectionner un supérieur</option>
-
                                             @foreach($users as $u)
                                                 @if($u->id !== auth()->id())
                                                     <option
@@ -226,11 +191,9 @@
                                                 @endif
                                             @endforeach
                                         </select>
-
                                         <small class="form-text text-muted">
                                             Vous pouvez rechercher par nom, prénom ou email
                                         </small>
-
                                         @error('superieur_hierarchique_id')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
@@ -240,7 +203,7 @@
                                     <div class="form-group">
                                         <label>Motif</label>
                                         <textarea name="motif" class="form-control @error('motif') is-invalid @enderror"
-                                                required  rows="3" placeholder="Raison de votre demande de congé...">{{ old('motif', $demande->motif) }}</textarea>
+                                                required rows="3" placeholder="Raison de votre demande de congé...">{{ old('motif', $demande->motif) }}</textarea>
                                         <small class="form-text text-muted">
                                             Maximum 1000 caractères
                                         </small>
@@ -251,38 +214,38 @@
                                 </div>
                             </div>
 
+                            <!-- Informations sur la période -->
+                            <div id="periode-info" class="alert alert-light mt-3" style="display: none;">
+                                <i class="fas fa-info-circle text-primary"></i>
+                                <strong>Informations sur la période :</strong>
+                                <div id="jours-details" class="mt-1"></div>
+                            </div>
+
                             <!-- Prévisualisation des changements -->
-                            <div class="card preview-card" id="preview-card">
+                            <div class="card preview-card" style="display: none;" id="preview-card">
                                 <div class="card-header">
                                     <h4>Récapitulatif des modifications</h4>
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-md-4">
-                                            <strong>Type :</strong><br>
+                                            <strong>Type :</strong>
                                             <span id="preview-type">{{ $demande->typeConge->libelle }}</span>
-                                            <div id="preview-type-info">
-                                                @if($demande->typeConge->est_annuel)
-                                                    <span class="badge badge-success">Déduit du solde</span>
-                                                @elseif($demande->typeConge->est_paye)
-                                                    <span class="badge badge-primary">Non déduit</span>
-                                                @endif
-                                            </div>
                                         </div>
                                         <div class="col-md-4">
-                                            <strong>Période :</strong><br>
+                                            <strong>Période :</strong>
                                             <span id="preview-period">
                                                 {{ $demande->date_debut->format('d/m/Y') }} au {{ $demande->date_fin->format('d/m/Y') }}
                                             </span>
                                         </div>
                                         <div class="col-md-4">
-                                            <strong>Durée :</strong><br>
+                                            <strong>Durée :</strong>
                                             <span id="preview-duration">{{ $demande->nombre_jours }} jour(s)</span>
                                         </div>
                                     </div>
                                     <div class="row mt-3">
                                         <div class="col-md-12">
-                                            <strong>Impact sur le solde :</strong><br>
+                                            <strong>Solde après congé :</strong>
                                             <span id="preview-solde">
                                                 @if($demande->typeConge->est_annuel)
                                                     <span class="text-danger">-{{ $demande->nombre_jours }} jours (déduit)</span>
@@ -292,62 +255,13 @@
                                             </span>
                                         </div>
                                     </div>
-
-                                    <!-- Comparaison des changements -->
-                                    <div class="row mt-4 border-top pt-3">
-                                        <div class="col-md-12">
-                                            <h6>Comparaison :</h6>
-                                            <table class="table table-sm">
-                                                <thead>
-                                                    <tr>
-                                                        <th></th>
-                                                        <th>Actuel</th>
-                                                        <th>Nouveau</th>
-                                                        <th>Changement</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <tr>
-                                                        <td><strong>Type</strong></td>
-                                                        <td>{{ $demande->typeConge->libelle }}</td>
-                                                        <td id="compare-type">-</td>
-                                                        <td id="compare-type-change">-</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td><strong>Dates</strong></td>
-                                                        <td>{{ $demande->date_debut->format('d/m/Y') }} - {{ $demande->date_fin->format('d/m/Y') }}</td>
-                                                        <td id="compare-dates">-</td>
-                                                        <td id="compare-dates-change">-</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td><strong>Durée</strong></td>
-                                                        <td>{{ $demande->nombre_jours }} jours</td>
-                                                        <td id="compare-duree">-</td>
-                                                        <td id="compare-duree-change">-</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td><strong>Impact solde</strong></td>
-                                                        <td>
-                                                            @if($demande->typeConge->est_annuel)
-                                                                -{{ $demande->nombre_jours }} jours
-                                                            @else
-                                                                Aucun
-                                                            @endif
-                                                        </td>
-                                                        <td id="compare-solde">-</td>
-                                                        <td id="compare-solde-change">-</td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
 
                             <div class="text-right">
-                                <button type="button" class="btn btn-secondary btn-lg" onclick="history.back()">
-                                    <i class="fas fa-arrow-left"></i> Retour
-                                </button>
+                                <a href="{{ route('conges.show', $demande) }}" class="btn btn-secondary btn-lg">
+                                    <i class="fas fa-times"></i> Annuler
+                                </a>
                                 <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
                                     <i class="fas fa-save"></i> Enregistrer les modifications
                                 </button>
@@ -396,6 +310,17 @@
         font-size: 0.8em;
         padding: 0.35em 0.65em;
     }
+    #jours-details ul {
+        margin-bottom: 0;
+    }
+    .form-control-plaintext {
+        background-color: #f8f9fa;
+        padding: 0.375rem 0.75rem;
+        border: 1px solid #ced4da;
+        border-radius: 0.25rem;
+        font-weight: 500;
+        color: #495057;
+    }
 </style>
 @endpush
 
@@ -415,223 +340,273 @@ $(document).ready(function() {
     $('#date_debut').attr('min', today);
     $('#date_fin').attr('min', today);
 
-    // Initialiser les infos
-    updateTypeCongeInfo();
-    updatePreview();
+    // Charger les jours fériés et initialiser
+    var joursFeries = [];
+    loadJoursFeries();
+
+    // Calcul initial
+    if ($('#date_debut').val() && $('#date_fin').val()) {
+        setTimeout(function() {
+            analyzePeriod();
+        }, 500);
+    }
 });
 
 // Variables pour stocker les valeurs originales
-var originalType = "{{ $demande->typeConge->libelle }}";
-var originalDateDebut = "{{ $demande->date_debut->format('Y-m-d') }}";
-var originalDateFin = "{{ $demande->date_fin->format('Y-m-d') }}";
-var originalDuree = {{ $demande->nombre_jours }};
-var originalEstAnnuel = {{ $demande->typeConge->est_annuel ? 'true' : 'false' }};
-var originalEstPaye = {{ $demande->typeConge->est_paye ? 'true' : 'false' }};
+var originalTypeId = {{ $demande->type_conge_id }};
+var originalEstAnnuel = {{ $demande->typeConge->est_annuel ? '1' : '0' }};
+var originalEstPaye = {{ $demande->typeConge->est_paye ? '1' : '0' }};
+var originalNombreJours = {{ $demande->nombre_jours }};
 var soldeRestant = {{ $solde ? $solde->jours_restants : 0 }};
 
-// Fonction pour calculer les jours ouvrés
-function calculateDays() {
-    var dateDebut = $('#date_debut').val();
-    var dateFin = $('#date_fin').val();
-    var typeCongeId = $('#type_conge_id').val();
-
-    if (!dateDebut || !dateFin || !typeCongeId) {
-        return;
-    }
-
-    // Vérifier que la date de fin est après la date de début
-    if (new Date(dateFin) < new Date(dateDebut)) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Dates invalides',
-            text: 'La date de fin doit être postérieure à la date de début',
-        });
-        $('#date_fin').val('');
-        return;
-    }
-
-    // Calculer le nombre de jours (simplifié)
-    var start = new Date(dateDebut);
-    var end = new Date(dateFin);
-    var timeDiff = end.getTime() - start.getTime();
-    var daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
-
-    // Soustraire les weekends (simplifié)
-    var weekends = 0;
-    var current = new Date(start);
-    while (current <= end) {
-        var day = current.getDay();
-        if (day === 0 || day === 6) {
-            weekends++;
+// Charger les jours fériés depuis le serveur
+function loadJoursFeries() {
+    $.ajax({
+        url: '{{ route("conges.get-feries") }}',
+        method: 'GET',
+        success: function(data) {
+            joursFeries = data.jours_feries || [];
+        },
+        error: function() {
+            joursFeries = [];
         }
-        current.setDate(current.getDate() + 1);
-    }
-
-    var workingDays = daysDiff - weekends;
-
-    // Mettre à jour le champ nombre_jours
-    $('#nombre_jours').val(workingDays);
-
-    // Mettre à jour les infos
-    updateTypeCongeInfo();
-    updatePreview();
-    verifierSolde();
+    });
 }
 
-// Fonction pour mettre à jour les infos du type de congé
-function updateTypeCongeInfo() {
+// Vérifier si un jour est un week-end
+function isWeekend(dateStr) {
+    var date = new Date(dateStr);
+    var day = date.getDay(); // 0 = dimanche, 6 = samedi
+    return day === 0 || day === 6;
+}
+
+// Vérifier si un jour est férié
+function isJourFerie(dateStr) {
+    if (!joursFeries || !Array.isArray(joursFeries)) return false;
+    
+    var date = new Date(dateStr);
+    var mois = (date.getMonth() + 1).toString().padStart(2, '0');
+    var jour = date.getDate().toString().padStart(2, '0');
+    var dateFormatted = mois + '-' + jour;
+    
+    return joursFeries.some(function(ferie) {
+        return ferie.date === dateFormatted;
+    });
+}
+
+// Obtenir le nom d'un jour férié
+function getNomJourFerie(dateStr) {
+    if (!joursFeries || !Array.isArray(joursFeries)) return 'Jour férié';
+    
+    var date = new Date(dateStr);
+    var mois = (date.getMonth() + 1).toString().padStart(2, '0');
+    var jour = date.getDate().toString().padStart(2, '0');
+    var dateFormatted = mois + '-' + jour;
+    
+    var ferie = joursFeries.find(function(f) {
+        return f.date === dateFormatted;
+    });
+    
+    return ferie ? ferie.nom : 'Jour férié';
+}
+
+// Obtenir le nom du jour de la semaine
+function getJourSemaine(dateStr) {
+    var jours = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+    var date = new Date(dateStr);
+    return jours[date.getDay()];
+}
+
+// Formater une date en français
+function formatDateFr(dateStr) {
+    var date = new Date(dateStr);
+    return date.toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+}
+
+// Analyser la période sélectionnée
+function analyzePeriod() {
+    var dateDebut = $('#date_debut').val();
+    var dateFin = $('#date_fin').val();
+    
+    // Masquer les infos précédentes
+    $('#date_debut_info').hide().empty();
+    $('#date_fin_info').hide().empty();
+    $('#periode-info').hide();
+    $('#jours-details').empty();
+    $('#preview-card').hide();
+    $('#submit-btn').prop('disabled', true);
+    
+    if (!dateDebut || !dateFin) {
+        return false;
+    }
+    
+    // Vérifier que la date de fin est après la date de début
+    if (new Date(dateFin) < new Date(dateDebut)) {
+        $('#date_fin_info').text('La date de fin doit être postérieure à la date de début').show();
+        return false;
+    }
+    
+    // Afficher des infos sur les dates sélectionnées
+    var debutJour = getJourSemaine(dateDebut);
+    var finJour = getJourSemaine(dateFin);
+    
+    if (isWeekend(dateDebut)) {
+        $('#date_debut_info').text(debutJour + ' (week-end - non comptabilisé)').show();
+    } else if (isJourFerie(dateDebut)) {
+        var nomFerie = getNomJourFerie(dateDebut);
+        $('#date_debut_info').text(debutJour + ' (' + nomFerie + ' - non comptabilisé)').show();
+    }
+    
+    if (isWeekend(dateFin)) {
+        $('#date_fin_info').text(finJour + ' (week-end - non comptabilisé)').show();
+    } else if (isJourFerie(dateFin)) {
+        var nomFerie = getNomJourFerie(dateFin);
+        $('#date_fin_info').text(finJour + ' (' + nomFerie + ' - non comptabilisé)').show();
+    }
+    
+    // Analyser tous les jours de la période
+    var startDate = new Date(dateDebut);
+    var endDate = new Date(dateFin);
+    var joursOuvrables = 0;
+    var joursNonOuvrables = [];
+    var currentDate = new Date(startDate);
+    
+    while (currentDate <= endDate) {
+        var dateStr = currentDate.toISOString().split('T')[0];
+        var jourSemaine = getJourSemaine(dateStr);
+        
+        if (isWeekend(dateStr)) {
+            joursNonOuvrables.push({
+                date: formatDateFr(dateStr),
+                raison: 'Week-end (' + jourSemaine + ')',
+                type: 'weekend'
+            });
+        } else if (isJourFerie(dateStr)) {
+            var nomFerie = getNomJourFerie(dateStr);
+            joursNonOuvrables.push({
+                date: formatDateFr(dateStr),
+                raison: nomFerie,
+                type: 'ferie'
+            });
+        } else {
+            joursOuvrables++;
+        }
+        
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    // Mettre à jour le nombre de jours ouvrés
+    if (joursOuvrables > 0) {
+        $('#nombre_jours_display').val(joursOuvrables);
+        $('#nombre_jours_hidden').val(joursOuvrables);
+        $('#submit-btn').prop('disabled', false);
+        
+        // Afficher les détails de la période
+        var totalJours = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+        var message = '<div class="mb-2">';
+        message += '<strong>Période totale :</strong> ' + totalJours + ' jour(s) calendaire(s)<br>';
+        message += '<strong>Jours ouvrés :</strong> ' + joursOuvrables + ' jour(s)<br>';
+        message += '<strong>Jours exclus :</strong> ' + joursNonOuvrables.length + ' jour(s)</div>';
+        
+        if (joursNonOuvrables.length > 0) {
+            message += '<details>';
+            message += '<summary class="text-primary"><small>Voir les jours exclus du calcul</small></summary>';
+            message += '<ul class="mt-2 mb-0 pl-3">';
+            joursNonOuvrables.forEach(function(jour) {
+                var icon = jour.type === 'weekend' ? '🏖️' : '🎉';
+                message += '<li><small>' + icon + ' ' + jour.date + ' (' + jour.raison + ')</small></li>';
+            });
+            message += '</ul>';
+            message += '</details>';
+        }
+        
+        $('#jours-details').html(message);
+        $('#periode-info').show();
+        
+        // Mettre à jour la prévisualisation
+        updatePreview();
+        checkSolde();
+        
+        return true;
+    } else {
+        $('#jours-details').html('La période sélectionnée ne contient aucun jour ouvrable. Veuillez modifier les dates.');
+        $('#periode-info').show();
+        return false;
+    }
+}
+
+// Mettre à jour la prévisualisation
+function updatePreview() {
+    var typeText = $('#type_conge_id option:selected').text();
+    var dateDebut = $('#date_debut').val();
+    var dateFin = $('#date_fin').val();
+    var nombreJours = $('#nombre_jours_hidden').val();
     var selectedOption = $('#type_conge_id option:selected');
-    var typeCongeId = selectedOption.val();
     var estPaye = selectedOption.data('est-paye');
     var estAnnuel = selectedOption.data('est-annuel');
-    var maxJours = selectedOption.data('max-jours');
-    var nombreJours = parseFloat($('#nombre_jours').val()) || 0;
 
-    if (!typeCongeId) {
-        $('#type-conge-info').text('Sélectionnez un type pour voir les détails');
+    if (!typeText || !dateDebut || !dateFin || !nombreJours) {
+        $('#preview-card').hide();
         return;
     }
 
-    var infoText = '';
-    if (maxJours) {
-        infoText += 'Maximum ' + maxJours + ' jours. ';
-    }
+    $('#preview-type').html(typeText);
+    $('#preview-period').html(formatDateFr(dateDebut) + ' au ' + formatDateFr(dateFin));
+    $('#preview-duration').html(nombreJours + ' jour(s) ouvrable(s)');
 
+    // Afficher l'impact sur le solde selon le type
     if (estAnnuel == '1') {
-        infoText += 'Congé annuel (déduit du solde).';
+        $('#preview-solde').html('<span class="text-danger">-' + nombreJours + ' jours (déduit du solde annuel)</span>');
     } else if (estPaye == '1') {
-        infoText += 'Congé payé (non déduit du solde).';
+        $('#preview-solde').html('<span class="text-info">Congé payé (non déduit du solde annuel)</span>');
     } else {
-        infoText += 'Congé non payé.';
+        $('#preview-solde').html('<span class="text-secondary">Congé non payé</span>');
     }
 
-    $('#type-conge-info').html(infoText);
+    $('#preview-card').show();
+}
 
-    // Vérifier si le nombre de jours dépasse le maximum
+// Vérifier le solde
+function checkSolde() {
+    var typeCongeId = $('#type_conge_id').val();
+    var nombreJours = parseFloat($('#nombre_jours_hidden').val()) || 0;
+
+    if (!typeCongeId || !nombreJours) {
+        $('#submit-btn').prop('disabled', true);
+        return;
+    }
+
+    var selectedOption = $('#type_conge_id option:selected');
+    var estAnnuel = selectedOption.data('est-annuel');
+    var maxJours = selectedOption.data('max-jours');
+
+    // Vérifier le maximum de jours
     if (maxJours && nombreJours > maxJours) {
+        $('#submit-btn').prop('disabled', true);
         Swal.fire({
             icon: 'warning',
             title: 'Dépassement',
             text: 'Le nombre de jours demandé (' + nombreJours + ') dépasse le maximum autorisé (' + maxJours + ' jours) pour ce type de congé.',
         });
-    }
-}
-
-// Fonction pour mettre à jour la prévisualisation
-function updatePreview() {
-    var typeText = $('#type_conge_id option:selected').text();
-    var dateDebut = $('#date_debut').val();
-    var dateFin = $('#date_fin').val();
-    var nombreJours = $('#nombre_jours').val();
-    var estPaye = $('#type_conge_id option:selected').data('est-paye');
-    var estAnnuel = $('#type_conge_id option:selected').data('est-annuel');
-
-    if (!typeText || !dateDebut || !dateFin) {
         return;
     }
 
-    // Formater les dates
-    var formatDate = function(dateStr) {
-        if (!dateStr) return '-';
-        var date = new Date(dateStr);
-        return date.toLocaleDateString('fr-FR', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
-    };
-
-    // Mettre à jour les infos de base
-    $('#preview-type').html(typeText);
-
-    var typeInfo = '';
-    if (estAnnuel == '1') {
-        typeInfo = '<span class="badge badge-success">Déduit du solde</span>';
-    } else if (estPaye == '1') {
-        typeInfo = '<span class="badge badge-primary">Non déduit</span>';
-    }
-    $('#preview-type-info').html(typeInfo);
-
-    $('#preview-period').html(formatDate(dateDebut) + ' au ' + formatDate(dateFin));
-    $('#preview-duration').html(nombreJours + ' jour(s)');
-
-    // Mettre à jour l'impact sur le solde
-    if (estAnnuel == '1') {
-        $('#preview-solde').html('<span class="text-danger">-' + nombreJours + ' jours (déduit du solde annuel)</span>');
-    } else {
-        $('#preview-solde').html('<span class="text-info">Aucun impact sur le solde annuel</span>');
-    }
-
-    // Mettre à jour la comparaison
-    updateComparison(typeText, dateDebut, dateFin, nombreJours, estAnnuel);
-}
-
-// Fonction pour mettre à jour la comparaison
-function updateComparison(newTypeText, newDateDebut, newDateFin, newDuree, newEstAnnuel) {
-    // Comparaison du type
-    $('#compare-type').html(newTypeText);
-    if (originalType !== newTypeText) {
-        $('#compare-type-change').html('<span class="text-warning"><i class="fas fa-exchange-alt"></i> Changé</span>');
-    } else {
-        $('#compare-type-change').html('<span class="text-success"><i class="fas fa-check"></i> Identique</span>');
-    }
-
-    // Comparaison des dates
-    var newDatesFormatted = newDateDebut ? (new Date(newDateDebut).toLocaleDateString('fr-FR') + ' - ' + new Date(newDateFin).toLocaleDateString('fr-FR')) : '-';
-    $('#compare-dates').html(newDatesFormatted);
-    if (originalDateDebut !== newDateDebut || originalDateFin !== newDateFin) {
-        $('#compare-dates-change').html('<span class="text-warning"><i class="fas fa-exchange-alt"></i> Changé</span>');
-    } else {
-        $('#compare-dates-change').html('<span class="text-success"><i class="fas fa-check"></i> Identique</span>');
-    }
-
-    // Comparaison de la durée
-    $('#compare-duree').html(newDuree + ' jours');
-    var dureeChange = newDuree - originalDuree;
-    if (dureeChange !== 0) {
-        var changeText = dureeChange > 0 ?
-            '<span class="text-danger">+' + dureeChange + ' jours</span>' :
-            '<span class="text-success">' + dureeChange + ' jours</span>';
-        $('#compare-duree-change').html('<span class="text-warning"><i class="fas fa-exchange-alt"></i> ' + changeText + '</span>');
-    } else {
-        $('#compare-duree-change').html('<span class="text-success"><i class="fas fa-check"></i> Identique</span>');
-    }
-
-    // Comparaison de l'impact sur le solde
-    var oldSoldeImpact = originalEstAnnuel ? '-' + originalDuree + ' jours' : 'Aucun';
-    var newSoldeImpact = newEstAnnuel == '1' ? '-' + newDuree + ' jours' : 'Aucun';
-    $('#compare-solde').html(newSoldeImpact);
-
-    if (originalEstAnnuel != (newEstAnnuel == '1')) {
-        $('#compare-solde-change').html('<span class="text-warning"><i class="fas fa-exchange-alt"></i> Changé</span>');
-    } else {
-        $('#compare-solde-change').html('<span class="text-success"><i class="fas fa-check"></i> Identique</span>');
-    }
-}
-
-// Fonction pour vérifier le solde
-function verifierSolde() {
-    var typeCongeId = $('#type_conge_id').val();
-    var nombreJours = parseFloat($('#nombre_jours').val()) || 0;
-    var selectedOption = $('#type_conge_id option:selected');
-    var estAnnuel = selectedOption.data('est-annuel');
-    var estPaye = selectedOption.data('est-paye');
-
-    // Réinitialiser le bouton
-    $('#submit-btn').prop('disabled', false);
-    $('#submit-btn').html('<i class="fas fa-save"></i> Enregistrer les modifications');
-
     // Vérifier uniquement pour les congés annuels
     if (estAnnuel == '1') {
-        var changementDuree = nombreJours - originalDuree;
-
-        // Cas 1: Changement vers un congé annuel (était non-annuel avant)
-        if (!originalEstAnnuel) {
-            // Nouveau congé annuel - vérifier le solde pour toute la durée
+        // Calculer la différence de jours
+        var differenceJours = nombreJours - originalNombreJours;
+        
+        // Si changement de type (non-annuel -> annuel)
+        if (originalEstAnnuel != '1') {
+            // Nouveau congé annuel - vérifier toute la durée
             if (nombreJours > soldeRestant) {
                 $('#submit-btn').prop('disabled', true);
-                $('#submit-btn').html('<i class="fas fa-ban"></i> Solde insuffisant');
-
+                
                 Swal.fire({
                     icon: 'error',
                     title: 'Solde insuffisant',
@@ -643,60 +618,63 @@ function verifierSolde() {
                           '</div>',
                     confirmButtonText: 'Compris'
                 });
+            } else {
+                $('#submit-btn').prop('disabled', false);
             }
         }
-        // Cas 2: Reste un congé annuel mais augmente la durée
-        else if (changementDuree > 0 && changementDuree > soldeRestant) {
-            $('#submit-btn').prop('disabled', true);
-            $('#submit-btn').html('<i class="fas fa-ban"></i> Solde insuffisant pour l\'augmentation');
-
-            Swal.fire({
-                icon: 'error',
-                title: 'Solde insuffisant',
-                html: '<div class="text-left">' +
-                      '<p>Augmentation de la durée : <strong>+' + changementDuree + ' jours</strong></p>' +
-                      '<p>Solde disponible : <strong>' + soldeRestant + ' jours</strong></p>' +
-                      '<p class="text-danger">Manquant : <strong>' + (changementDuree - soldeRestant) + ' jours</strong></p>' +
-                      '</div>',
-                confirmButtonText: 'Compris'
-            });
+        // Si reste annuel mais augmentation de durée
+        else if (differenceJours > 0) {
+            if (differenceJours > soldeRestant) {
+                $('#submit-btn').prop('disabled', true);
+                
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Solde insuffisant',
+                    html: '<div class="text-left">' +
+                          '<p>Augmentation de la durée : <strong>+' + differenceJours + ' jours</strong></p>' +
+                          '<p>Solde disponible : <strong>' + soldeRestant + ' jours</strong></p>' +
+                          '<p class="text-danger">Manquant : <strong>' + (differenceJours - soldeRestant) + ' jours</strong></p>' +
+                          '</div>',
+                    confirmButtonText: 'Compris'
+                });
+            } else {
+                $('#submit-btn').prop('disabled', false);
+            }
         }
-        // Cas 3: Réduction de durée ou solde suffisant - OK
+        // Réduction de durée ou pas de changement - OK
         else {
             $('#submit-btn').prop('disabled', false);
-            $('#submit-btn').html('<i class="fas fa-save"></i> Enregistrer les modifications');
         }
     } else {
-        // Pour les congés non-annuels, toujours activer le bouton
+        // Pour les congés non-annuels, activer le bouton
         $('#submit-btn').prop('disabled', false);
-        $('#submit-btn').html('<i class="fas fa-save"></i> Enregistrer les modifications');
     }
 }
 
 // Validation du formulaire
 $('#demande-form').on('submit', function(e) {
+    e.preventDefault();
+    
     var typeCongeId = $('#type_conge_id').val();
     var dateDebut = $('#date_debut').val();
     var dateFin = $('#date_fin').val();
-    var nombreJours = parseFloat($('#nombre_jours').val()) || 0;
+    var nombreJours = parseFloat($('#nombre_jours_hidden').val()) || 0;
     var selectedOption = $('#type_conge_id option:selected');
     var estAnnuel = selectedOption.data('est-annuel');
     var maxJours = selectedOption.data('max-jours');
-
+    
     // Validation basique
-    if (!typeCongeId || !dateDebut || !dateFin) {
-        e.preventDefault();
+    if (!typeCongeId || !dateDebut || !dateFin || !nombreJours) {
         Swal.fire({
             icon: 'error',
             title: 'Champs obligatoires',
-            text: 'Veuillez remplir tous les champs obligatoires (*)',
+            text: 'Veuillez remplir tous les champs obligatoires',
         });
         return false;
     }
-
+    
     // Vérifier la date de fin
     if (new Date(dateFin) < new Date(dateDebut)) {
-        e.preventDefault();
         Swal.fire({
             icon: 'error',
             title: 'Dates invalides',
@@ -704,10 +682,19 @@ $('#demande-form').on('submit', function(e) {
         });
         return false;
     }
-
+    
+    // Vérifier si au moins 1 jour ouvrable
+    if (nombreJours <= 0) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Durée invalide',
+            text: 'La période sélectionnée ne contient aucun jour ouvrable.',
+        });
+        return false;
+    }
+    
     // Vérifier le maximum de jours
     if (maxJours && nombreJours > maxJours) {
-        e.preventDefault();
         Swal.fire({
             icon: 'error',
             title: 'Dépassement',
@@ -715,51 +702,62 @@ $('#demande-form').on('submit', function(e) {
         });
         return false;
     }
-
+    
     // Vérifier le solde pour les congés annuels
     if (estAnnuel == '1') {
-        var changementDuree = nombreJours - originalDuree;
-
+        var differenceJours = nombreJours - originalNombreJours;
+        
         // Cas 1: Changement vers annuel (était non-annuel)
-        if (!originalEstAnnuel) {
+        if (originalEstAnnuel != '1') {
             if (nombreJours > soldeRestant) {
-                e.preventDefault();
                 Swal.fire({
                     icon: 'error',
                     title: 'Solde insuffisant',
-                    text: 'Vous n\'avez pas assez de jours de congés annuels disponibles.',
+                    html: 'Vous n\'avez pas assez de jours de congés annuels disponibles.<br>' +
+                          'Solde restant : <strong>' + soldeRestant + ' jours</strong><br>' +
+                          'Demandé : <strong>' + nombreJours + ' jours</strong>',
                 });
                 return false;
             }
         }
         // Cas 2: Augmentation de durée d'un congé annuel
-        else if (changementDuree > 0 && changementDuree > soldeRestant) {
-            e.preventDefault();
+        else if (differenceJours > 0 && differenceJours > soldeRestant) {
             Swal.fire({
                 icon: 'error',
                 title: 'Solde insuffisant',
-                text: 'Vous n\'avez pas assez de jours de congés annuels disponibles pour augmenter la durée.',
+                html: 'Vous n\'avez pas assez de jours de congés annuels disponibles pour augmenter la durée.<br>' +
+                      'Augmentation : <strong>+' + differenceJours + ' jours</strong><br>' +
+                      'Solde restant : <strong>' + soldeRestant + ' jours</strong>',
             });
             return false;
         }
     }
-
+    
     // Demander confirmation
-    e.preventDefault();
+    var confirmationMessage = '<div class="text-left">';
+    confirmationMessage += '<p><strong>Type :</strong> ' + $('#type_conge_id option:selected').text() + '</p>';
+    confirmationMessage += '<p><strong>Période :</strong> ' + formatDateFr(dateDebut) + ' au ' + formatDateFr(dateFin) + '</p>';
+    confirmationMessage += '<p><strong>Durée :</strong> ' + nombreJours + ' jour(s) ouvrable(s)</p>';
+    
+    if (estAnnuel == '1') {
+        var impactSolde = (originalEstAnnuel == '1') ? 
+            'Modification : ' + (nombreJours - originalNombreJours) + ' jours' :
+            'Nouveau impact : -' + nombreJours + ' jours';
+        confirmationMessage += '<p><strong>Impact sur solde :</strong> ' + impactSolde + '</p>';
+    }
+    
+    confirmationMessage += '</div>';
+
     Swal.fire({
         title: 'Confirmer la modification',
-        html: '<div class="text-left">' +
-              '<p>Êtes-vous sûr de vouloir modifier cette demande ?</p>' +
-              '<div class="alert alert-warning">' +
-              '<i class="fas fa-exclamation-triangle"></i> Cette action sera enregistrée dans l\'historique.' +
-              '</div>' +
-              '</div>',
+        html: confirmationMessage,
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#3085d6',
         cancelButtonColor: '#d33',
         confirmButtonText: 'Oui, modifier',
-        cancelButtonText: 'Annuler'
+        cancelButtonText: 'Annuler',
+        reverseButtons: true
     }).then((result) => {
         if (result.isConfirmed) {
             // Soumettre le formulaire
@@ -770,20 +768,15 @@ $('#demande-form').on('submit', function(e) {
     return false;
 });
 
-// Écouter les changements
-$('#type_conge_id, #date_debut, #date_fin').on('change', function() {
-    if ($('#date_debut').val() && $('#date_fin').val() && $('#type_conge_id').val()) {
-        calculateDays();
+// Événements de changement
+$('#date_debut, #date_fin').on('change', function() {
+    analyzePeriod();
+});
+
+$('#type_conge_id').on('change', function() {
+    if ($('#date_debut').val() && $('#date_fin').val()) {
+        analyzePeriod();
     }
 });
-
-$(document).ready(function () {
-    $('#superieur_hierarchique_id').select2({
-        placeholder: "Sélectionner un supérieur",
-        allowClear: true
-    }).val('{{ old('superieur_hierarchique_id', $demande->superieur_hierarchique_id) }}')
-      .trigger('change');
-});
-
 </script>
 @endpush

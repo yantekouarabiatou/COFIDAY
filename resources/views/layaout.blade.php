@@ -112,7 +112,7 @@
                         </div>
 
                         <div class="dropdown-footer text-center border-top pt-3">
-                            <a href="{{ route('notifications.index') }}" class="text-primary font-weight-bold">
+                            <a href="{{ route('notifications.index') }}" class=" font-weight-bold" style="color: #2c5282;">
                                 Voir toutes les notifications <i class="fas fa-arrow-right ml-1"></i>
                             </a>
                         </div>
@@ -382,7 +382,7 @@
         @endcan
 
         {{-- Dossiers --}}
-        @can(['voir les dossiers', 'créer des dossiers'])
+        @can('voir les dossiers')
             <li class="dropdown {{ request()->routeIs('dossiers.*') || request()->routeIs('missions.*') ? 'active' : '' }}">
                 <a href="#" class="menu-toggle nav-link has-dropdown {{ request()->routeIs('dossiers.*') || request()->routeIs('missions.*') ? 'active' : '' }}">
                     <i class="fas fa-folder-open"></i><span>Dossiers</span>

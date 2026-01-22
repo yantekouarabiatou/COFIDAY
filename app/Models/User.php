@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
-    use HasFactory, Notifiable, HasRoles,SoftDeletes;
+    use HasFactory, Notifiable, HasRoles, SoftDeletes;
 
     protected $fillable = [
         'nom',
@@ -91,9 +91,50 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(DemandeConge::class, 'user_id');
     }
 
-    public function demandesValidees()
+    // Relation avec les dossiers où l'utilisateur est collaborateur
+    public function dossiersCollaborations()
     {
-        return $this->hasMany(DemandeConge::class, 'superieur_hierarchique_id');
+        return $this->belongsToMany(Dossier::class, 'collaborateur_dossier')
+            ->withPivot('role', 'is_active', 'added_at', 'removed_at')
+            ->wherePivot('is_active', true)
+            ->withTimestamps();
     }
 
+    // Tous les dossiers accessibles par l'utilisateur
+    public function accessibleDossiers()
+    {
+        $query = Dossier::query();
+
+        if ($this->hasRole(['admin', 'super-admin', 'rh', 'manager', 'directeur-general'])) {
+            return $query;
+        }
+
+        return $query->where(function ($q) {
+            $q->where('created_by', $this->id)
+                ->orWhereHas('collaborateurs', function ($subq) {
+                    $subq->where('user_id', $this->id)->where('is_active', true);
+                });
+        });
+    }
+
+    /**
+     * Vérifier si l'utilisateur est collaborateur sur un dossier
+     */
+    public function isCollaborateurOnDossier($dossierId)
+    {
+        return $this->collaborateurDossiers()
+            ->where('dossier_id', $dossierId)
+            ->where('is_active', true)
+            ->exists();
+    }
+
+    /**
+     * Relation avec les dossiers où l'utilisateur est collaborateur
+     */
+    public function collaborateurDossiers()
+    {
+        return $this->belongsToMany(Dossier::class, 'collaborateur_dossier')
+            ->withPivot('role', 'is_active', 'added_at', 'removed_at')
+            ->wherePivot('is_active', true);
+    }
 }

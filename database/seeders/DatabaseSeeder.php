@@ -22,15 +22,13 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             ClientSeeder::class,
             DossierSeeder::class,
+            DailyEntrySeeder::class, 
             CompanySettingSeeder::class,
             TypesCongesSeeder::class,
             ReglesCongesSeeder::class,
             DemandesCongesSeeder::class,
             SoldesCongesSeeder::class,
             HistoriquesCongesSeeder::class,
-            DailyEntrySeeder::class,
-
         ]);
-
     }
 }

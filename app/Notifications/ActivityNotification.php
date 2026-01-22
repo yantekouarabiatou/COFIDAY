@@ -54,7 +54,16 @@ class ActivityNotification extends Notification
             'soumis'    => "$causer a soumis une feuille de temps pour le {$this->model->jour->format('d/m/Y')}",
             'validé'    => "$causer a validé la feuille de temps du {$this->model->jour->format('d/m/Y')}",
             'refusé'    => "$causer a refusé la feuille de temps du {$this->model->jour->format('d/m/Y')}",
-
+            'règle créée'  => "$causer a créé une règle de congé",
+            'règle modifiée' => "$causer a modifié une règle de congé",
+            'règle supprimée' => "$causer a supprimé une règle de congé",
+            'solde créé'   => "$causer a créé un solde de congés pour $ref",
+            'solde modifié' => "$causer a modifié un solde de congés pour $ref",
+            'solde supprimé' => "$causer a supprimé un solde de congés pour $ref",
+            'type créé'    => "$causer a créé un type de congé",
+            'type modifié'  => "$causer a modifié un type de congé",
+            'type supprimé' => "$causer a supprimé un type de congé",
+            'historique créé' => "$causer a ajouté une entrée d'historique pour $ref",
             // Congés
             'crée'   => "$causer a soumis une demande de congé",
             'approuveé'  => "$causer a approuvé votre demande de congé",
@@ -116,6 +125,11 @@ class ActivityNotification extends Notification
         // Gestion des paramètres
         if ($this->model instanceof \App\Models\CompanySetting) {
             return "paramètre '{$this->model->cle}'";
+        }
+
+         // Gestion des paramètres
+        if ($this->model instanceof \App\Models\RegleConge) {
+            return "Règles de conges '{$this->model->id}'";
         }
 
         // Fallback générique

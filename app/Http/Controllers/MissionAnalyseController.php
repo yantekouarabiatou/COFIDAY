@@ -17,15 +17,29 @@ class MissionAnalyseController extends Controller
     /**
      * Page d'analyse des personnels par mission
      */
+    // Dans MissionAnalyseController.php
     public function index(Request $request)
     {
-        $dossiers = Dossier::enCours()->with('client')->get();
-        $personnels = User::with(['poste', 'timeEntries' => function ($q) {
-            $q->whereDate('created_at', now());
-        }])->get();
+        // Récupérer les dossiers accessibles par l'utilisateur courant
+        $dossiers = Dossier::accessibleBy(auth()->id())
+            ->enCours()
+            ->with('client')
+            ->get();
+
+        // Récupérer les personnels (filtrer selon les besoins)
+        $personnels = User::where('is_active', 'actif')
+            ->with(['poste', 'timeEntries' => function ($q) {
+                $q->whereDate('created_at', now());
+            }])
+            ->get();
 
         // Si on vient d'une soumission avec des données
         if ($request->has('dossier_id')) {
+            // Vérifier que l'utilisateur a accès à ce dossier
+            $dossier = Dossier::find($request->dossier_id);
+            if (!$dossier || !$dossier->userCanAccess(auth()->id())) {
+                return redirect()->back()->with('error', 'Accès non autorisé à ce dossier.');
+            }
             return $this->filtrerPersonnels($request);
         }
 
@@ -46,6 +60,15 @@ class MissionAnalyseController extends Controller
 
         $dossier = Dossier::with(['client', 'timeEntries.user'])->find($request->dossier_id);
 
+         // Récupérer les collaborateurs du dossier
+        $collaborateursDossier = $dossier->collaborateurs;
+
+        // Si l'utilisateur n'est pas admin, vérifier qu'il est bien collaborateur
+        if (!auth()->user()->hasRole(['admin', 'super-admin'])) {
+            if (!$collaborateursDossier->contains('id', auth()->id())) {
+                return redirect()->back()->with('error', 'Vous n\'êtes pas collaborateur sur ce dossier.');
+            }
+        }
         // Récupérer les time entries du dossier
         $query = TimeEntry::with(['user', 'user.poste', 'dailyEntry'])
             ->where('dossier_id', $request->dossier_id);
@@ -133,7 +156,8 @@ class MissionAnalyseController extends Controller
             'personnelsParUser',
             'stats',
             'timeEntries',
-            'request'
+            'request',
+            'collaborateursDossier'
         ));
     }
 
