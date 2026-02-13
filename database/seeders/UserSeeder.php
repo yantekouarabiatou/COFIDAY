@@ -30,7 +30,7 @@ class UserSeeder extends Seeder
         $admin = User::updateOrCreate(
             ['username' => 'admin'], // clé unique
             [
-                'nom' => 'YANTE KOUA',
+                'nom' => 'YANTEKOUA',
                 'prenom' => 'Rabiatou',
                 'email' => 'rabiatouyantekoua@gmail.com',
                 'password' => Hash::make('password'),

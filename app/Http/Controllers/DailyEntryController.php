@@ -221,9 +221,9 @@ class DailyEntryController extends Controller
     public function edit(DailyEntry $dailyEntry)
     {
         // Vérifier que l'utilisateur peut éditer cette entrée
-        if (!$dailyEntry->userCanAccess(auth()->id())) {
-            abort(403, 'Accès non autorisé.');
-        }
+        // if (!$dailyEntry->userCanAccess(auth()->id())) {
+        //     abort(403, 'Accès non autorisé.');
+        // }
 
         $dailyEntry->load('timeEntries');
 
