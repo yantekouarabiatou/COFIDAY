@@ -71,7 +71,7 @@
                     <div id="time-entries-container">
                         @foreach($dailyEntry->timeEntries as $index => $entry)
                         <div class="time-entry-row mb-4">
-                            <div class="card">
+                            <div class="card bg-light">
                                 <div class="card-body">
                                     <!-- Première ligne: Informations principales -->
                                     <div class="row align-items-end mb-3">

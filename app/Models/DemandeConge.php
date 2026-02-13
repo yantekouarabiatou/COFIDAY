@@ -14,6 +14,7 @@ class DemandeConge extends Model
 
     protected $fillable = [
         'user_id',
+        'superieur_hierarchique_id',
         'type_conge_id',
         'date_debut',
         'date_fin',

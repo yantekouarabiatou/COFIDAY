@@ -255,7 +255,7 @@
 
                                                     <!-- Actions admin/manager -->
                                                     @role('admin|manager')
-                                                        @if($demande->statut === 'en_attente')
+                                                        @if($demande->statut === 'en_attente' && $demande->superieur_hierarchique_id == auth()->id() && auth()->id() !== $demande->user_id)
 
                                                             <!-- Approuver -->
                                                             <form action="{{ route('conges.traiter', $demande) }}"

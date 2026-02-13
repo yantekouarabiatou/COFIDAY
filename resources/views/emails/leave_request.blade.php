@@ -131,7 +131,7 @@
     <div class="card">
         <div class="content">
 
-            <h2>Bonjour {{ $validator_name ?? 'Madame / Monsieur' }},</h2>
+            <h2>Bonjour {{ $superieur->nom }} {{ $superieur->prenom ?? 'Madame / Monsieur' }},</h2>
 
             <p>
                 Par la présente, je souhaite solliciter un congé selon les modalités suivantes :

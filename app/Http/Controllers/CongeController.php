@@ -380,13 +380,13 @@ class CongeController extends Controller
             // Créer la demande (statut = en_attente par défaut)
             $demande = DemandeConge::create([
                 'user_id' => $user->id,
+                'superieur_hierarchique_id' => $request->superieur_hierarchique_id,
                 'type_conge_id' => $request->type_conge_id,
                 'date_debut' => $request->date_debut,
                 'date_fin' => $request->date_fin,
                 'nombre_jours' => $nombreJours,
                 'motif' => $request->motif,
                 'statut' => 'en_attente',
-                'superieur_hierarchique_id' => $request->superieur_hierarchique_id,
             ]);
 
             // Historique
@@ -397,11 +397,13 @@ class CongeController extends Controller
                 'commentaire' => 'Demande initiale soumise',
             ]);
 
+            $superieur = User::findOrFail($request->superieur_hierarchique_id);
             // -----------------------------
-            // Génération du PDF
+            // 5. Génération du PDF
             // -----------------------------
             $pdf = Pdf::loadView('pdfs.leave_request', [
                 'leave' => $demande,
+                'superieur' => $superieur,
             ]);
 
             $pdfPath = storage_path("app/temp/demande_{$demande->id}.pdf");
@@ -415,9 +417,7 @@ class CongeController extends Controller
             // -----------------------------
             // Envoi du mail
             // -----------------------------
-            $superieur = User::findOrFail($request->superieur_hierarchique_id);
-
-            Mail::to($superieur->email)->send(new LeaveRequestMail($demande, $pdfPath));
+            Mail::to($superieur->email)->send(new LeaveRequestMail($demande, $superieur, $pdfPath));
 
             DB::commit();
 
@@ -575,7 +575,6 @@ class CongeController extends Controller
 
             $dateDebut = Carbon::parse($request->date_debut);
             $dateFin = Carbon::parse($request->date_fin);
-
             // Utiliser le nombre de jours envoyé depuis le formulaire
             $nombreJours = $request->nombre_jours;
 
@@ -624,12 +623,12 @@ class CongeController extends Controller
 
             // Mettre à jour la demande
             $demande->update([
+                'superieur_hierarchique_id' => $request->superieur_hierarchique_id,
                 'type_conge_id' => $request->type_conge_id,
                 'date_debut' => $request->date_debut,
                 'date_fin' => $request->date_fin,
                 'nombre_jours' => $nombreJours,
                 'motif' => $request->motif,
-                'superieur_hierarchique_id' => $request->superieur_hierarchique_id,
             ]);
 
             // Historique
@@ -639,6 +638,29 @@ class CongeController extends Controller
                 'effectue_par' => $user->id,
                 'commentaire' => 'Demande modifiée par l\'employé',
             ]);
+
+            $superieur = User::findOrFail($request->superieur_hierarchique_id); //Le supeieur hierachique manager
+            // -----------------------------
+            // 5. Génération du PDF
+            // -----------------------------
+            $pdf = Pdf::loadView('pdfs.leave_request', [
+                'leave' => $demande,
+                'superieur' => $superieur,
+            ]);
+
+            $pdfPath = storage_path("app/temp/demande_{$demande->id}.pdf");
+
+            if (!is_dir(dirname($pdfPath))) {
+                mkdir(dirname($pdfPath), 0755, true);
+            }
+
+            $pdf->save($pdfPath);
+
+            // -----------------------------
+            // 6. Envoi du mail
+            // -----------------------------
+
+            Mail::to($superieur->email)->send(new LeaveRequestMail($demande, $superieur, $pdfPath));
 
             DB::commit();
 

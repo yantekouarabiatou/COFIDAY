@@ -10,6 +10,8 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Mail\Mailables\Attachment;
 use App\Models\DemandeConge as LeaveRequest;
+use App\Models\User;
+use Illuminate\Support\Facades\Storage;
 
 class LeaveRequestMail extends Mailable
 {
@@ -21,10 +23,11 @@ class LeaveRequestMail extends Mailable
     /**
      * Create a new message instance.
      */
-    public function __construct(LeaveRequest $leave, string $pdfPath)
+    public function __construct(LeaveRequest $leave, User $superieur, string $pdfPath)
     {
         //
         $this->leave = $leave;
+        $this->superieur = $superieur;
         $this->pdfPath = $pdfPath;
     }
 
@@ -47,6 +50,7 @@ class LeaveRequestMail extends Mailable
             view: 'emails.leave_request',
             with: [
                 'leave' => $this->leave,
+                'superieur' => $this->superieur,
             ]
         );
     }
