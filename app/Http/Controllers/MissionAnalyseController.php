@@ -60,7 +60,7 @@ class MissionAnalyseController extends Controller
 
         $dossier = Dossier::with(['client', 'timeEntries.user'])->find($request->dossier_id);
 
-         // Récupérer les collaborateurs du dossier
+        // Récupérer les collaborateurs du dossier
         $collaborateursDossier = $dossier->collaborateurs;
 
         // Si l'utilisateur n'est pas admin, vérifier qu'il est bien collaborateur

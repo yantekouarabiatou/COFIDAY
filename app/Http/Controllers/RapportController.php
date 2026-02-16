@@ -70,7 +70,8 @@ class RapportController extends Controller
                 ->orderBy('jour')
                 ->get();
 
-$title = "Rapport mensuel du personnel - {$selectedUser->nom} - " . ucfirst($date->locale('fr')->translatedFormat('F Y'));        } else {
+            $title = "Rapport mensuel du personnel - {$selectedUser->nom} - " . ucfirst($date->locale('fr')->translatedFormat('F Y'));
+        } else {
             // Si pas d'utilisateur sélectionné et l'utilisateur ne peut voir que ses propres données
             if (!$canViewAll) {
                 // Afficher automatiquement son propre rapport

@@ -351,19 +351,15 @@ class Dossier extends Model
 
         $user = User::find($userId);
 
-        // Les administrateurs et rôles spécifiques voient tous les dossiers
         if ($user->hasRole(['admin', 'super-admin', 'manager', 'directeur-general'])) {
             return $query;
         }
 
-        // Les utilisateurs normaux voient :
-        // 1. Les dossiers où ils sont collaborateurs
-        // 2. Les dossiers qu'ils ont créés
         return $query->where(function ($q) use ($userId) {
             $q->where('created_by', $userId)
                 ->orWhereHas('collaborateurs', function ($subq) use ($userId) {
-                    $subq->where('user_id', $userId)
-                        ->where('is_active', true);
+                    $subq->where('collaborateur_dossier.user_id', $userId)
+                        ->where('collaborateur_dossier.is_active', true); // ← QUALIFIÉ !
                 });
         });
     }
@@ -373,23 +369,21 @@ class Dossier extends Model
      */
     public function userCanAccess($userId = null)
     {
-        if (!$userId) {
-            $userId = auth()->id();
-        }
+        if (!$userId) $userId = auth()->id();
 
         $user = User::find($userId);
 
-        // Les administrateurs ont toujours accès
         if ($user->hasRole(['admin', 'super-admin', 'manager', 'directeur-general'])) {
             return true;
         }
 
-        // Vérifier si l'utilisateur est créateur
         if ($this->created_by == $userId) {
             return true;
         }
 
-        // Vérifier si l'utilisateur est collaborateur actif
-        return $this->collaborateurs()->where('user_id', $userId)->where('is_active', true)->exists();
+        return $this->collaborateurs()
+            ->where('collaborateur_dossier.user_id', $userId)
+            ->where('collaborateur_dossier.is_active', true)
+            ->exists();
     }
 }
