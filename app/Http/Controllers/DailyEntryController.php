@@ -8,6 +8,7 @@ use App\Models\Dossier;
 use App\Models\Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use RealRashid\SweetAlert\Facades\Alert;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\DailyEntriesExport;
 use App\Models\CompanySetting;
@@ -47,7 +48,7 @@ class DailyEntryController extends Controller
         }
 
         // Pour les responsables : feuilles à valider
-        if ($request->has('pending') && $user->hasRole('Directeur Général')) {
+        if ($request->has('pending') && $user->hasRole('directeur-general')) {
             $query->where('statut', 'soumis')
                 ->where('user_id', '!=', $user->id);
         }
@@ -200,7 +201,7 @@ class DailyEntryController extends Controller
                 'rendu' => $entry['rendu'] ?? null,
             ]);
         }
-
+        Alert::success('Succès', 'Feuille de temps enregistrée avec succès.');
         return redirect()->route('daily-entries.show', $dailyEntry)
             ->with('success', 'Feuille de temps enregistrée avec succès.');
     }
@@ -410,7 +411,7 @@ class DailyEntryController extends Controller
         $message = 'Feuille de temps mise à jour avec succès.';
         $alertType = 'success';
 
-        if (auth()->user()->hasRole(['responsable', 'Directeur Général'])) {
+        if (auth()->user()->hasRole(['responsable', 'directeur-general'])) {
             if ($request->has('statut')) {
                 switch ($request->statut) {
                     case 'validé':
@@ -429,6 +430,7 @@ class DailyEntryController extends Controller
             $message = 'Feuille de temps modifiée et soumise pour validation.';
         }
 
+        Alert::success($alertType, $message);
         return redirect()
             ->route('daily-entries.show', $dailyEntry)
             ->with($alertType, $message);
@@ -443,7 +445,7 @@ class DailyEntryController extends Controller
 
         // Puis supprimer la feuille de temps
         $dailyEntry->delete();
-
+        Alert::success('Succès', 'Feuille de temps supprimée avec succès.');
         return redirect()->route('daily-entries.index')
             ->with('success', 'Feuille de temps supprimée avec succès.');
     }

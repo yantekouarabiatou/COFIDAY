@@ -24,9 +24,11 @@ class LogActivite extends Model
     ];
 
     protected $casts = [
-        'old_values' => 'array',
-        'new_values' => 'array',
+        'new_values'  => 'array',
+        'old_values'  => 'array', // if you have it
+        'properties'  => 'array', // sometimes called this way
     ];
+
 
     // ------------------------------------------------------------------
     // Relations

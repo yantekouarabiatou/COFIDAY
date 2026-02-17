@@ -325,7 +325,7 @@
 <script src="{{ asset('assets/bundles/select2/dist/js/select2.full.min.js') }}"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-<script>
+<!-- <script>
 $(document).ready(function() {
     // Initialiser Select2
     $('.select2').select2({
@@ -444,6 +444,103 @@ $(document).ready(function() {
                 icon: 'error',
                 title: 'Heures invalides',
                 text: 'Les heures théoriques ne peuvent pas être négatives',
+            });
+            return false;
+        }
+    });
+});
+</script> -->
+
+<script>
+$(document).ready(function() {
+    // Initialiser Select2
+    $('.select2').select2({
+        placeholder: "Sélectionner...",
+        allowClear: true
+    });
+
+    // Fonction pour calculer les heures théoriques
+    function calculerHeuresTheoriques() {
+        const dateDebut = $('input[name="date_ouverture"]').val();
+        const dateFin = $('input[name="date_cloture_prevue"]').val();
+
+        if (!dateDebut || !dateFin) return;
+
+        const start = new Date(dateDebut);
+        const end = new Date(dateFin);
+
+        if (end < start) return;
+
+        let totalJours = 0;
+        let joursOuvrables = 0;
+
+        let current = new Date(start);
+
+        while (current <= end) {
+            totalJours++;
+
+            const day = current.getDay(); // 0 = Dimanche, 6 = Samedi
+            if (day !== 0 && day !== 6) {
+                joursOuvrables++;
+            }
+
+            current.setDate(current.getDate() + 1);
+        }
+
+        const heuresAvecWeekend = totalJours * 8;
+        const heuresSansWeekend = joursOuvrables * 8;
+
+        // Ne pas écraser si l'utilisateur est en train de modifier
+        if (!$('#heure_avec_weekend').is(':focus')) {
+            $('#heure_avec_weekend').val(heuresAvecWeekend);
+        }
+
+        if (!$('#heure_sans_weekend').is(':focus')) {
+            $('#heure_sans_weekend').val(heuresSansWeekend);
+        }
+    }
+
+    // Écouter les changements de dates
+    $('input[name="date_ouverture"], input[name="date_cloture_prevue"]').on('change', calculerHeuresTheoriques);
+
+    // Validation du formulaire
+    $('#dossier-form').on('submit', function(e) {
+        var nom = $('input[name="nom"]').val().trim();
+        var client = $('select[name="client_id"]').val();
+        var type = $('select[name="type_dossier"]').val();
+        var statut = $('select[name="statut"]').val();
+        var dateOuverture = $('input[name="date_ouverture"]').val();
+
+        if (!nom || !client || !type || !statut || !dateOuverture) {
+            e.preventDefault();
+            Swal.fire({
+                icon: 'error',
+                title: 'Champs obligatoires',
+                text: 'Veuillez remplir tous les champs obligatoires (*)',
+            });
+            return false;
+        }
+
+        // Validation des dates
+        var dateCloturePrevue = $('input[name="date_cloture_prevue"]').val();
+        var dateClotureReelle = $('input[name="date_cloture_reelle"]').val();
+
+        if (dateCloturePrevue && dateCloturePrevue < dateOuverture) {
+            e.preventDefault();
+            Swal.fire({
+                icon: 'error',
+                title: 'Date invalide',
+                text: 'La date de clôture prévue doit être postérieure à la date d\'ouverture',
+            });
+            return false;
+        }
+
+        if (dateClotureReelle && dateClotureReelle < dateOuverture) {
+            e.preventDefault();
+            Swal.fire({
+                icon: 'error',
+                title: 'Date invalide',
+                text: 'La date de clôture réelle doit être postérieure à la date d\'ouverture',
             });
             return false;
         }
