@@ -246,37 +246,61 @@
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        @foreach($regles->periodes_bloquees_array as $index => $periode)
+                                                        @foreach($regles->periodes_bloquees_array as $periode)
                                                             @php
                                                                 \Carbon\Carbon::setLocale('fr');
-                                                                
-                                                                $debut = \Carbon\Carbon::parse($periode['debut']);
-                                                                $fin = \Carbon\Carbon::parse($periode['fin']);
-                                                                $duree = $debut->diffInDays($fin) + 1; // +1 pour inclure le dernier jour
-                                                                
-                                                                // Formater les dates en français
-                                                                $debutFormate = $debut->translatedFormat('l d F Y');
-                                                                $finFormatee = $fin->translatedFormat('l d F Y');
+
+                                                                $currentYear = date('Y');
+
+                                                                // Vérifier si le format est MM-DD ou YYYY-MM-DD
+                                                                $debutStr = $periode['debut'];
+                                                                $finStr   = $periode['fin'];
+
+                                                                if (preg_match('/^\d{2}-\d{2}$/', $debutStr)) {
+                                                                    $debutStr = $currentYear . '-' . $debutStr;
+                                                                }
+                                                                if (preg_match('/^\d{2}-\d{2}$/', $finStr)) {
+                                                                    $finStr = $currentYear . '-' . $finStr;
+                                                                }
+
+                                                                try {
+                                                                    $debut = \Carbon\Carbon::parse($debutStr);
+                                                                    $fin = \Carbon\Carbon::parse($finStr);
+                                                                    $duree = $debut->diffInDays($fin) + 1;
+                                                                    $debutFormate = $debut->translatedFormat('l d F Y');
+                                                                    $finFormatee = $fin->translatedFormat('l d F Y');
+                                                                } catch (\Exception $e) {
+                                                                    // En cas d'erreur, définir des valeurs par défaut pour éviter le plantage
+                                                                    $debut = null;
+                                                                    $fin = null;
+                                                                    $duree = '—';
+                                                                    $debutFormate = 'Date invalide';
+                                                                    $finFormatee = 'Date invalide';
+                                                                }
                                                             @endphp
                                                             <tr>
                                                                 <td>{{ $loop->iteration }}</td>
+                                                                <td><strong>{{ $periode['nom'] }}</strong></td>
                                                                 <td>
-                                                                    <strong>{{ $periode['nom'] }}</strong>
+                                                                    @if($debut)
+                                                                        <span class="badge bg-warning" title="{{ $debutFormate }}">
+                                                                            {{ $debut->format('d/m/Y') }}
+                                                                        </span>
+                                                                    @else
+                                                                        <span class="text-muted">—</span>
+                                                                    @endif
                                                                 </td>
                                                                 <td>
-                                                                    <span class="badge bg-warning" title="{{ $debutFormate }}">
-                                                                        {{ $debut->format('d/m/Y') }}
-                                                                    </span>
+                                                                    @if($fin)
+                                                                        <span class="badge bg-danger" title="{{ $finFormatee }}">
+                                                                            {{ $fin->format('d/m/Y') }}
+                                                                        </span>
+                                                                    @else
+                                                                        <span class="text-muted">—</span>
+                                                                    @endif
                                                                 </td>
                                                                 <td>
-                                                                    <span class="badge bg-danger" title="{{ $finFormatee }}">
-                                                                        {{ $fin->format('d/m/Y') }}
-                                                                    </span>
-                                                                </td>
-                                                                <td>
-                                                                    <span class="badge bg-info">
-                                                                        {{ $duree }} jour(s)
-                                                                    </span>
+                                                                    <span class="badge bg-info">{{ $duree }} jour(s)</span>
                                                                 </td>
                                                                 <td>
                                                                     @if(!empty($periode['raison']))
@@ -299,6 +323,7 @@
                                 </div>
                             </div>
                         </div>
+
 
                         {{-- Version alternative avec tooltips pour voir la date complète en français --}}
                         <div class="row mt-4 d-none">
@@ -334,17 +359,46 @@
                                                     @foreach($regles->periodes_bloquees_array as $periode)
                                                         @php
                                                             \Carbon\Carbon::setLocale('fr');
-                                                            $debut = \Carbon\Carbon::parse($periode['debut']);
-                                                            $fin = \Carbon\Carbon::parse($periode['fin']);
+                                                            $currentYear = date('Y');
+
+                                                            $debutStr = $periode['debut'];
+                                                            $finStr   = $periode['fin'];
+
+                                                            // Vérifier si le format est MM-DD et ajouter l'année si besoin
+                                                            if (preg_match('/^\d{2}-\d{2}$/', $debutStr)) {
+                                                                $debutStr = $currentYear . '-' . $debutStr;
+                                                            }
+                                                            if (preg_match('/^\d{2}-\d{2}$/', $finStr)) {
+                                                                $finStr = $currentYear . '-' . $finStr;
+                                                            }
+
+                                                            try {
+                                                                $debut = \Carbon\Carbon::parse($debutStr);
+                                                                $fin = \Carbon\Carbon::parse($finStr);
+                                                            } catch (\Exception $e) {
+                                                                $debut = null;
+                                                                $fin = null;
+                                                            }
                                                         @endphp
                                                         <li class="list-group-item">
                                                             <div><strong>{{ $periode['nom'] }}</strong></div>
                                                             <div class="text-muted small">
-                                                                Du {{ $debut->translatedFormat('l j F Y') }}
-                                                                au {{ $fin->translatedFormat('l j F Y') }}
+                                                                Du 
+                                                                @if($debut)
+                                                                    {{ $debut->translatedFormat('l j F Y') }}
+                                                                @else
+                                                                    Date invalide
+                                                                @endif
+                                                                au 
+                                                                @if($fin)
+                                                                    {{ $fin->translatedFormat('l j F Y') }}
+                                                                @else
+                                                                    Date invalide
+                                                                @endif
                                                             </div>
                                                         </li>
                                                     @endforeach
+
                                                 </ul>
                                             </div>
                                         </div>

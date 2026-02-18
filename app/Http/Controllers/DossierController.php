@@ -239,11 +239,12 @@ class DossierController extends Controller
             }
 
             DB::commit();
-
+            Alert::success('Succès', 'Dossier mis à jour avec succès.');
             return redirect()->route('dossiers.show', $dossier)
                 ->with('success', 'Dossier mis à jour avec succès.');
         } catch (\Exception $e) {
             DB::rollBack();
+            Alert::error('Erreur', "Une erreur est survenue lors de la mise à jour du dossier.");
             return back()->withInput()
                 ->with('error', 'Une erreur est survenue lors de la mise à jour du dossier.');
         }
@@ -302,7 +303,7 @@ class DossierController extends Controller
         }
 
         $dossier->delete();
-
+        Alert::success('Succès', 'Dossier supprimé avec succès.');
         return redirect()->route('dossiers.index')
             ->with('success', 'Dossier supprimé avec succès.');
     }

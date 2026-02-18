@@ -1,9 +1,36 @@
+@php
+function hoursToHoursMinutesShort($decimal)
+{
+    if (!$decimal || $decimal <= 0) {
+        return '0h';
+    }
+
+    $hours = floor($decimal);
+    $minutes = round(($decimal - $hours) * 60);
+
+    if ($minutes >= 60) {
+        $hours++;
+        $minutes -= 60;
+    }
+
+    if ($hours == 0 && $minutes > 0) {
+        return $minutes . 'min';
+    }
+
+    if ($minutes == 0) {
+        return $hours . 'h';
+    }
+
+    return $hours . 'h ' . str_pad($minutes, 2, '0', STR_PAD_LEFT) . 'min';
+}
+@endphp
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <title>
-Feuille de Temps - 
+    Feuille de Temps - 
         {{ $entry->jour?->format('d/m/Y') ?? 'Date inconnue' }} - 
         {{ $entry->user?->prenom ?? 'Utilisateur' }} {{ $entry->user?->nom ?? 'inconnu' }}    </title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -103,7 +130,6 @@ Feuille de Temps -
             text-align: center;
             color: white;
             font-weight: bold;
-            line-height: 25px;
         }
 
         .progress-text {
@@ -237,8 +263,8 @@ Feuille de Temps -
                     </div>
                 </div>
                 <div class="progress-text">
-                    <strong>{{ number_format($entry->heures_reelles, 2) }} heures</strong> travaillées 
-                    sur <strong>{{ $entry->heures_theoriques }} heures</strong> prévues
+                    <strong>{{ hoursToHoursMinutesShort($entry->heures_reelles) }}</strong> travaillées 
+                    sur <strong>{{ hoursToHoursMinutesShort($entry->heures_theoriques) }}</strong> prévues
                 </div>
             </td>
         </tr>
@@ -259,7 +285,7 @@ Feuille de Temps -
                 @foreach($entry->timeEntries as $te)
                     <tr>
                         <td><strong>{{ $te->dossier?->nom ?? 'Sans dossier' }}</strong></td>
-                        <td><strong>{{ $te->heures }} h</strong></td>
+                        <td><strong>{{ hoursToHoursMinutesShort($te->heures_reelles) }}</strong></td>
                         <td>{{ $te->description ?: '-' }}</td>
                     </tr>
                 @endforeach
@@ -279,7 +305,7 @@ Feuille de Temps -
 
     <!-- Statut de validation -->
     <table>
-        <tr style="background-color: var(--primary); color: white;">
+        <tr>
             <th style="text-align: center; font-size: 15px;">Statut de la Feuille</th>
             <td style="text-align: center; font-size: 16px; font-weight: bold;">
                 @php

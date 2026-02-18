@@ -146,7 +146,7 @@
                                         </div>
                                         <div class="card-wrap">
                                             <div class="card-header ">
-                                                <h6>Heures supplémentaires</h6>
+                                                <h4>Heures supplémentaires</h4>
                                             </div>
                                             <div class="card-body">
                                                 {{ $hsHeures }}h {{ $hsMinutes }}min
@@ -222,7 +222,9 @@
                                                 <th>#</th>
                                                 <th>Dossier</th>
                                                 <th>Client</th>
-                                                <th>Heures</th>
+                                                <th>Début</th>
+                                                <th>Fin</th>
+                                                <th>Durée</th>
                                                 <th>Travaux réalisés</th>
                                                 <th>Rendu</th>
                                             </tr>
@@ -240,6 +242,16 @@
                                                     {{ $entry->dossier->client->nom ?? 'Sans client' }}
                                                     <br>
                                                     <small class="text-muted">{{ $entry->dossier->type_dossier }}</small>
+                                                </td>
+                                                <td>
+                                                    <span class="badge badge-light" style="font-size: 1rem;">
+                                                        {{\Carbon\Carbon::parse($entry->heure_debut)->format('H:i')}}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge badge-light" style="font-size: 1rem;">
+                                                        {{\Carbon\Carbon::parse($entry->heure_fin)->format('H:i')}}
+                                                    </span>
                                                 </td>
                                                 <td>
                                                     <span class="badge badge-light" style="font-size: 1rem;">
@@ -269,7 +281,7 @@
                                         </tbody>
                                         <tfoot>
                                             <tr class="table-active">
-                                                <td colspan="3" class="text-right"><strong>Total heures :</strong></td>
+                                                <td colspan="4" class="text-right"><strong>Total heures :</strong></td>
                                                 <td>
                                                     <strong>
                                                         @php
@@ -280,7 +292,7 @@
                                                         {{ $heures }}h {{ $minutes }}min
                                                     </strong>
                                                 </td>
-                                                <td colspan="2"></td>
+                                                <td colspan="3"></td>
                                             </tr>
                                         </tfoot>
                                     </table>
@@ -369,6 +381,10 @@
     .list-group-item {
         border-left: none;
         border-right: none;
+    }
+    .card-icon{
+        width: 65px !important;
+        height: 65px !important;
     }
 </style>
 @endpush

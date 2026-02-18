@@ -113,15 +113,22 @@
                                         @endif
 
                                         <!-- Nouvelles valeurs -->
-                                        @if($log->new_values && count($log->new_values) > 0)
-                                            <tr>
-                                                <th>Nouvelles valeurs</th>
-                                                <td>
-                                                    <pre
-                                                        class="bg-dark text-white p-3 rounded small text-monospace">{!! nl2br(e(json_encode($log->new_values, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))) !!}</pre>
-                                                </td>
-                                            </tr>
-                                        @endif
+                                        @php
+    $newValues = is_string($log->new_values) 
+        ? json_decode($log->new_values, true) 
+        : (is_array($log->new_values) ? $log->new_values : []);
+@endphp
+
+@if(!empty($newValues) && is_array($newValues))
+    <tr>
+        <th>Nouvelles valeurs</th>
+        <td>
+            <pre class="bg-dark text-white p-3 rounded small text-monospace">
+                {!! nl2br(e(json_encode($newValues, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))) !!}
+            </pre>
+        </td>
+    </tr>
+@endif
                                     </tbody>
                                 </table>
                             </div>

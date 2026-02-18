@@ -121,7 +121,7 @@
                                                         <label class="font-weight-bold">Heures <span class="text-danger">*</span></label>
                                                         <input type="number" step="0.25" min="0.25"
                                                             name="time_entries[0][heures_reelles]"
-                                                            class="form-control heures-input text-center" value="3" readonly required>
+                                                            class="form-control heures-input text-center" value="4.50" readonly required>
                                                     </div>
                                                 </div>
 
