@@ -349,18 +349,14 @@
                             </table>
                         </div>
 
-                        <!-- Pagination -->
-                        @if($demandes->hasPages())
-                        <div class="d-flex justify-content-between align-items-center mt-3">
-                            <div class="text-muted">
-                                Affichage de {{ $demandes->firstItem() }} à {{ $demandes->lastItem() }}
-                                sur {{ $demandes->total() }} demandes
-                            </div>
-                            <div>
-                                {{ $demandes->links() }}
-                            </div>
-                        </div>
-                        @endif
+                       <div class="d-flex flex-wrap justify-content-between align-items-center mt-3">
+    <div class="text-muted mb-2 mb-sm-0">
+        Affichage de {{ $demandes->firstItem() }} à {{ $demandes->lastItem() }} sur {{ $demandes->total() }}
+    </div>
+    <div>
+        {{ $demandes->links('vendor.pagination.stisla') }}
+    </div>
+</div>
 
                         <!-- Statistiques -->
                         <div class="row mt-4">

@@ -1108,7 +1108,7 @@ class CongeController extends Controller
             'demandesCongesPayes'
         ));
     }
-    
+
     /**
      * Calculer les jours calendaires (inclut weekends)
      */
