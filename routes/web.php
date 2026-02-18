@@ -51,13 +51,13 @@ Route::post('/otp/verify', [AuthenticatedSessionController::class, 'verifyOtp'])
     ->name('otp.verify');
 
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'otp.verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'otp.verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/data', [DashboardController::class, 'data'])->name('dashboard.data');
     Route::get('/dashboard/user-stats/{userId}', [DashboardController::class, 'userStats'])->name('dashboard.user-stats');
@@ -178,7 +178,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/statistics/export', [StatisticsController::class, 'export'])->name('statistics.export');
     Route::post('/stats/annual/update', [StatisticsController::class, 'updateCharts'])->name('stats.annual.update');
-    Route::middleware(['auth'])->group(function () {
+    Route::middleware(['auth', 'otp.verified'])->group(function () {
         Route::resource('daily-entries', DailyEntryController::class)->names('daily-entries');
 
         // Routes supplémentaires si besoin (ex: rapport mensuel)
@@ -331,7 +331,7 @@ Route::middleware(['auth'])->group(function () {
             ->name('regles-conges.jours-acquis');
     });
 
-    Route::middleware(['auth'])->group(function () {
+    Route::middleware(['auth', 'otp.verified'])->group(function () {
         // Routes pour les employés
         Route::get('/conges/solde', [CongeController::class, 'solde'])->name('conges.solde');
         Route::get('/conges/calendrier', [CongeController::class, 'calendrier'])->name('conges.calendrier');

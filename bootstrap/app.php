@@ -20,7 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
             'dossier.access' => \App\Http\Middleware\CheckDossierAccess::class,
-
+            'otp.verified' => \App\Http\Middleware\EnsureOtpIsVerified::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
