@@ -251,7 +251,7 @@ class RolePermissionSeeder extends Seeder
         ]);
 
         // EMPLOYÉ / UTILISATEUR STANDARD
-        $collaborateur = Role::firstOrCreate(['name' => 'collaborateur']);
+        $collaborateur = Role::firstOrCreate(['name' => 'agent']);
         $collaborateur->syncPermissions([
             // Temps
             'voir les entrées journalières',
