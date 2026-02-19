@@ -112,58 +112,75 @@ class StatisticsController extends Controller
      */
     private function getTotauxGlobaux($startDate, $endDate, $userId = null)
     {
-        // Statistiques des heures travaillées
+        // ===== HEURES =====
         $timeEntriesQuery = TimeEntry::whereBetween('created_at', [$startDate, $endDate]);
-
         if ($userId) {
             $timeEntriesQuery->where('user_id', $userId);
         }
-
         $totalHeures = round($timeEntriesQuery->sum('heures_reelles'), 2);
         $employesActifs = $userId ? 1 : User::whereHas('timeEntries', function($q) use ($startDate, $endDate) {
             $q->whereBetween('created_at', [$startDate, $endDate]);
         })->count();
 
-        // Statistiques des congés
-        $congesQuery = DemandeConge::whereBetween('date_debut', [$startDate, $endDate])
+        // ===== CONGES =====
+        $congesQuery = DemandeConge::where(function($q) use ($startDate, $endDate) {
+            $q->whereBetween('date_debut', [$startDate, $endDate])
             ->orWhereBetween('date_fin', [$startDate, $endDate])
-            ->orWhere(function($q) use ($startDate, $endDate) {
-                $q->where('date_debut', '<=', $startDate)
-                   ->where('date_fin', '>=', $endDate);
+            ->orWhere(function($q2) use ($startDate, $endDate) {
+                $q2->where('date_debut', '<=', $startDate)
+                    ->where('date_fin', '>=', $endDate);
             });
-
+        });
         if ($userId) {
             $congesQuery->where('user_id', $userId);
         }
-
         $totalConges = $congesQuery->count();
+
         $congesEnCours = DemandeConge::where('date_debut', '<=', now())
             ->where('date_fin', '>=', now())
             ->where('statut', 'approuve')
-            ->when($userId, function($q) use ($userId) {
-                $q->where('user_id', $userId);
-            })
+            ->when($userId, fn($q) => $q->where('user_id', $userId))
             ->count();
 
+        // ===== DOSSIERS GLOBAUX (jamais filtrés) =====
+        $totalDossiersGlobal  = Dossier::count();
+        $dossiersActifsGlobal = Dossier::whereIn('statut', ['ouvert', 'en_cours'])->count();
+
+        // ===== DOSSIERS FILTRÉS (période + user) =====
+        $dossiersQuery = Dossier::query();
+        $dossiersQuery->where(function($q) use ($startDate, $endDate) {
+            $q->where('date_ouverture', '<=', $endDate)
+            ->where('date_cloture_prevue', '>=', $startDate);
+        });
+        if ($userId) {
+            $dossiersQuery->whereHas('timeEntries', fn($q) => $q->where('user_id', $userId));
+        }
+        $totalDossiersFiltres = $dossiersQuery->count();
+
+        $dossiersActifsQuery = Dossier::whereIn('statut', ['ouvert', 'en_cours'])
+            ->where(function($q) use ($startDate, $endDate) {
+                $q->where('date_ouverture', '<=', $endDate)
+                ->where('date_cloture_prevue', '>=', $startDate);
+            });
+        if ($userId) {
+            $dossiersActifsQuery->whereHas('timeEntries', fn($q) => $q->where('user_id', $userId));
+        }
+        $dossiersActifsFiltres = $dossiersActifsQuery->count();
+
         return [
-            'total_employes' => $userId ? 1 : User::count(),
-            'employes_actifs' => $employesActifs,
-            'total_heures' => $totalHeures,
-            'total_dossiers' => $userId
-                ? Dossier::whereHas('timeEntries', function($q) use ($userId, $startDate, $endDate) {
-                    $q->where('user_id', $userId)
-                      ->whereBetween('created_at', [$startDate, $endDate]);
-                })->count()
-                : Dossier::whereBetween('created_at', [$startDate, $endDate])->count(),
-            'dossiers_actifs' => Dossier::whereIn('statut', ['ouvert', 'en_cours'])->count(),
-            'total_conges' => $totalConges,
-            'conges_en_cours' => $congesEnCours,
-            'total_clients' => Client::count(),
-            'moyenne_heures_employe' => $userId ? null : round(
-                $totalHeures / max(User::count(), 1),
-                2
-            ),
-            'moyenne_heures_actif' => $employesActifs > 0 ? round($totalHeures / $employesActifs, 2) : 0,
+            'total_employes'          => $userId ? 1 : User::count(),
+            'employes_actifs'         => $employesActifs,
+            'total_heures'            => $totalHeures,
+            'total_conges'            => $totalConges,
+            'conges_en_cours'         => $congesEnCours,
+            'total_clients'           => Client::count(),
+            'moyenne_heures_employe'  => $userId ? null : round($totalHeures / max(User::count(), 1), 2),
+            'moyenne_heures_actif'    => $employesActifs > 0 ? round($totalHeures / $employesActifs, 2) : 0,
+            // Dossiers — deux niveaux
+            'total_dossiers_global'   => $totalDossiersGlobal,
+            'dossiers_actifs_global'  => $dossiersActifsGlobal,
+            'total_dossiers'          => $totalDossiersFiltres,
+            'dossiers_actifs'         => $dossiersActifsFiltres,
         ];
     }
 
