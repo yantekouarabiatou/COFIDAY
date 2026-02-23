@@ -22,4 +22,11 @@ class SoldeConge extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    protected static function booted()
+    {
+        static::saving(function ($solde) {
+            $solde->jours_restants = ($solde->jours_acquis + ($solde->jours_reportes ?? 0)) - $solde->jours_pris;
+        });
+    }
 }

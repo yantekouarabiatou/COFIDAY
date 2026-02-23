@@ -25,6 +25,7 @@ use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\RapportController;
 use App\Http\Controllers\RegleCongeController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\SoldeCongeController;
 use App\Http\Controllers\Statistics\CadeauInvitationReportController;
 use App\Http\Controllers\Statistics\ClientAuditReportController;
 use App\Http\Controllers\Statistics\IndependanceReportController;
@@ -358,6 +359,10 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
 
     Route::middleware(['auth', 'role:admin'])->group(function () {
         Route::post('/conges/solde/{user}/ajuster', [CongeController::class, 'ajusterSolde'])->name('conges.ajuster-solde');
+    });
+
+    Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
+        Route::resource('soldes', SoldeCongeController::class);
     });
 
     Route::get('/conges/get-feries', [CongeController::class, 'getFeries'])
