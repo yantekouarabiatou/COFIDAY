@@ -182,7 +182,7 @@ use App\Helpers\UserHelper;
                                         </td>
 
                                         <td>
-                                            <div class="travaux-text">{{ $te->rendus ?? '-' }}</div>
+                                            <div class="travaux-text">{{ $te->rendu ?? '-' }}</div>
                                         </td>
                                     </tr>
                                 @endforeach
