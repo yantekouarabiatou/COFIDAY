@@ -228,41 +228,30 @@
 
 <script>
 $(document).ready(function() {
-    // Initialiser Select2
     $('.select2').select2({
         placeholder: "Sélectionner...",
         allowClear: true
     });
 
-    // Initialiser DataTable
     var table = $('#clients-table').DataTable({
         language: {
             url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/fr-FR.json'
         },
         pageLength: 25,
-        order: [[2, 'asc']],
+        order: [[1, 'asc']],
         columnDefs: [
-            { orderable: false, targets: [0, 1, 8] },
-            { searchable: false, targets: [0, 1, 6, 8] }
+            { orderable: false, targets: [0, 7] },
+            { searchable: false, targets: [0, 5, 6, 7] }
         ]
     });
 
-    // Filtre personnalisé
+    // Filtre personnalisé propre
     $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
-        var row = settings.aoData[dataIndex].nTr;
-        var rowStatut = $(row).data('statut') || '';
-        var searchText = $('#search-input').val().toLowerCase().trim();
+
         var statutFilter = $('#statut-filter').val();
+        var rowNode = table.row(dataIndex).node();
+        var rowStatut = $(rowNode).data('statut');
 
-        // Filtre par recherche
-        if (searchText) {
-            var rowText = $(row).text().toLowerCase();
-            if (rowText.indexOf(searchText) === -1) {
-                return false;
-            }
-        }
-
-        // Filtre par statut
         if (statutFilter && rowStatut !== statutFilter) {
             return false;
         }
@@ -270,32 +259,37 @@ $(document).ready(function() {
         return true;
     });
 
-    // Appliquer les filtres
-    function applyFilters() {
+    // // Appliquer les filtres
+    // function applyFilters() {
+    //     table.draw();
+    //     updateCounts();
+    // }
+
+    // Recherche personnalisée (désactive la recherche interne)
+    $('#search-input').on('keyup', function() {
+        table.search(this.value).draw();
+        updateCounts();
+    });
+
+    $('#statut-filter').on('change', function() {
         table.draw();
         updateCounts();
-    }
+    });
 
-    $('#search-input').on('keyup', applyFilters);
-    $('#statut-filter').on('change', applyFilters);
-
-    // Réinitialiser les filtres
     $('#reset-filters').on('click', function() {
         $('#search-input').val('');
         $('#statut-filter').val('').trigger('change');
-        applyFilters();
+        table.search('').draw();
+        updateCounts();
     });
 
     // Mettre à jour les compteurs
     function updateCounts() {
-        var visibleRows = table.rows({ search: 'applied' }).data();
-
         var actif = 0, inactif = 0, prospect = 0;
 
-        visibleRows.each(function(row, index) {
-            var tr = table.row(index).node();
-            var statut = $(tr).data('statut');
-
+        // Itérer sur les lignes visibles (après filtre/recherche) via les nœuds DOM
+        table.rows({ search: 'applied', page: 'all' }).nodes().each(function(node) {
+            var statut = $(node).data('statut');
             if (statut === 'actif') actif++;
             else if (statut === 'inactif') inactif++;
             else if (statut === 'prospect') prospect++;
@@ -305,6 +299,10 @@ $(document).ready(function() {
         $('#inactif-count').text(inactif);
         $('#prospect-count').text(prospect);
     }
+
+    table.on('order.dt', function() {
+        updateCounts();
+    });
 
     // Suppression avec SweetAlert
     $(document).on('click', '.delete-btn', function(e) {
@@ -331,16 +329,16 @@ $(document).ready(function() {
                     },
                     body: JSON.stringify({ _method: 'DELETE' })
                 })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(response.statusText);
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        Swal.showValidationMessage(data.message);
+                        return false;
                     }
-                    return response.json();
+                    return data;
                 })
                 .catch(error => {
-                    Swal.showValidationMessage(
-                        `Erreur: ${error}`
-                    );
+                    Swal.showValidationMessage('Erreur lors de la suppression.');
                 });
             },
             allowOutsideClick: () => !Swal.isLoading()

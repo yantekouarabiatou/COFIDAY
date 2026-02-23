@@ -216,5 +216,57 @@ $(document).ready(function() {
         // "Tous" → déjà reset
     });
 });
+
+// Suppression avec SweetAlert (délégation d'événement pour les lignes AJAX)
+$(document).on('click', '.delete-dossier-btn', function() {
+    const url = $(this).data('url');
+    const row = $(this).closest('tr');
+
+    Swal.fire({
+        title: 'Êtes-vous sûr ?',
+        text: "Cette action supprimera définitivement le dossier !",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Oui, supprimer !',
+        cancelButtonText: 'Annuler',
+        showLoaderOnConfirm: true,
+        preConfirm: () => {
+            return fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                },
+                body: JSON.stringify({ _method: 'DELETE' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    Swal.showValidationMessage(data.message);
+                    return false;
+                }
+                return data;
+            })
+            .catch(() => {
+                Swal.showValidationMessage('Erreur lors de la suppression.');
+            });
+        },
+        allowOutsideClick: () => !Swal.isLoading()
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Supprimé !',
+                text: 'Le dossier a été supprimé avec succès.',
+                timer: 2000,
+                showConfirmButton: false
+            }).then(() => {
+                table.ajax.reload(null, false); // ← recharge DataTable sans reset la page
+            });
+        }
+    });
+});
 </script>
 @endpush

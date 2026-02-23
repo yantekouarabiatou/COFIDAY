@@ -121,42 +121,42 @@ use App\Models\User;
                                 <tbody>
                                     @forelse($personnelsAvecTemps as $personnelData)
                                        @php
-    $personnel = $personnelData->user;
+                                            $personnel = $personnelData->user;
 
-    $totalHeures = $personnelData->total_heures ?? 0;
+                                            $totalHeures = $personnelData->total_heures ?? 0;
 
-    $heures = floor($totalHeures);
-    $minutes = round(($totalHeures - $heures) * 60);
+                                            $heures = floor($totalHeures);
+                                            $minutes = round(($totalHeures - $heures) * 60);
 
-    // Valeur affichable
-    $chargeTotalFormat = sprintf('%dh %02dmin', $heures, $minutes);
+                                            // Valeur affichable
+                                            $chargeTotalFormat = sprintf('%dh %02dmin', $heures, $minutes);
 
-    // Valeur numérique en heures décimales
-    $chargeTotalNumerique = $totalHeures;
+                                            // Valeur numérique en heures décimales
+                                            $chargeTotalNumerique = $totalHeures;
 
-    $nbInterventions = $personnelData->nb_interventions ?? 0;
+                                            $nbInterventions = $personnelData->nb_interventions ?? 0;
 
-    $heuresMoyennes = $nbInterventions > 0 
-        ? $chargeTotalNumerique / $nbInterventions 
-        : 0;
+                                            $heuresMoyennes = $nbInterventions > 0 
+                                                ? $chargeTotalNumerique / $nbInterventions 
+                                                : 0;
 
-    $derniereActivite = \App\Models\TimeEntry::where('user_id', $personnel->id)
-        ->where('dossier_id', $dossier->id)
-        ->latest()
-        ->first();
+                                            $derniereActivite = \App\Models\TimeEntry::where('user_id', $personnel->id)
+                                                ->where('dossier_id', $dossier->id)
+                                                ->latest()
+                                                ->first();
 
-    $totalHeuresGlobal += $chargeTotalNumerique;
-    $totalInterventions += $nbInterventions;
+                                            $totalHeuresGlobal += $chargeTotalNumerique;
+                                            $totalInterventions += $nbInterventions;
 
-    // Calcul du pourcentage
-    $heuresTheoriques = $dossier->heure_theorique_sans_weekend 
-        ?? $dossier->heure_theorique_avec_weekend 
-        ?? 1;
+                                            // Calcul du pourcentage
+                                            $heuresTheoriques = $dossier->heure_theorique_sans_weekend 
+                                                ?? $dossier->heure_theorique_avec_weekend 
+                                                ?? 1;
 
-    $pourcentage = $heuresTheoriques > 0 
-        ? ($chargeTotalNumerique / $heuresTheoriques) * 100 
-        : 0;
-@endphp
+                                            $pourcentage = $heuresTheoriques > 0 
+                                                ? ($chargeTotalNumerique / $heuresTheoriques) * 100 
+                                                : 0;
+                                        @endphp
 
                                         <tr>
                                             <td>
@@ -239,7 +239,11 @@ use App\Models\User;
                                     <tr>
                                         <td><strong>Totaux</strong></td>
                                         <td class="text-center">
-                                            <strong class="text-primary">{{ number_format($totalHeuresGlobal, 2) }}h</strong>
+                                            @php
+                                                $hTot = floor($totalHeuresGlobal);
+                                                $mTot = round(($totalHeuresGlobal - $hTot) * 60);
+                                            @endphp
+                                            <strong class="text-black">{{ $hTot }}h {{ $mTot }}min</strong>
                                         </td>
                                         <td class="text-center">
                                             <strong>{{ $totalInterventions }}</strong>
@@ -247,11 +251,13 @@ use App\Models\User;
                                         <td class="text-center">
                                             @php
                                                 $moyenneGenerale = $totalInterventions > 0 ? $totalHeuresGlobal / $totalInterventions : 0;
+                                                $hMoy = floor($moyenneGenerale);
+                                                $mMoy = round(($moyenneGenerale - $hMoy) * 60);
                                             @endphp
-                                            <span class="text-muted">{{ number_format($moyenneGenerale, 1) }}h</span>
+                                            <span class="text-black">{{ $hMoy }}h {{ $mMoy }}min</span>
                                         </td>
                                         <td colspan="2">
-                                            <small class="text-muted">{{ $personnelsAvecTemps->count() }} collaborateur(s)</small>
+                                            <small class="text-black">{{ $personnelsAvecTemps->count() }} collaborateur(s)</small>
                                         </td>
                                     </tr>
                                 </tfoot>
@@ -550,7 +556,8 @@ use App\Models\User;
                                class="btn btn-outline-warning btn-block text-left">
                                 <i class="fas fa-edit mr-2"></i> Modifier le dossier
                             </a>
-                            <button type="button" class="btn btn-outline-danger btn-block text-left" data-toggle="modal" data-target="#deleteModal">
+                            <button type="button" class="btn btn-outline-danger btn-block text-left" id="delete-dossier-btn"
+                                    data-url="{{ route('dossiers.destroy', $dossier) }}">
                                 <i class="fas fa-trash mr-2"></i> Supprimer
                             </button>
                         </div>
@@ -603,30 +610,6 @@ use App\Models\User;
     </div>
 </div>
 @endif
-
-<!-- Modal Suppression -->
-<div class="modal fade" id="deleteModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Confirmation de suppression</h5>
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p>Êtes-vous sûr de vouloir supprimer le dossier <strong>{{ $dossier->nom }}</strong> ?</p>
-                <p class="text-danger"><i class="fas fa-exclamation-triangle"></i> Cette action est irréversible.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
-                <form action="{{ route('dossiers.destroy', $dossier) }}" method="POST">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-danger">Supprimer</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
 @endsection
 
 @push('styles')
@@ -968,5 +951,57 @@ use App\Models\User;
         // Initialiser les icônes de tri
         $('#hoursTable th').append(' <i class="fas fa-sort text-muted"></i>');
     });
+
+    // Suppression du dossier
+$('#delete-dossier-btn').on('click', function() {
+    const url = $(this).data('url');
+
+    Swal.fire({
+        title: 'Êtes-vous sûr ?',
+        html: `Voulez-vous vraiment supprimer le dossier <strong>{{ $dossier->nom }}</strong> ?<br>
+               <small class="text-danger">Cette action est irréversible.</small>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Oui, supprimer !',
+        cancelButtonText: 'Annuler',
+        showLoaderOnConfirm: true,
+        preConfirm: () => {
+            return fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ _method: 'DELETE' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    Swal.showValidationMessage(data.message); // ← affiche l'erreur "entrées de temps"
+                    return false;
+                }
+                return data;
+            })
+            .catch(() => {
+                Swal.showValidationMessage('Erreur lors de la suppression.');
+            });
+        },
+        allowOutsideClick: () => !Swal.isLoading()
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Supprimé !',
+                text: 'Le dossier a été supprimé avec succès.',
+                timer: 2000,
+                showConfirmButton: false
+            }).then(() => {
+                window.location.href = '{{ route('dossiers.index') }}'; // ← redirige vers la liste
+            });
+        }
+    });
+});
 </script>
 @endpush
