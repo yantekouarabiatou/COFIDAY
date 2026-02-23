@@ -262,7 +262,6 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
     Route::get('/user-profile/export-temps/{id}/{format}', [UserProfileController::class, 'exportTemps'])->name('user-profile.export-temps');
 
 
-
     // Export unique (PDF d'une feuille individuelle) - depuis le bouton "Voir"
     Route::get('/daily-entries/{dailyEntry}/pdf', [DailyEntryController::class, 'pdf'])
         ->name('daily-entries.pdf');

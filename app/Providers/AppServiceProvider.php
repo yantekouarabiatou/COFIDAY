@@ -21,7 +21,6 @@ class AppServiceProvider extends ServiceProvider
     public function boot()
     {
 
-
         // Configuration des SweetAlert
         $this->configureSweetAlert();
 
