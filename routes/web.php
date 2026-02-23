@@ -208,7 +208,8 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
     // Ajoutez cette route APRES la route resource
     Route::post('/dossiers/{dossier}/collaborateurs/gestion', [DossierController::class, 'gestionCollaborateurs'])
         ->name('dossiers.collaborateurs.gestion');
-
+    Route::post('dossiers/{dossier}/collaborateurs', [DossierController::class, 'gestionCollaborateurs'])
+    ->name('dossiers.collaborateurs.gestion');
     // OU si vous voulez regrouper :
     Route::prefix('dossiers')->name('dossiers.')->group(function () {
         Route::resource('/', DossierController::class)->names([

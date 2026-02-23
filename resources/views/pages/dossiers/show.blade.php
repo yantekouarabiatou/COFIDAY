@@ -136,8 +136,8 @@ use App\Models\User;
 
     $nbInterventions = $personnelData->nb_interventions ?? 0;
 
-    $heuresMoyennes = $nbInterventions > 0 
-        ? $chargeTotalNumerique / $nbInterventions 
+    $heuresMoyennes = $nbInterventions > 0
+        ? $chargeTotalNumerique / $nbInterventions
         : 0;
 
     $derniereActivite = \App\Models\TimeEntry::where('user_id', $personnel->id)
@@ -149,12 +149,12 @@ use App\Models\User;
     $totalInterventions += $nbInterventions;
 
     // Calcul du pourcentage
-    $heuresTheoriques = $dossier->heure_theorique_sans_weekend 
-        ?? $dossier->heure_theorique_avec_weekend 
+    $heuresTheoriques = $dossier->heure_theorique_sans_weekend
+        ?? $dossier->heure_theorique_avec_weekend
         ?? 1;
 
-    $pourcentage = $heuresTheoriques > 0 
-        ? ($chargeTotalNumerique / $heuresTheoriques) * 100 
+    $pourcentage = $heuresTheoriques > 0
+        ? ($chargeTotalNumerique / $heuresTheoriques) * 100
         : 0;
 @endphp
 
@@ -202,8 +202,6 @@ use App\Models\User;
                                                     $minutes = round(($heuresMoyennes - $heures) * 60);
                                             @endphp
                                             <td class="text-center align-middle">
-                                                Heure moyenne
-
                                                 <span class="text-muted">{{ $heures}}h {{ $minutes }}min</span>
                                             </td>
                                             <td class="text-center align-middle">
@@ -342,13 +340,11 @@ use App\Models\User;
                                     </div>
                                     <div class="ml-3">
                                         <div class="card-title">Heures réelles</div>
-                                           @php
-                                                $heures = floor(num: $totalHeuresGlobal);
-                                                $minutes = round(($heures) * 60);
-                                            @endphp
-
-
-                                        <div class="card-value text-dark">{{ $heures }}h {{ $minutes }}min</div>
+                                        @php
+                                            $heuresReelles = floor($totalHeuresGlobal);
+                                            $minutesReelles = round(($totalHeuresGlobal - $heuresReelles) * 60);
+                                        @endphp
+                                        <div class="card-value text-dark">{{ $heuresReelles }}h {{ $minutesReelles }}min</div>
                                     </div>
                                 </div>
                             </div>
@@ -393,11 +389,7 @@ use App\Models\User;
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h4 class="mb-0"><i class="fas fa-users"></i> Collaborateurs</h4>
-                        @if(auth()->user()->id == $dossier->created_by || auth()->user()->hasRole(['admin', 'super-admin']))
-                            <button type="button" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#gestionCollaborateursModal">
-                                <i class="fas fa-user-plus"></i>
-                            </button>
-                        @endif
+                        
                     </div>
                     <div class="card-body">
                         @php
@@ -563,42 +555,56 @@ use App\Models\User;
 
 <!-- Modals -->
 @if(auth()->user()->id == $dossier->created_by || auth()->user()->hasRole(['admin', 'super-admin']))
-<!-- Modal Gestion Collaborateurs -->
+
+<!-- ============================================================
+     MODAL GESTION COLLABORATEURS — CORRIGÉ
+     - Charge TOUS les utilisateurs actifs
+     - Pré-sélectionne les collaborateurs déjà assignés
+     - Utilise gestionCollaborateurs() via des appels add/remove ciblés
+     - Ne touche pas aux champs du dossier (client_id, nom, etc.)
+============================================================ -->
 <div class="modal fade" id="gestionCollaborateursModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><i class="fas fa-users-cog mr-2"></i>Gérer les collaborateurs</h5>
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
-            <form id="gestionCollaborateursForm">
-                @csrf
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label>Ajouter/Retirer des collaborateurs</label>
-                        <select name="collaborateurs[]" class="form-control select2" multiple>
-                            @php
-                                $tousUtilisateurs = \App\Models\User::where('is_active', 'actif')
-                                    ->orderBy('nom')
-                                    ->get();
-                                $collaborateursExistants = $dossier->collaborateurs->pluck('id')->toArray();
-                            @endphp
-                            @foreach($tousUtilisateurs as $user)
-                                <option value="{{ $user->id }}" {{ in_array($user->id, $collaborateursExistants) ? 'selected' : '' }}>
+            <div class="modal-body">
+                <p class="text-muted mb-3">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Sélectionnez les collaborateurs à assigner à ce dossier. Le créateur du dossier est toujours inclus.
+                </p>
+                <div class="form-group">
+                    <label><strong>Collaborateurs</strong></label>
+                    @php
+                        $tousUtilisateurs = \App\Models\User::where('is_active', 'actif')
+                            ->orderBy('nom')
+                            ->get();
+                        $collaborateursExistantsIds = $dossier->collaborateurs->pluck('id')->toArray();
+                    @endphp
+                    <select id="collaborateursSelect" class="form-control select2-modal" multiple style="width:100%;">
+                        @foreach($tousUtilisateurs as $user)
+                            {{-- On exclut le créateur du select car il est toujours présent --}}
+                            @if($user->id != $dossier->created_by)
+                                <option
+                                    value="{{ $user->id }}"
+                                    {{ in_array($user->id, $collaborateursExistantsIds) ? 'selected' : '' }}
+                                >
                                     {{ $user->nom }} {{ $user->prenom }}
-                                    @if($user->poste)
-                                        ({{ $user->poste->intitule }})
-                                    @endif
+                                    @if($user->poste) ({{ $user->poste->intitule }}) @endif
                                 </option>
-                            @endforeach
-                        </select>
-                    </div>
+                            @endif
+                        @endforeach
+                    </select>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-primary">Enregistrer</button>
-                </div>
-            </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="saveCollaborateurs">
+                    <i class="fas fa-save mr-1"></i> Enregistrer
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -776,197 +782,239 @@ use App\Models\User;
 
 @push('scripts')
 <script>
-    $(document).ready(function() {
-        // Initialiser Select2
-        $('#gestionCollaborateursModal .select2').select2({
-            placeholder: "Sélectionner des collaborateurs",
-            allowClear: true,
-            width: '100%'
-        });
+$(document).ready(function () {
 
-        // Gestion du formulaire de collaborateurs
-        $('#gestionCollaborateursForm').on('submit', function(e) {
-            e.preventDefault();
+    // ─── Initialiser Select2 dans le modal ───────────────────────────────────
+    $('#gestionCollaborateursModal').on('shown.bs.modal', function () {
+        if (!$('#collaborateursSelect').data('select2')) {
+            $('#collaborateursSelect').select2({
+                dropdownParent: $('#gestionCollaborateursModal'),
+                placeholder: "Rechercher un collaborateur...",
+                allowClear: true,
+                width: '100%'
+            });
+        }
+    });
 
+    // ─── Collaborateurs déjà assignés au chargement (depuis PHP) ─────────────
+    // On exclut le créateur car il est toujours présent et non modifiable
+    const collaborateursInitiaux = @json(
+        $dossier->collaborateurs
+            ->where('id', '!=', $dossier->created_by)
+            ->pluck('id')
+            ->values()
+    );
+
+    // ─── Bouton Enregistrer ───────────────────────────────────────────────────
+    $('#saveCollaborateurs').on('click', function () {
+
+        const selectedIds = $('#collaborateursSelect').val()
+            ? $('#collaborateursSelect').val().map(Number)
+            : [];
+
+        // Calculer les différences par rapport à l'état initial
+        const toAdd    = selectedIds.filter(id => !collaborateursInitiaux.includes(id));
+        const toRemove = collaborateursInitiaux.filter(id => !selectedIds.includes(id));
+
+        // Si aucun changement
+        if (toAdd.length === 0 && toRemove.length === 0) {
             Swal.fire({
-                title: 'Mise à jour en cours...',
-                text: 'Veuillez patienter',
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
-
-            $.ajax({
-                url: '{{ route("dossiers.update", $dossier) }}',
-                method: 'PUT',
-                data: $(this).serialize(),
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                },
-                success: function(response) {
-                    Swal.close();
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Succès',
-                        text: 'Les collaborateurs ont été mis à jour.'
-                    }).then(() => {
-                        location.reload();
-                    });
-                },
-                error: function(xhr) {
-                    Swal.close();
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Erreur',
-                        text: 'Une erreur est survenue lors de la mise à jour.'
-                    });
-                }
-            });
-        });
-
-        // Retirer un collaborateur
-        $('.remove-collaborateur').on('click', function() {
-            const userId = $(this).data('user-id');
-            const userName = $(this).data('user-name');
-
-            Swal.fire({
-                title: 'Retirer le collaborateur ?',
-                html: `Voulez-vous vraiment retirer <strong>${userName}</strong> de ce dossier ?`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Oui, retirer',
-                cancelButtonText: 'Annuler'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    $.ajax({
-                        url: '{{ route("dossiers.collaborateurs.gestion", $dossier) }}',
-                        method: 'POST',
-                        data: {
-                            _token: '{{ csrf_token() }}',
-                            collaborateur_id: userId,
-                            action: 'remove'
-                        },
-                        success: function(response) {
-                            if (response.success) {
-                                Swal.fire({
-                                    icon: 'success',
-                                    title: 'Succès',
-                                    text: response.message
-                                }).then(() => {
-                                    location.reload();
-                                });
-                            }
-                        },
-                        error: function() {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Erreur',
-                                text: 'Une erreur est survenue.'
-                            });
-                        }
-                    });
-                }
-            });
-        });
-
-        // Exporter les heures
-        $('#exportHours').on('click', function() {
-            const table = $('#hoursTable');
-            const rows = table.find('tr');
-            let csv = [];
-
-            // En-têtes
-            const headers = [];
-            table.find('th').each(function() {
-                headers.push($(this).text().trim());
-            });
-            csv.push(headers.join(','));
-
-            // Données
-            table.find('tbody tr').each(function() {
-                const row = [];
-                $(this).find('td').each(function() {
-                    let text = $(this).text().trim();
-                    text = text.replace(/,/g, ';');
-                    row.push(text);
-                });
-                csv.push(row.join(','));
-            });
-
-            // Totaux
-            table.find('tfoot tr').each(function() {
-                const row = [];
-                $(this).find('td').each(function() {
-                    let text = $(this).text().trim();
-                    text = text.replace(/,/g, ';');
-                    row.push(text);
-                });
-                csv.push(row.join(','));
-            });
-
-            // Créer et télécharger le fichier
-            const csvContent = csv.join('\n');
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            link.setAttribute('href', url);
-            link.setAttribute('download', 'heures-dossier-{{ $dossier->reference }}-{{ date("Y-m-d") }}.csv');
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            Swal.fire({
-                icon: 'success',
-                title: 'Export réussi',
-                text: 'Le fichier CSV a été téléchargé.',
+                icon: 'info',
+                title: 'Aucun changement',
+                text: 'La liste des collaborateurs est déjà à jour.',
                 timer: 2000,
                 showConfirmButton: false
             });
-        });
-
-        // Tri du tableau
-        $('#hoursTable th').on('click', function() {
-            const table = $(this).parents('table');
-            const index = $(this).index();
-            const rows = table.find('tbody tr').toArray().sort(comparer(index));
-
-            this.asc = !this.asc;
-            if (!this.asc) {
-                rows.reverse();
-            }
-
-            for (let i = 0; i < rows.length; i++) {
-                table.children('tbody').append(rows[i]);
-            }
-
-            // Mettre à jour les icônes de tri
-            table.find('th i.fa-sort').removeClass('fa-sort-up fa-sort-down').addClass('fa-sort');
-            if (this.asc) {
-                $(this).find('i').removeClass('fa-sort').addClass('fa-sort-up');
-            } else {
-                $(this).find('i').removeClass('fa-sort').addClass('fa-sort-down');
-            }
-        });
-
-        function comparer(index) {
-            return function(a, b) {
-                const valA = $(a).children('td').eq(index).text().toUpperCase();
-                const valB = $(b).children('td').eq(index).text().toUpperCase();
-
-                if ($.isNumeric(valA) && $.isNumeric(valB)) {
-                    return parseFloat(valA) - parseFloat(valB);
-                } else {
-                    return valA.localeCompare(valB);
-                }
-            };
+            return;
         }
 
-        // Initialiser les icônes de tri
-        $('#hoursTable th').append(' <i class="fas fa-sort text-muted"></i>');
+        Swal.fire({
+            title: 'Mise à jour en cours...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        const csrfToken = '{{ csrf_token() }}';
+        const gestionUrl = '{{ route("dossiers.collaborateurs.gestion", $dossier) }}';
+
+        // Construire les promesses pour chaque ajout/suppression
+        const promises = [];
+
+        toAdd.forEach(function (id) {
+            promises.push(
+                $.ajax({
+                    url: gestionUrl,
+                    method: 'POST',
+                    data: {
+                        _token: csrfToken,
+                        collaborateur_id: id,
+                        action: 'add'
+                    }
+                })
+            );
+        });
+
+        toRemove.forEach(function (id) {
+            promises.push(
+                $.ajax({
+                    url: gestionUrl,
+                    method: 'POST',
+                    data: {
+                        _token: csrfToken,
+                        collaborateur_id: id,
+                        action: 'remove'
+                    }
+                })
+            );
+        });
+
+        // Attendre toutes les requêtes
+        Promise.all(promises)
+            .then(function () {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Succès',
+                    text: 'Les collaborateurs ont été mis à jour avec succès.',
+                    timer: 2000,
+                    showConfirmButton: false
+                }).then(function () {
+                    location.reload();
+                });
+            })
+            .catch(function (xhr) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erreur',
+                    text: xhr.responseJSON?.message ?? 'Une erreur est survenue lors de la mise à jour.'
+                });
+            });
     });
+
+    // ─── Bouton retirer collaborateur (icône rouge) ───────────────────────────
+    $('.remove-collaborateur').on('click', function () {
+        const userId   = $(this).data('user-id');
+        const userName = $(this).data('user-name');
+
+        Swal.fire({
+            title: 'Retirer le collaborateur ?',
+            html: `Voulez-vous vraiment retirer <strong>${userName}</strong> de ce dossier ?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Oui, retirer',
+            cancelButtonText: 'Annuler'
+        }).then(function (result) {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: '{{ route("dossiers.collaborateurs.gestion", $dossier) }}',
+                    method: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        collaborateur_id: userId,
+                        action: 'remove'
+                    },
+                    success: function (response) {
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Succès',
+                                text: response.message,
+                                timer: 2000,
+                                showConfirmButton: false
+                            }).then(function () {
+                                location.reload();
+                            });
+                        }
+                    },
+                    error: function () {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Erreur',
+                            text: 'Une erreur est survenue.'
+                        });
+                    }
+                });
+            }
+        });
+    });
+
+    // ─── Export CSV des heures ────────────────────────────────────────────────
+    $('#exportHours').on('click', function () {
+        const table = $('#hoursTable');
+        let csv = [];
+
+        const headers = [];
+        table.find('th').each(function () {
+            headers.push($(this).text().trim());
+        });
+        csv.push(headers.join(','));
+
+        table.find('tbody tr').each(function () {
+            const row = [];
+            $(this).find('td').each(function () {
+                let text = $(this).text().trim().replace(/,/g, ';');
+                row.push(text);
+            });
+            csv.push(row.join(','));
+        });
+
+        table.find('tfoot tr').each(function () {
+            const row = [];
+            $(this).find('td').each(function () {
+                let text = $(this).text().trim().replace(/,/g, ';');
+                row.push(text);
+            });
+            csv.push(row.join(','));
+        });
+
+        const blob = new Blob([csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.setAttribute('href', URL.createObjectURL(blob));
+        link.setAttribute('download', 'heures-dossier-{{ $dossier->reference }}-{{ date("Y-m-d") }}.csv');
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Export réussi',
+            text: 'Le fichier CSV a été téléchargé.',
+            timer: 2000,
+            showConfirmButton: false
+        });
+    });
+
+    // ─── Tri des colonnes du tableau ──────────────────────────────────────────
+    $('#hoursTable th').append(' <i class="fas fa-sort text-muted"></i>');
+
+    $('#hoursTable th').on('click', function () {
+        const table = $(this).parents('table');
+        const index = $(this).index();
+        const rows  = table.find('tbody tr').toArray().sort(comparer(index));
+
+        this.asc = !this.asc;
+        if (!this.asc) rows.reverse();
+
+        for (let i = 0; i < rows.length; i++) {
+            table.children('tbody').append(rows[i]);
+        }
+
+        table.find('th i').removeClass('fa-sort-up fa-sort-down').addClass('fa-sort');
+        $(this).find('i').removeClass('fa-sort').addClass(this.asc ? 'fa-sort-up' : 'fa-sort-down');
+    });
+
+    function comparer(index) {
+        return function (a, b) {
+            const valA = $(a).children('td').eq(index).text().toUpperCase();
+            const valB = $(b).children('td').eq(index).text().toUpperCase();
+            return $.isNumeric(valA) && $.isNumeric(valB)
+                ? parseFloat(valA) - parseFloat(valB)
+                : valA.localeCompare(valB);
+        };
+    }
+
+});
 </script>
 @endpush
