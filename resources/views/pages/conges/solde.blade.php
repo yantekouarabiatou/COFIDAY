@@ -175,7 +175,6 @@
                                                         <th class="text-center">Jours restants</th>
                                                         <th class="text-center">Jours reportés*</th>
                                                         <th class="text-center">Taux utilisation</th>
-                                                        <th class="text-center">Actions</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -219,22 +218,6 @@
                                                                 </div>
                                                             </div>
                                                         </td>
-                                                        <td class="text-center">
-                                                            <button class="btn btn-sm btn-info btn-details"
-                                                                    data-annee="{{ $solde->annee }}"
-                                                                    data-toggle="tooltip"
-                                                                    title="Voir les détails">
-                                                                <i class="fas fa-eye"></i>
-                                                            </button>
-                                                            @if(auth()->user()->hasRole('admin'))
-                                                            <button class="btn btn-sm btn-warning btn-edit-solde"
-                                                                    data-solde-id="{{ $solde->id }}"
-                                                                    data-toggle="tooltip"
-                                                                    title="Modifier le solde">
-                                                                <i class="fas fa-edit"></i>
-                                                            </button>
-                                                            @endif
-                                                        </td>
                                                     </tr>
                                                     @empty
                                                     <tr>
@@ -262,119 +245,6 @@
                             </div>
                         </div>
 
-                        <!-- Congés de l'année en cours -->
-                        @if($soldeCourant)
-                        <div class="row mt-4">
-                            <div class="col-md-12">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h4><i class="fas fa-calendar-check"></i> Congés payés utilisés en {{ now()->year }}</h4>
-                                    </div>
-                                    <div class="card-body">
-                                        @php
-                                            $congesPayesAnnee = $demandesCongesPayes->where('statut', 'approuve');
-                                            $totalJoursPris = $congesPayesAnnee->sum('nombre_jours');
-                                        @endphp
-
-                                        <div class="row mb-3">
-                                            <div class="col-md-6">
-                                                <h5>Récapitulatif</h5>
-                                                <ul class="list-group">
-                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                        Nombre de congés
-                                                        <span class="badge badge-primary badge-pill">{{ $congesPayesAnnee->count() }}</span>
-                                                    </li>
-                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                        Total jours pris
-                                                        <span class="badge badge-danger badge-pill">{{ $totalJoursPris }}</span>
-                                                    </li>
-                                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                        Solde initial
-                                                        <span class="badge badge-success badge-pill">{{ $soldeCourant->jours_acquis }}</span>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <h5>Répartition par type</h5>
-                                                <canvas id="typeRepartitionChart" height="150"></canvas>
-                                            </div>
-                                        </div>
-
-                                        @if($congesPayesAnnee->isNotEmpty())
-                                        <div class="table-responsive">
-                                            <table class="table table-striped">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Période</th>
-                                                        <th>Type</th>
-                                                        <th class="text-center">Durée</th>
-                                                        <th>Statut</th>
-                                                        <th>Date validation</th>
-                                                        <th class="text-center">Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    @foreach($congesPayesAnnee as $conge)
-                                                    <tr>
-                                                        <td>
-                                                            {{ \Carbon\Carbon::parse($conge->date_debut)->format('d/m/Y') }}
-                                                            au {{ \Carbon\Carbon::parse($conge->date_fin)->format('d/m/Y') }}
-                                                        </td>
-                                                        <td>
-                                                            <span class="badge" style="background-color: {{ optional($conge->typeConge)->couleur ?? '#3B82F6' }}; color: white;">
-                                                                {{ optional($conge->typeConge)->libelle ?? 'Type inconnu' }}
-                                                            </span>
-                                                        </td>
-                                                        <td class="text-center">
-                                                            <span class="badge badge-info">{{ $conge->nombre_jours }} jour(s)</span>
-                                                        </td>
-                                                        <td>
-                                                            @if($conge->statut == 'approuve')
-                                                                <span class="badge badge-success">Approuvé</span>
-                                                            @elseif($conge->statut == 'en_attente')
-                                                                <span class="badge badge-warning">En attente</span>
-                                                            @else
-                                                                <span class="badge badge-danger">{{ ucfirst($conge->statut) }}</span>
-                                                            @endif
-                                                        </td>
-                                                        <td>
-                                                            @if($conge->date_validation)
-                                                                {{ \Carbon\Carbon::parse($conge->date_validation)->format('d/m/Y H:i') }}
-                                                            @else
-                                                                -
-                                                            @endif
-                                                        </td>
-                                                        <td class="text-center">
-                                                            <a href="{{ route('conges.show', $conge) }}"
-                                                               class="btn btn-sm btn-info" title="Voir détails">
-                                                                <i class="fas fa-eye"></i>
-                                                            </a>
-                                                        </td>
-                                                    </tr>
-                                                    @endforeach
-                                                </tbody>
-                                                <tfoot>
-                                                    <tr class="table-active">
-                                                        <td colspan="2" class="text-right"><strong>Total :</strong></td>
-                                                        <td class="text-center"><strong>{{ $totalJoursPris }} jour(s)</strong></td>
-                                                        <td colspan="3"></td>
-                                                    </tr>
-                                                </tfoot>
-                                            </table>
-                                        </div>
-                                        @else
-                                        <div class="text-center py-4">
-                                            <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
-                                            <h5>Aucun congé payé utilisé cette année</h5>
-                                            <p class="text-muted">Tous vos jours de congés payés sont disponibles.</p>
-                                        </div>
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        @endif
-
                         <!-- Prévision pour l'année prochaine -->
                         <div class="row mt-4">
                             <div class="col-md-12">
@@ -389,7 +259,7 @@
                                                 @php
                                                     $regles = \App\Models\RegleConge::first();
                                                     $moisRestants = 12 - now()->month;
-                                                    $joursAcquisMensuel = $regles ? $regles->jours_par_mois : 2.5;
+                                                    $joursAcquisMensuel = $regles ? $regles->jours_par_mois : 2;
                                                     $joursAcquisRestants = $joursAcquisMensuel * $moisRestants;
                                                     $soldePrevisionnel = ($soldeCourant->jours_restants ?? 0) + $joursAcquisRestants;
                                                     $joursReportables = $soldeCourant ? min($soldeCourant->jours_restants, $regles->limite_report ?? 10) : 0;
@@ -439,11 +309,7 @@
                         <a href="{{ route('conges.create') }}" class="btn btn-primary">
                             <i class="fas fa-plus"></i> Nouvelle demande
                         </a>
-                        @if(auth()->user()->hasRole('admin') && isset($user))
-                        <button class="btn btn-warning" id="btn-adjust-solde">
-                            <i class="fas fa-adjust"></i> Ajuster le solde
-                        </button>
-                        @endif
+
                         <a href="{{ route('conges.index') }}" class="btn btn-secondary">
                             <i class="fas fa-list"></i> Liste des congés
                         </a>
@@ -454,82 +320,7 @@
     </div>
 </section>
 
-<!-- Modal pour les détails d'une année -->
-<div class="modal fade" id="detailsModal" tabindex="-1" role="dialog" aria-labelledby="detailsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="detailsModalLabel">Détails du solde</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body" id="detailsModalBody">
-                <!-- Les détails seront chargés ici -->
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Fermer</button>
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- Modal pour ajuster le solde (admin) -->
-@if(auth()->user()->hasRole('admin'))
-<div class="modal fade" id="adjustModal" tabindex="-1" role="dialog" aria-labelledby="adjustModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="adjustModalLabel">Ajuster le solde</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <form id="adjustForm" action="{{ route('conges.ajuster-solde', isset($user) ? $user : auth()->user()) }}" method="POST">
-                @csrf
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label>Année</label>
-                        <select name="annee" class="form-control" required>
-                            @for($i = now()->year - 2; $i <= now()->year + 1; $i++)
-                                <option value="{{ $i }}" {{ $i == now()->year ? 'selected' : '' }}>
-                                    {{ $i }}
-                                </option>
-                            @endfor
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Jours acquis</label>
-                        <input type="number" name="jours_acquis" class="form-control" step="0.5" min="0" max="50"
-                               value="{{ $soldeCourant->jours_acquis ?? 25 }}" required>
-                        <small class="form-text text-muted">Nombre de jours acquis pour l'année (max 50)</small>
-                    </div>
-                    <div class="form-group">
-                        <label>Jours pris</label>
-                        <input type="number" name="jours_pris" class="form-control" step="0.5" min="0"
-                               value="{{ $soldeCourant->jours_pris ?? 0 }}" required>
-                        <small class="form-text text-muted">Jours déjà utilisés</small>
-                    </div>
-                    <div class="form-group">
-                        <label>Jours reportés</label>
-                        <input type="number" name="jours_reportes" class="form-control" step="0.5" min="0"
-                               value="{{ $soldeCourant->jours_reportes ?? 0 }}">
-                        <small class="form-text text-muted">Jours reportés de l'année précédente</small>
-                    </div>
-                    <div class="form-group">
-                        <label>Raison de l'ajustement</label>
-                        <textarea name="raison" class="form-control" rows="3" placeholder="Expliquez la raison de cet ajustement..." required></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-primary">Enregistrer</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-@endif
 @endsection
 
 @push('styles')
@@ -677,19 +468,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             return;
         }
-
-        Swal.fire({
-            title: 'Confirmer l\'ajustement',
-            text: 'Êtes-vous sûr de vouloir modifier ce solde de congés ?',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Oui, modifier',
-            cancelButtonText: 'Annuler'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                this.submit();
-            }
-        });
     });
     @endif
 

@@ -2,7 +2,7 @@
     use App\Helpers\UserHelper;
 @endphp
 
-@extends('layaout')  <!-- ou 'layaout' si c'est vraiment ton nom de layout -->
+@extends('layaout')  
 
 @section('title', 'Feuilles de Temps')
 
