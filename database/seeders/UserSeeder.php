@@ -115,7 +115,7 @@ class UserSeeder extends Seeder
                 'prenom' => 'Lucien',
                 'email' => 'mamoussou@cofima.cc',
                 'poste' => 'COMPTABLE',
-                'role' => 'AGENT',
+                'role' => 'COLABORATEUR',
             ],
             [
                 'username_raw' => 'Libert',
@@ -131,7 +131,7 @@ class UserSeeder extends Seeder
                 'prenom' => 'Carmen',
                 'email' => 'canani@cofima.cc',
                 'poste' => 'AUDITEUR',
-                'role' => 'AGENT',
+                'role' => 'COLABORATEUR',
             ],
             [
                 'username_raw' => 'Pascal',
@@ -139,7 +139,7 @@ class UserSeeder extends Seeder
                 'prenom' => 'Pascal',
                 'email' => 'plima@cofima.cc',
                 'poste' => 'SECRETAIRE',
-                'role' => 'AGENT',
+                'role' => 'COLABORATEUR',
             ],
             [
                 'username_raw' => 'Carolle',
@@ -147,7 +147,7 @@ class UserSeeder extends Seeder
                 'prenom' => 'Carolle',
                 'email' => 'chonvou@cofima.cc',
                 'poste' => 'COMPTABLE',
-                'role' => 'AGENT',
+                'role' => 'COLABORATEUR',
             ],
             [
                 'username_raw' => 'Armel',
@@ -155,7 +155,7 @@ class UserSeeder extends Seeder
                 'prenom' => 'Armelle',
                 'email' => 'akinkpo@cofima.cc',
                 'poste' => 'AUDITEUR',
-                'role' => 'AGENT',
+                'role' => 'COLABORATEUR',
             ],
             [
                 'username_raw' => 'Helza',
@@ -163,7 +163,7 @@ class UserSeeder extends Seeder
                 'prenom' => 'Helza',
                 'email' => 'hzohoun@cofima.cc',
                 'poste' => 'AUDITEUR',
-                'role' => 'AGENT',
+                'role' => 'COLABORATEUR',
             ],
             [
                 'username_raw' => 'Nabirou',
@@ -171,7 +171,7 @@ class UserSeeder extends Seeder
                 'prenom' => 'Nabirou',
                 'email' => 'nsacari@cofima.cc',
                 'poste' => 'AUDITEUR',
-                'role' => 'AGENT',
+                'role' => 'COLABORATEUR',
             ],
             [
                 'username_raw' => 'Housséni',
@@ -179,7 +179,7 @@ class UserSeeder extends Seeder
                 'prenom' => 'Housséni',
                 'email' => 'houorouzoumarou@cofima.cc',
                 'poste' => 'AUDITEUR',
-                'role' => 'AGENT',
+                'role' => 'COLABORATEUR',
             ],
             [
                 'username_raw' => 'Horeb',
@@ -187,7 +187,7 @@ class UserSeeder extends Seeder
                 'prenom' => 'Horeb',
                 'email' => 'ahdomingo@cofima.cc',
                 'poste' => 'AUDITEUR',
-                'role' => 'AGENT',
+                'role' => 'COLABORATEUR',
             ],
             [
                 'username_raw' => 'Estéban',
@@ -195,7 +195,7 @@ class UserSeeder extends Seeder
                 'prenom' => 'Estéban',
                 'email' => 'ehoundonougbo@cofima.cc',
                 'poste' => 'AUDITEUR',
-                'role' => 'AGENT',
+                'role' => 'COLABORATEUR',
             ],
             [
                 'username_raw' => 'Jean-Eudes',
@@ -203,7 +203,7 @@ class UserSeeder extends Seeder
                 'prenom' => 'Jean-Eudes',
                 'email' => 'jegbessoua@cofima.cc',
                 'poste' => 'AUDITEUR',
-                'role' => 'AGENT',
+                'role' => 'COLABORATEUR',
             ],
             [
                 'username_raw' => 'Armelle',
@@ -211,7 +211,7 @@ class UserSeeder extends Seeder
                 'prenom' => 'Armelle',
                 'email' => 'agaba@cofima.cc',
                 'poste' => 'AUDITEUR',
-                'role' => 'AGENT',
+                'role' => 'COLABORATEUR',
             ],
             [
                 'username_raw' => 'Roger DES-LANLO', // contient un espace, nous le remplacerons par un point
@@ -279,7 +279,8 @@ class UserSeeder extends Seeder
         return match ($role) {
             'SUPER ADMINISTRATEUR', 'ADMINISTRATEUR' => 'admin',
             'AGENT SUPER GESTIONNAIRE', 'AGENT GESTIONNAIRE' => 'manager',
-            'Statisticien-Economiste', 'AGENT' => 'agent',
+            'Statisticien-Economiste', 'AGENT' => 'collaborateur',
+            'COLABORATEUR' => 'collaborateur',
             default => null,
         };
     }

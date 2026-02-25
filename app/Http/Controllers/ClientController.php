@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Client;
 use App\Models\Dossier;
-use Barryvdh\DomPDF\PDF;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -21,6 +21,7 @@ class ClientController extends Controller
         return view('pages.clients.index', compact('clients'));
     }
 
+    
     /**
      * Afficher le formulaire de création
      */
@@ -45,7 +46,7 @@ class ClientController extends Controller
             'contact_principal' => 'nullable|string|max:255',
             'secteur_activite' => 'nullable|string|max:255',
             'numero_siret' => 'nullable|string|max:14|unique:clients,numero_siret',
-            'code_naf' => 'nullable|string|max:10',
+            // 'code_naf' => 'nullable|string|max:10',
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'site_web' => 'nullable|url|max:255',
             'notes' => 'nullable|string',
@@ -75,7 +76,7 @@ class ClientController extends Controller
             'contact_principal' => $request->contact_principal,
             'secteur_activite' => $request->secteur_activite,
             'numero_siret' => $request->numero_siret,
-            'code_naf' => $request->code_naf,
+            // 'code_naf' => $request->code_naf,
             'logo' => $logoPath,
             'site_web' => $request->site_web,
             'notes' => $request->notes,
@@ -118,7 +119,7 @@ class ClientController extends Controller
             'contact_principal' => 'nullable|string|max:255',
             'secteur_activite' => 'nullable|string|max:255',
             'numero_siret' => 'nullable|string|max:14|unique:clients,numero_siret,' . $client->id,
-            'code_naf' => 'nullable|string|max:10',
+            // 'code_naf' => 'nullable|string|max:10',
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'site_web' => 'nullable|url|max:255',
             'notes' => 'nullable|string',
@@ -153,7 +154,7 @@ class ClientController extends Controller
             'contact_principal' => $request->contact_principal,
             'secteur_activite' => $request->secteur_activite,
             'numero_siret' => $request->numero_siret,
-            'code_naf' => $request->code_naf,
+            // 'code_naf' => $request->code_naf,
             'site_web' => $request->site_web,
             'notes' => $request->notes,
             'statut' => $request->statut,
@@ -168,21 +169,23 @@ class ClientController extends Controller
      */
     public function destroy(Client $client)
     {
-        // Vérifier s'il y a des dossiers associés
         if ($client->dossiers()->count() > 0) {
-            return redirect()->route('clients.index')
-                ->with('error', 'Impossible de supprimer ce client car il possède des dossiers associés.');
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible de supprimer ce client car il possède des dossiers associés.'
+            ], 422);
         }
 
-        // Supprimer le logo s'il existe
         if ($client->logo && Storage::disk('public')->exists($client->logo)) {
             Storage::disk('public')->delete($client->logo);
         }
 
         $client->delete();
 
-        return redirect()->route('clients.index')
-            ->with('success', 'Client supprimé avec succès!');
+        return response()->json([
+            'success' => true,
+            'message' => 'Client supprimé avec succès.'
+        ]);
     }
 
     /**
@@ -203,9 +206,9 @@ class ClientController extends Controller
      */
     public function exportPdf()
     {
-        $clients = Client::all();
+        $clients = Client::withCount('dossiers')->latest()->get();
 
-        $pdf = PDF::loadView('clients.pdf', compact('clients'))
+        $pdf = Pdf::loadView('pages.clients.pdf', compact('clients'))
             ->setPaper('A4', 'landscape');
 
         return $pdf->download('liste-clients-' . date('Y-m-d') . '.pdf');

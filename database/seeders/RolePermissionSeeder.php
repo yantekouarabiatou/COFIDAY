@@ -251,7 +251,7 @@ class RolePermissionSeeder extends Seeder
         ]);
 
         // EMPLOYÉ / UTILISATEUR STANDARD
-        $collaborateur = Role::firstOrCreate(['name' => 'agent']);
+        $collaborateur = Role::firstOrCreate(['name' => 'collaborateur']);
         $collaborateur->syncPermissions([
             // Temps
             'voir les entrées journalières',
@@ -329,31 +329,6 @@ class RolePermissionSeeder extends Seeder
             'marquer les notifications comme lues',
         ]);
 
-        // AUDITEUR INTERNE (si nécessaire)
-        $auditeur = Role::firstOrCreate(['name' => 'auditeur']);
-        $auditeur->syncPermissions([
-            'voir les dossiers',
-            'voir tous les temps',
-            'voir les rapports mensuels temps',
-
-            // Rapports temps
-            'voir les rapports détaillés temps',
-            'voir les synthèses mensuelles',
-            'voir les répartitions par dossier',
-            'voir les temps par collaborateur',
-
-            'exporter les temps en excel',
-            'exporter les temps en pdf',
-            'voir les statistiques',
-            'voir les statistiques générales',
-            'voir les notifications',
-            'marquer les notifications comme lues',
-
-            // Rapports
-            'voir les rapports mensuels',
-            'générer des rapports',
-            'exporter les rapports',
-        ]);
 
         // RESPONSABLE CONFORMITÉ
         $responsableConformite = Role::firstOrCreate(['name' => 'responsable-conformite']);
@@ -381,39 +356,6 @@ class RolePermissionSeeder extends Seeder
             'exporter les rapports',
         ]);
 
-        // CONTROLEUR DE GESTION
-        $controleurGestion = Role::firstOrCreate(['name' => 'controleur-gestion']);
-        $controleurGestion->syncPermissions([
-            // Temps et rapports
-            'voir tous les temps',
-            'voir les rapports mensuels temps',
-            'voir les rapports détaillés temps',
-            'voir les synthèses mensuelles',
-            'voir les répartitions par dossier',
-            'voir les temps par collaborateur',
-
-            // Statistiques
-            'voir les statistiques',
-            'voir les statistiques générales',
-
-            // Exports
-            'exporter les temps en excel',
-            'exporter les temps en pdf',
-
-            // Missions & Analyses
-            'analyser les missions',
-            'voir les analyses par mission',
-
-            // Rapports
-            'voir les rapports mensuels',
-            'générer des rapports',
-            'exporter les rapports',
-            'analyser les performances',
-
-            // Notifications
-            'voir les notifications',
-            'marquer les notifications comme lues',
-        ]);
 
         $this->command->info('✅ Permissions et rôles créés avec succès !');
     }

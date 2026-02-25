@@ -44,6 +44,16 @@ class LogActivite extends Model
      */
     public function loggable(): MorphTo
     {
+        // Si le type stocké n'est pas une classe valide, on neutralise
+        // pour éviter le crash "Class not found"
+        $type = $this->loggable_type;
+        $morphMap = \Illuminate\Database\Eloquent\Relations\Relation::morphMap();
+
+        if ($type && !isset($morphMap[$type]) && !class_exists($type)) {
+            $this->loggable_type = null;
+            $this->loggable_id   = null;
+        }
+
         return $this->morphTo('loggable', 'loggable_type', 'loggable_id')
             ->withTrashed()
             ->withDefault(function () {

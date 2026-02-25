@@ -71,7 +71,7 @@
                                     <div class="form-group">
                                         <label>Téléphone</label>
                                         <input type="text" name="telephone" class="form-control @error('telephone') is-invalid @enderror"
-                                               value="{{ old('telephone') }}" placeholder="+33 1 23 45 67 89">
+                                               value="{{ old('telephone') }}" placeholder="+229 01 00 00 00 00">
                                         @error('telephone')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
@@ -112,7 +112,7 @@
                             </div>
 
                             <div class="row">
-                                <div class="col-md-4">
+                                <div class="col-md-6">
                                     <div class="form-group">
                                         <label>Secteur d'Activité</label>
                                         <input type="text" name="secteur_activite" class="form-control @error('secteur_activite') is-invalid @enderror"
@@ -122,9 +122,9 @@
                                         @enderror
                                     </div>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-6">
                                     <div class="form-group">
-                                        <label>Numéro SIRET</label>
+                                        <label>Numéro IFU</label>
                                         <input type="text" name="numero_siret" class="form-control @error('numero_siret') is-invalid @enderror"
                                                value="{{ old('numero_siret') }}" placeholder="14 chiffres">
                                         @error('numero_siret')
@@ -132,7 +132,7 @@
                                         @enderror
                                     </div>
                                 </div>
-                                <div class="col-md-4">
+                                <!-- <div class="col-md-4">
                                     <div class="form-group">
                                         <label>Code NAF</label>
                                         <input type="text" name="code_naf" class="form-control @error('code_naf') is-invalid @enderror"
@@ -141,7 +141,7 @@
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
-                                </div>
+                                </div> -->
                             </div>
 
                             <div class="row">

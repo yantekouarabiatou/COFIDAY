@@ -12,6 +12,8 @@ use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use App\Mail\CollaborateurAssigneMail;
+use Illuminate\Support\Facades\Mail;
 
 class DossierController extends Controller
 {
@@ -86,9 +88,36 @@ class DossierController extends Controller
             $dossier = Dossier::create($validated);
 
             // Ajouter les collaborateurs
+            $createurId = auth()->id();
+            $dossier->addCollaborateur($createurId);
+
+            $createur = auth()->user();
+            if ($createur && $createur->email) {
+                try {
+                    Mail::to($createur->email)
+                        ->send(new CollaborateurAssigneMail($dossier, $createur));
+                } catch (\Exception $e) {
+                    \Log::error("Échec envoi mail créateur: " . $e->getMessage());
+                }
+            }
+
+            // Ajouter les collaborateurs sélectionnés
             if ($request->has('collaborateurs')) {
                 foreach ($request->collaborateurs as $collaborateurId) {
+
+                    if ($collaborateurId == $createurId) continue; // sécurité backend uniquement
+
                     $dossier->addCollaborateur($collaborateurId);
+
+                    $collaborateur = User::find($collaborateurId);
+                    if ($collaborateur && $collaborateur->email) {
+                        try {
+                            Mail::to($collaborateur->email)
+                                ->send(new CollaborateurAssigneMail($dossier, $collaborateur));
+                        } catch (\Exception $e) {
+                            \Log::error("Échec envoi mail collaborateur {$collaborateurId}: " . $e->getMessage());
+                        }
+                    }
                 }
             }
 
@@ -109,7 +138,6 @@ class DossierController extends Controller
         if (!$dossier->userCanAccess(auth()->id())) {
             abort(403, 'Vous n\'avez pas accès à ce dossier.');
         }
-
         $collaborateurs = User::where('id', '!=', auth()->id())->get();
         return view('pages.dossiers.show', compact('dossier', 'collaborateurs'));
     }
@@ -268,6 +296,17 @@ class DossierController extends Controller
             switch ($request->action) {
                 case 'add':
                     $dossier->addCollaborateur($request->collaborateur_id, $request->role ?? 'collaborateur');
+                    
+                    $collaborateur = User::find($request->collaborateur_id);
+                    if ($collaborateur && $collaborateur->email) {
+                        try {
+                            Mail::to($collaborateur->email)
+                                ->send(new CollaborateurAssigneMail($dossier, $collaborateur));
+                        } catch (\Exception $e) {
+                            \Log::error("Échec envoi mail collaborateur: " . $e->getMessage());
+                            // On ne bloque pas l'ajout si le mail échoue
+                        }
+                    }
                     $message = 'Collaborateur ajouté avec succès.';
                     break;
 
@@ -297,14 +336,21 @@ class DossierController extends Controller
 
     public function destroy(Dossier $dossier)
     {
-        // Supprimer le document associé s'il existe
+        if ($dossier->timeEntries()->count() > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible de supprimer ce dossier car il possède des entrées de temps associées.'
+            ], 422);
+        }
         if ($dossier->document) {
             Storage::disk('public')->delete($dossier->document);
         }
 
         $dossier->delete();
-        Alert::success('Succès', 'Dossier supprimé avec succès.');
-        return redirect()->route('dossiers.index')
-            ->with('success', 'Dossier supprimé avec succès.');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Dossier supprimé avec succès.'
+        ]);
     }
 }

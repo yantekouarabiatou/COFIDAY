@@ -316,7 +316,7 @@ class Dossier extends Model
     }
 
     // Ajouter un collaborateur
-    public function addCollaborateur($userId, $role = 'agent')
+    public function addCollaborateur($userId, $role = 'collaborateur')
     {
         if (!$this->isCollaborateur($userId)) {
             $this->collaborateurs()->attach($userId, [

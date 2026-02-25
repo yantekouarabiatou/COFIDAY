@@ -167,16 +167,16 @@
                                             @endif
                                             @if($client->numero_siret)
                                                 <div class="col-md-4">
-                                                    <strong>SIRET :</strong>
+                                                    <strong>Numéro IFU :</strong>
                                                     <p>{{ $client->numero_siret }}</p>
                                                 </div>
                                             @endif
-                                            @if($client->code_naf)
+                                            <!-- @if($client->code_naf)
                                                 <div class="col-md-4">
                                                     <strong>Code NAF :</strong>
                                                     <p>{{ $client->code_naf }}</p>
                                                 </div>
-                                            @endif
+                                            @endif -->
                                         </div>
                                     </div>
                                 </div>
