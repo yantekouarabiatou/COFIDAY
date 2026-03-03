@@ -224,8 +224,13 @@ class CongeController extends Controller
         $usePagination = $isAdmin;
 
         return view('pages.conges.index', compact(
-            'demandes', 'typesConges', 'totalDemandes',
-            'enAttente', 'approuves', 'refuses', 'usePagination'
+            'demandes',
+            'typesConges',
+            'totalDemandes',
+            'enAttente',
+            'approuves',
+            'refuses',
+            'usePagination'
         ));
     }
 
@@ -259,8 +264,11 @@ class CongeController extends Controller
             ->orderBy('nom')->orderBy('prenom')->get();
 
         return view('pages.conges.create', compact(
-            'typesConges', 'solde', 'users',
-            'totalJoursDisponibles', 'soldesParAnnee'
+            'typesConges',
+            'solde',
+            'users',
+            'totalJoursDisponibles',
+            'soldesParAnnee'
         ));
     }
 
@@ -291,11 +299,8 @@ class CongeController extends Controller
 
             $typeConge = TypeConge::findOrFail($request->type_conge_id);
 
-            // Vérifier la limite max du type
-            if ($typeConge->nombre_jours_max && $nombreJours > $typeConge->nombre_jours_max) {
-                Alert::error('Erreur', "Ce type de congé ne peut pas dépasser {$typeConge->nombre_jours_max} jours.");
-                return back()->withInput();
-            }
+            // NOTE : nombre_jours_max est indicatif, pas bloquant.
+            // Tant que le solde global (toutes années) couvre la demande, elle est acceptée.
 
             // ── Vérification & déduction du solde (congés annuels) ───────────
             $deductions = [];
@@ -364,7 +369,6 @@ class CongeController extends Controller
 
             Alert::success('Succès', 'Votre demande de congé a été soumise avec succès. En attente de validation.');
             return redirect()->route('conges.index');
-
         } catch (\Exception $e) {
             DB::rollBack();
             Alert::error('Erreur', 'Une erreur est survenue : ' . $e->getMessage());
@@ -423,11 +427,7 @@ class CongeController extends Controller
             $typeConge       = TypeConge::findOrFail($request->type_conge_id);
             $ancienTypeConge = TypeConge::find($demande->type_conge_id);
 
-            // Limite max
-            if ($typeConge->nombre_jours_max && $nombreJours > $typeConge->nombre_jours_max) {
-                Alert::error('Erreur', "Ce type de congé ne peut pas dépasser {$typeConge->nombre_jours_max} jours.");
-                return back()->withInput();
-            }
+            // NOTE : nombre_jours_max est indicatif, pas bloquant.
 
             // ── Gestion du solde multi-années ─────────────────────────────────
             $deductions = [];
@@ -512,7 +512,6 @@ class CongeController extends Controller
 
             Alert::success('Succès', 'La demande de congé a été modifiée avec succès.');
             return redirect()->route('conges.index');
-
         } catch (\Illuminate\Validation\ValidationException $e) {
             DB::rollBack();
             return back()->withErrors($e->validator)->withInput();
@@ -580,7 +579,6 @@ class CongeController extends Controller
 
             Alert::success('Succès', 'La demande a été annulée et les jours ont été restitués.');
             return redirect()->route('conges.index');
-
         } catch (\Exception $e) {
             DB::rollBack();
             Alert::error('Erreur', "Une erreur est survenue lors de l'annulation.");
@@ -690,7 +688,6 @@ class CongeController extends Controller
 
             Alert::success('Succès', $message);
             return redirect()->route('conges.index');
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erreur traitement congé: ' . $e->getMessage());
@@ -770,8 +767,12 @@ class CongeController extends Controller
             ->get();
 
         return view('pages.conges.solde', compact(
-            'user', 'soldes', 'soldeCourant', 'demandesCongesPayes',
-            'totalJoursDisponibles', 'soldesDisponibles'
+            'user',
+            'soldes',
+            'soldeCourant',
+            'demandesCongesPayes',
+            'totalJoursDisponibles',
+            'soldesDisponibles'
         ));
     }
 
@@ -907,8 +908,13 @@ class CongeController extends Controller
         $typeData  = $this->getTypeData();
 
         return view('pages.conges.dashboard', compact(
-            'stats', 'demandesUrgentes', 'congesEnCours',
-            'prochainsConges', 'soldesCritiques', 'chartData', 'typeData'
+            'stats',
+            'demandesUrgentes',
+            'congesEnCours',
+            'prochainsConges',
+            'soldesCritiques',
+            'chartData',
+            'typeData'
         ));
     }
 
@@ -1103,5 +1109,91 @@ class CongeController extends Controller
     private function calculerJoursCalendaires(Carbon $dateDebut, Carbon $dateFin): float
     {
         return $dateDebut->diffInDays($dateFin) + 1;
+    }
+
+    public function validerFinale(Request $request, DemandeConge $demande)
+    {
+        DB::beginTransaction();
+
+        try {
+            $user = Auth::user();
+
+            if (!$user->hasRole('directeur-general') && !$user->hasRole('rh') && !$user->hasRole('admin')) {
+                abort(403, 'Accès non autorisé');
+            }
+
+            if ($demande->statut !== 'pre_approuve') {
+                Alert::warning('Information', 'Cette demande n\'est pas en attente de validation finale.');
+                return back();
+            }
+
+            $validated = $request->validate([
+                'action'      => 'required|in:approuve,refuse',
+                'commentaire' => 'nullable|string|max:1000',
+            ]);
+
+            $action = $request->action;
+
+            $demande->update([
+                'statut'                  => $action,
+                'statut_final'            => $action,
+                'valide_par_final'        => $user->id,
+                'date_validation_finale'  => now(),
+                'commentaire_final'       => $request->commentaire,
+            ]);
+
+            // Déduire du solde uniquement ici, après validation finale
+            if ($action === 'approuve' && $demande->typeConge->est_paye) {
+                $solde = SoldeConge::where('user_id', $demande->user_id)
+                    ->where('annee', now()->year)
+                    ->firstOrFail();
+
+                $solde->update([
+                    'jours_pris'      => $solde->jours_pris + $demande->nombre_jours,
+                    'jours_restants'  => $solde->jours_acquis - ($solde->jours_pris + $demande->nombre_jours),
+                ]);
+            }
+
+            HistoriqueConge::create([
+                'demande_conge_id' => $demande->id,
+                'action'           => $action === 'approuve' ? 'demande_approuvee_finale' : 'demande_refusee_finale',
+                'effectue_par'     => $user->id,
+                'commentaire'      => $request->commentaire,
+            ]);
+
+            // Notifier l'employé
+            if ($action === 'approuve') {
+                Mail::to($demande->user->email)->send(new LeaveApprovedMail($demande));
+            } else {
+                Mail::to($demande->user->email)->send(new LeaveRejectedMail($demande, $request->commentaire));
+            }
+
+            DB::commit();
+            Alert::success('Succès', $action === 'approuve'
+                ? 'Congé approuvé définitivement. Le solde a été mis à jour.'
+                : 'Congé refusé.');
+
+            return redirect()->route('conges.validation-finale.index');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Alert::error('Erreur', 'Une erreur est survenue : ' . $e->getMessage());
+            return back();
+        }
+    }
+
+    public function validationFinaleIndex()
+    {
+        $user = Auth::user();
+
+        if (!$user->hasRole('directeur-general') && !$user->hasRole('rh') && !$user->hasRole('admin')) {
+            abort(403, 'Accès non autorisé');
+        }
+
+        $demandes = DemandeConge::with(['user', 'typeConge', 'validePar'])
+            ->where('statut', 'pre_approuve')
+            ->latest()
+            ->paginate(20);
+
+        return view('pages.conges.validation-finale', compact('demandes'));
     }
 }

@@ -18,10 +18,12 @@ class UserCreatedMail extends Mailable
      * Create a new message instance.
      */
     public $user; // l'utilisateur créé
+    public $roleName; // le nom du rôle assigné
     // Injection de l'utilisateur lors de la création du mail
-    public function __construct(User $user)
+    public function __construct(User $user, $roleName)
     {
         $this->user = $user;
+        $this->roleName = $roleName;
     }
 
     /**
@@ -43,6 +45,7 @@ class UserCreatedMail extends Mailable
             view: 'emails.user_created', // crée ce fichier dans resources/views/emails/user_created.blade.php
             with: [
                 'user' => $this->user, // passer l'utilisateur à la vue
+                'roleName' => $this->roleName, // passer le nom du rôle à la vue
             ]
         );
     }

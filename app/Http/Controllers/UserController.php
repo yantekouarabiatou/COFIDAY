@@ -155,7 +155,6 @@ class UserController extends Controller
                 'poste_id' => $validated['poste_id'],
                 'telephone' => $validated['telephone'] ?? null,
                 'password' => Hash::make($validated['password']),
-                'role_id' => $validated['role_id'],
                 'is_active' => $validated['is_active'],
                 'photo' => $photoPath,
                 'created_by' => auth()->id(),
@@ -166,11 +165,12 @@ class UserController extends Controller
             // On récupère l'objet Rôle depuis son ID
             $role = Role::findById($validated['role_id']);
 
+            $roleName = $role->name; // Récupérer le nom du rôle pour le message
             // On l'assigne à l'utilisateur (remplit la table model_has_roles)
             $user->assignRole($role);
 
             // après User::create(...)
-            Mail::to($user->email)->send(new UserCreatedMail($user));
+            Mail::to($user->email)->send(new UserCreatedMail($user, $roleName));
 
             Alert::success('Succès', 'Utilisateur créé avec succès !')->persistent('OK');
             return redirect()->back();
@@ -200,7 +200,9 @@ class UserController extends Controller
     {
         $postes = Poste::all();
         $roles = Role::all();
-        return view('pages.users.edit', compact('user', 'postes', 'roles'));
+        $roleActuel = $user->roles->first(); // Le rôle actuel de l'utilisateur
+        
+        return view('pages.users.edit', compact('user', 'postes', 'roles', 'roleActuel'));
     }
 
     /**
@@ -216,9 +218,9 @@ class UserController extends Controller
             'email' => 'required|email|max:255|unique:users,email,' . $user->id,
             'poste_id' => 'required|exists:postes,id',
             'telephone' => 'nullable|string|max:20',
-            'role_id' => 'required|exists:roles,id',
             'is_active' => 'required|in:0,1',
             'password' => 'nullable|string|min:8|confirmed',
+            'role_id' => 'required|exists:roles,id',
             'photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ], [
             'nom.required' => 'Le nom est obligatoire',
@@ -232,6 +234,8 @@ class UserController extends Controller
             'poste_id.exists' => "Ce poste n'existe pas",
             'password.min' => 'Le mot de passe doit contenir au moins 8 caractères',
             'password.confirmed' => 'Les mots de passe ne correspondent pas',
+            'role_id.required' => 'Le role est obligatoire',
+            'role_id.exists' => "Ce role n'existe pas",
             'photo.image' => 'Le fichier doit être une image',
             'photo.mimes' => 'La photo doit être au format JPG, JPEG ou PNG',
             'photo.max' => 'La photo ne doit pas dépasser 2 Mo',
@@ -259,7 +263,6 @@ class UserController extends Controller
                 'email' => $validated['email'],
                 'poste_id' => $validated['poste_id'],
                 'telephone' => $validated['telephone'] ?? null,
-                'role_id' => $validated['role_id'],
                 'is_active' => $validated['is_active'],
             ];
 
@@ -279,11 +282,12 @@ class UserController extends Controller
             // On récupère le nouveau rôle choisi
             $role = Role::findById($validated['role_id']);
 
+            $roleName = $role->name; // Récupérer le nom du rôle pour le message
             // On remplace tous les anciens rôles par celui-ci
             $user->syncRoles($role);
 
             // Envoyer un mail à l'utilisateur
-            Mail::to($user->email)->send(new UserUpdateMail($user, auth()->user()->nom . ' ' . auth()->user()->prenom));
+            Mail::to($user->email)->send(new UserUpdateMail($user, auth()->user()->nom . ' ' . auth()->user()->prenom, $roleName));
             Alert::success('Succès', "L'utilisateur a été mis à jour avec succès.");
             return redirect()->route('users.index');
         } catch (\Exception $e) {

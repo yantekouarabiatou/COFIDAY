@@ -84,6 +84,11 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
     Route::resource('postes', PosteController::class);
     // Cadeau Invitations
 
+    Route::get('/conges/validation-finale', [CongeController::class, 'validationFinaleIndex'])
+        ->name('conges.validation-finale.index');
+
+    Route::post('/conges/{demande}/valider-finale', [CongeController::class, 'validerFinale'])
+        ->name('conges.valider-finale');
 
     Route::get('/error_404', function () {
         return view('errors.errors-404');

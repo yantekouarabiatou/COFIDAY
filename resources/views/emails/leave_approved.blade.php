@@ -3,39 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Demande de congé approuvée</title>
+
+    @php
+        $isPermission = str_contains(strtolower($demande->typeConge->libelle ?? ''), 'permission');
+        $motLabel     = $isPermission ? 'permission' : 'congé';
+        $motLabelCap  = $isPermission ? 'Permission' : 'Congé';
+        $themeColor   = '#2d8f64';
+        $themeBg      = '#f3fbf7';
+        $themeBorder  = '#2d8f64';
+        $themeNote    = '#eeeafc';
+        $icon         = '✅';
+    @endphp
+
+    <title>Demande de {{ $motLabel }} approuvée</title>
 
     <style>
         body {
             background-color: #f4f4f7;
-            margin: 0;
-            padding: 0;
+            margin: 0; padding: 0;
             font-family: Arial, Helvetica, sans-serif;
         }
-
-        .email-container {
-            width: 100%;
-            padding: 20px 0;
-        }
-
-        .logo-container {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .logo {
-            max-width: 140px;
-            height: auto;
-        }
+        .email-container { width: 100%; padding: 20px 0; }
+        .logo-container  { text-align: center; margin-bottom: 20px; }
+        .logo            { max-width: 140px; height: auto; }
 
         .header {
-            background: #2d8f64;
+            background: {{ $themeColor }};
             color: white;
             padding: 22px;
             text-align: center;
             font-size: 22px;
             font-weight: bold;
             border-radius: 8px 8px 0 0;
+        }
+        .header .sub {
+            font-size: 14px;
+            font-weight: normal;
+            opacity: 0.85;
+            margin-top: 4px;
         }
 
         .card {
@@ -47,25 +52,13 @@
             border: 1px solid #e0e0e0;
         }
 
-        .content h2 {
-            color: #333;
-            margin-top: 0;
-        }
+        .content h2 { color: #333; margin-top: 0; }
+        .content p  { font-size: 15px; color: #555; line-height: 1.6; }
 
-        .content p {
-            font-size: 15px;
-            color: #555;
-            line-height: 1.6;
-        }
-
-        .info-list {
-            padding-left: 0;
-            margin-top: 15px;
-        }
-
+        .info-list   { padding-left: 0; margin-top: 15px; }
         .info-list li {
             list-style: none;
-            background: #f3fbf7;
+            background: {{ $themeBg }};
             padding: 10px 14px;
             margin-bottom: 8px;
             border-radius: 5px;
@@ -74,9 +67,9 @@
         }
 
         .note {
-            background: #eafaf1;
+            background: {{ $themeNote }};
             padding: 14px 16px;
-            border-left: 4px solid #2d8f64;
+            border-left: 4px solid {{ $themeBorder }};
             border-radius: 5px;
             margin-top: 20px;
             font-size: 14px;
@@ -95,34 +88,32 @@
 <body>
 <div class="email-container">
 
-    <!-- LOGO -->
+    {{-- LOGO --}}
     <div class="logo-container">
         <img src="https://cofima.cc/wp-content/uploads/2020/09/logo-cofima-bon.jpg"
-             alt="Logo COFIMA"
-             class="logo">
+             alt="Logo COFIMA" class="logo">
     </div>
 
-    <!-- HEADER -->
+    {{-- HEADER --}}
     <div class="header">
-        Demande de congé approuvée
+        Demande de {{ $motLabel }} approuvée
+        <div class="sub">{{ $demande->typeConge->libelle ?? '—' }}</div>
     </div>
 
-    <!-- CARD -->
+    {{-- CARD --}}
     <div class="card">
         <div class="content">
 
-            <h2>
-                Bonjour {{ $demande->user->prenom ?? $demande->user->name }},
-            </h2>
+            <h2>Bonjour {{ $demande->user->prenom ?? $demande->user->name }},</h2>
 
             <p>
-                Nous avons le plaisir de vous informer que votre demande de congé a été
-                <strong>approuvée</strong>.
+                Nous avons le plaisir de vous informer que votre demande de
+                <strong>{{ $motLabel }}</strong> a été <strong>approuvée</strong>.
             </p>
 
             <ul class="info-list">
                 <li>
-                    <strong>Type de congé :</strong>
+                    <strong>Type de {{ $motLabel }} :</strong>
                     {{ $demande->typeConge->libelle ?? '—' }}
                 </li>
                 <li>
@@ -140,13 +131,24 @@
             </ul>
 
             <div class="note">
-                ✅ Votre absence est désormais enregistrée dans le système.
-                Nous vous souhaitons un excellent congé.
+                {{ $icon }}
+                @if($isPermission)
+                    Votre permission est désormais enregistrée dans le système.
+                    Nous vous souhaitons une excellente permission.
+                @else
+                    Votre absence est désormais enregistrée dans le système.
+                    Nous vous souhaitons un excellent congé.
+                @endif
             </div>
 
             <p style="margin-top:20px;">
-                Nous vous remercions d’avoir pris les dispositions nécessaires
-                afin d’assurer la continuité du service.
+                @if($isPermission)
+                    Nous vous remercions d'avoir informé le service RH
+                    et d'avoir pris les dispositions nécessaires avant votre absence.
+                @else
+                    Nous vous remercions d'avoir pris les dispositions nécessaires
+                    afin d'assurer la continuité du service.
+                @endif
             </p>
 
             <p style="margin-top:20px;">
@@ -157,7 +159,7 @@
         </div>
     </div>
 
-    <!-- FOOTER -->
+    {{-- FOOTER --}}
     <div class="footer">
         © {{ date('Y') }} COFIMA BENIN — Tous droits réservés.
     </div>

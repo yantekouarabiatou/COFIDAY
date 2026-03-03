@@ -19,11 +19,13 @@ class UserUpdateMail extends Mailable
      */
     public $user;
     public $modifier;
+    public $roleName;
 
-    public function __construct(User $user, $modifier)
+    public function __construct(User $user, $modifier, $roleName)
     {
         $this->user = $user;
         $this->modifier = $modifier;
+        $this->roleName = $roleName;
     }
 
     /**
@@ -46,6 +48,7 @@ class UserUpdateMail extends Mailable
             with: [
                 'user' => $this->user,
                 'modifier' => $this->modifier,
+                'roleName' => $this->roleName,
             ]
         );
     }

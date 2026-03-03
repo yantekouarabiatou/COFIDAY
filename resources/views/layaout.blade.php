@@ -138,29 +138,26 @@
                                     $nomComplet = $user->prenom . ' ' . $user->nom;
                                     $initiales = strtoupper(substr($user->prenom, 0, 1) . substr($user->nom, 0, 1));
 
-                                    // 2. Gestion du Rôle
-                                    $technicalName = null;
-
-                                    if ($user->role) {
-                                        $technicalName = $user->role->name;
-                                    } elseif ($user->role_id && !is_numeric($user->role_id)) {
-                                        $technicalName = $user->role_id;
-                                    }
+                                    // 2. Gestion du Rôle (via Spatie)
+                                    $spatieRole = $user->roles->first(); // Spatie stocke les rôles dans ->roles
+                                    $technicalName = $spatieRole?->name;
 
                                     $roleNames = [
-                                        'super-admin' => 'Super Administrateur',
-                                        'admin' => 'Administrateur',
+                                        'admin'                  => 'Administrateur',
+                                        'agent'                  => 'Agent',
+                                        'auditeur'               => 'Auditeur Interne',
+                                        'collaborateur'          => 'Collaborateur',
+                                        'controleur-gestion'     => 'Contrôleur de Gestion',
+                                        'directeur-general'      => 'Directeur Général',
+                                        'employe'                => 'Employé',
+                                        'manager'                => 'Manager',
                                         'responsable-conformite' => 'Responsable Conformité',
-                                        'auditeur' => 'Auditeur Interne',
-                                        'employe' => 'Agent de Traitement',
-                                        'user' => 'Utilisateur Standard',
+                                        'rh'                     => 'Responsable RH',
                                     ];
 
-                                    if ($technicalName) {
-                                        $displayRole = $roleNames[$technicalName] ?? ucwords(str_replace('-', ' ', $technicalName));
-                                    } else {
-                                        $displayRole = 'Utilisateur';
-                                    }
+                                    $displayRole = $technicalName
+                                        ? ($roleNames[$technicalName] ?? ucwords(str_replace('-', ' ', $technicalName)))
+                                        : 'Aucun rôle';
 
                                     // 3. Gestion de la couleur
                                     $colors = [
@@ -521,6 +518,11 @@
                             </a>
                         </li>
                     @endcan
+                        <li class="{{ request()->routeIs('conges.validation-finale.index') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('conges.validation-finale.index') }}">
+                                <i class="fas fa-check-double"></i> Validation finale
+                            </a>
+                        </li>
                 </ul>
             </li>
         @endcan

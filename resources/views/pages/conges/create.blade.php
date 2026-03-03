@@ -275,7 +275,10 @@
                                 </div>
                             </div>
 
-                            <div class="text-right mt-3">
+                        {{-- Avertissement indicatif max jours (non bloquant) --}}
+                        <div id="info-max-jours" class="alert alert-warning py-2" style="display:none;"></div>
+
+                        <div class="text-right mt-3">
                                 <button type="submit" class="btn btn-primary btn-lg" id="submit-btn" disabled>
                                     <i class="fas fa-paper-plane"></i> Soumettre la Demande
                                 </button>
@@ -570,18 +573,18 @@ $(document).ready(function () {
             return;
         }
 
-        // Limite max du type
+        // Avertissement informatif si dépassement du max du type,
+        // mais on ne bloque PAS : c'est le solde global qui fait foi.
         if (maxJours && nombreJours > maxJours) {
-            $('#submit-btn').prop('disabled', true);
-            Swal.fire({
-                icon: 'warning',
-                title: 'Dépassement',
-                text: 'Le nombre de jours demandé (' + nombreJours + ') dépasse le maximum autorisé (' + maxJours + ' j.).'
-            });
-            return;
+            $('#info-max-jours')
+                .html('<i class="fas fa-info-circle"></i> Note : ce type de congé a un maximum indicatif de '
+                    + maxJours + ' j. Votre demande sera acceptée si votre solde global le couvre.')
+                .show();
+        } else {
+            $('#info-max-jours').hide();
         }
 
-        // Vérification solde uniquement pour congés annuels
+        // Seul vrai blocage : solde global insuffisant (congés annuels uniquement)
         if (estAnnuel == '1') {
             if (nombreJours > totalJoursDisponibles) {
                 $('#submit-btn').prop('disabled', true);
@@ -628,10 +631,7 @@ $(document).ready(function () {
             return false;
         }
 
-        if (maxJours && nombreJours > maxJours) {
-            Swal.fire({ icon: 'error', title: 'Dépassement', text: 'Le nombre de jours dépasse le maximum autorisé pour ce type.' });
-            return false;
-        }
+        // nombre_jours_max est indicatif : on ne bloque pas ici.
 
         if (estAnnuel == '1' && nombreJours > totalJoursDisponibles) {
             Swal.fire({

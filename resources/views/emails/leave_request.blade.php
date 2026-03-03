@@ -3,7 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Demande de congé</title>
+
+    @php
+        $isPermission = str_contains(strtolower($leave->typeConge->libelle ?? ''), 'permission');
+        $motLabel     = $isPermission ? 'permission' : 'congé';
+    @endphp
+
+    <title>Demande de {{ $motLabel }}</title>
 
     <style>
         body {
@@ -36,6 +42,13 @@
             font-size: 22px;
             font-weight: bold;
             border-radius: 8px 8px 0 0;
+        }
+
+        .header .sub {
+            font-size: 14px;
+            font-weight: normal;
+            opacity: 0.85;
+            margin-top: 4px;
         }
 
         .card {
@@ -115,31 +128,36 @@
 <body>
 <div class="email-container">
 
-    <!-- LOGO -->
+    {{-- LOGO --}}
     <div class="logo-container">
         <img src="https://cofima.cc/wp-content/uploads/2020/09/logo-cofima-bon.jpg"
              alt="Logo COFIMA"
              class="logo">
     </div>
 
-    <!-- HEADER -->
+    {{-- HEADER --}}
     <div class="header">
-        Demande de congé
+        Demande de {{ $motLabel }}
+        <div class="sub">{{ $leave->typeConge->libelle ?? '—' }}</div>
     </div>
 
-    <!-- CARD -->
+    {{-- CARD --}}
     <div class="card">
         <div class="content">
 
             <h2>Bonjour {{ $superieur->nom }} {{ $superieur->prenom ?? 'Madame / Monsieur' }},</h2>
 
             <p>
-                Par la présente, je souhaite solliciter un congé selon les modalités suivantes :
+                @if($isPermission)
+                    Par la présente, je souhaite solliciter une permission selon les modalités suivantes :
+                @else
+                    Par la présente, je souhaite solliciter un congé selon les modalités suivantes :
+                @endif
             </p>
 
             <ul class="info-list">
                 <li>
-                    <strong>Type de congé :</strong>
+                    <strong>Type de {{ $motLabel }} :</strong>
                     {{ $leave->typeConge->libelle ?? '—' }}
                 </li>
                 <li>
@@ -164,8 +182,13 @@
             @endif
 
             <p style="margin-top:20px;">
-                Je veillerai à organiser mon travail en amont afin d’assurer
-                la continuité des activités durant mon absence.
+                @if($isPermission)
+                    Je veillerai à organiser mon travail en amont afin d'assurer
+                    la continuité des activités durant ma permission.
+                @else
+                    Je veillerai à organiser mon travail en amont afin d'assurer
+                    la continuité des activités durant mon absence.
+                @endif
             </p>
 
             @if(!empty($approval_link))
@@ -178,7 +201,7 @@
 
             <p style="margin-top:25px; font-size:14px;">
                 Je reste bien entendu disponible pour toute information complémentaire
-                et vous remercie par avance pour l’attention portée à cette demande.
+                et vous remercie par avance pour l'attention portée à cette demande.
             </p>
 
             <p style="margin-top:20px;">
@@ -190,7 +213,7 @@
         </div>
     </div>
 
-    <!-- FOOTER -->
+    {{-- FOOTER --}}
     <div class="footer">
         © {{ date('Y') }} COFIMA BENIN — Tous droits réservés.
     </div>

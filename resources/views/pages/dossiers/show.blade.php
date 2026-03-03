@@ -136,9 +136,9 @@ use App\Models\User;
 
                                             $nbInterventions = $personnelData->nb_interventions ?? 0;
 
-    $heuresMoyennes = $nbInterventions > 0
-        ? $chargeTotalNumerique / $nbInterventions
-        : 0;
+                                            $heuresMoyennes = $nbInterventions > 0
+                                                ? $chargeTotalNumerique / $nbInterventions
+                                                : 0;
 
                                             $derniereActivite = \App\Models\TimeEntry::where('user_id', $personnel->id)
                                                 ->where('dossier_id', $dossier->id)
@@ -148,15 +148,15 @@ use App\Models\User;
                                             $totalHeuresGlobal += $chargeTotalNumerique;
                                             $totalInterventions += $nbInterventions;
 
-    // Calcul du pourcentage
-    $heuresTheoriques = $dossier->heure_theorique_sans_weekend
-        ?? $dossier->heure_theorique_avec_weekend
-        ?? 1;
+                                            // Calcul du pourcentage
+                                            $heuresTheoriques = $dossier->heure_theorique_sans_weekend
+                                                ?? $dossier->heure_theorique_avec_weekend
+                                                ?? 1;
 
-    $pourcentage = $heuresTheoriques > 0
-        ? ($chargeTotalNumerique / $heuresTheoriques) * 100
-        : 0;
-@endphp
+                                            $pourcentage = $heuresTheoriques > 0
+                                                ? ($chargeTotalNumerique / $heuresTheoriques) * 100
+                                                : 0;
+                                        @endphp
 
                                         <tr>
                                             <td>
@@ -873,133 +873,56 @@ $(document).ready(function () {
             });
     });
 
-    // ─── Bouton retirer collaborateur (icône rouge) ───────────────────────────
-    $('.remove-collaborateur').on('click', function () {
-        const userId   = $(this).data('user-id');
-        const userName = $(this).data('user-name');
+    // Suppression du dossier
+$('#delete-dossier-btn').on('click', function() {
+    const url = $(this).data('url');
 
-        Swal.fire({
-            title: 'Retirer le collaborateur ?',
-            html: `Voulez-vous vraiment retirer <strong>${userName}</strong> de ce dossier ?`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Oui, retirer',
-            cancelButtonText: 'Annuler'
-        }).then(function (result) {
-            if (result.isConfirmed) {
-                $.ajax({
-                    url: '{{ route("dossiers.collaborateurs.gestion", $dossier) }}',
-                    method: 'POST',
-                    data: {
-                        _token: '{{ csrf_token() }}',
-                        collaborateur_id: userId,
-                        action: 'remove'
-                    },
-                    success: function (response) {
-                        if (response.success) {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Succès',
-                                text: response.message,
-                                timer: 2000,
-                                showConfirmButton: false
-                            }).then(function () {
-                                location.reload();
-                            });
-                        }
-                    },
-                    error: function () {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Erreur',
-                            text: 'Une erreur est survenue.'
-                        });
-                    }
-                });
-            }
-        });
-    });
-
-    // ─── Export CSV des heures ────────────────────────────────────────────────
-    $('#exportHours').on('click', function () {
-        const table = $('#hoursTable');
-        let csv = [];
-
-        const headers = [];
-        table.find('th').each(function () {
-            headers.push($(this).text().trim());
-        });
-        csv.push(headers.join(','));
-
-        table.find('tbody tr').each(function () {
-            const row = [];
-            $(this).find('td').each(function () {
-                let text = $(this).text().trim().replace(/,/g, ';');
-                row.push(text);
+    Swal.fire({
+        title: 'Êtes-vous sûr ?',
+        html: `Voulez-vous vraiment supprimer le dossier <strong>{{ $dossier->nom }}</strong> ?<br>
+               <small class="text-danger">Cette action est irréversible.</small>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Oui, supprimer !',
+        cancelButtonText: 'Annuler',
+        showLoaderOnConfirm: true,
+        preConfirm: () => {
+            return fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ _method: 'DELETE' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    Swal.showValidationMessage(data.message); // ← affiche l'erreur "entrées de temps"
+                    return false;
+                }
+                return data;
+            })
+            .catch(() => {
+                Swal.showValidationMessage('Erreur lors de la suppression.');
             });
-            csv.push(row.join(','));
-        });
-
-        table.find('tfoot tr').each(function () {
-            const row = [];
-            $(this).find('td').each(function () {
-                let text = $(this).text().trim().replace(/,/g, ';');
-                row.push(text);
+        },
+        allowOutsideClick: () => !Swal.isLoading()
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Supprimé !',
+                text: 'Le dossier a été supprimé avec succès.',
+                timer: 2000,
+                showConfirmButton: false
+            }).then(() => {
+                window.location.href = '{{ route('dossiers.index') }}'; // ← redirige vers la liste
             });
-            csv.push(row.join(','));
-        });
-
-        const blob = new Blob([csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        link.setAttribute('href', URL.createObjectURL(blob));
-        link.setAttribute('download', 'heures-dossier-{{ $dossier->reference }}-{{ date("Y-m-d") }}.csv');
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        Swal.fire({
-            icon: 'success',
-            title: 'Export réussi',
-            text: 'Le fichier CSV a été téléchargé.',
-            timer: 2000,
-            showConfirmButton: false
-        });
-    });
-
-    // ─── Tri des colonnes du tableau ──────────────────────────────────────────
-    $('#hoursTable th').append(' <i class="fas fa-sort text-muted"></i>');
-
-    $('#hoursTable th').on('click', function () {
-        const table = $(this).parents('table');
-        const index = $(this).index();
-        const rows  = table.find('tbody tr').toArray().sort(comparer(index));
-
-        this.asc = !this.asc;
-        if (!this.asc) rows.reverse();
-
-        for (let i = 0; i < rows.length; i++) {
-            table.children('tbody').append(rows[i]);
         }
-
-        table.find('th i').removeClass('fa-sort-up fa-sort-down').addClass('fa-sort');
-        $(this).find('i').removeClass('fa-sort').addClass(this.asc ? 'fa-sort-up' : 'fa-sort-down');
     });
-
-    function comparer(index) {
-        return function (a, b) {
-            const valA = $(a).children('td').eq(index).text().toUpperCase();
-            const valB = $(b).children('td').eq(index).text().toUpperCase();
-            return $.isNumeric(valA) && $.isNumeric(valB)
-                ? parseFloat(valA) - parseFloat(valB)
-                : valA.localeCompare(valB);
-        };
-    }
-
-        // Initialiser les icônes de tri
-        $('#hoursTable th').append(' <i class="fas fa-sort text-muted"></i>');
-    });
+});
 </script>
 @endpush

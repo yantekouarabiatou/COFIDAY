@@ -200,7 +200,7 @@
                                                 <option value="">-- Choisir un rôle --</option>
                                                 @foreach($roles as $role)
                                                     <option value="{{ $role->id }}" 
-                                                        {{ old('role_id', $user->role_id) == $role->id ? 'selected' : '' }}>
+                                                        {{ $roleActuel?->id == $role->id ? 'selected' : '' }}>
                                                         {{ $role->name }}
                                                     </option>
                                                 @endforeach
@@ -256,10 +256,15 @@
                                     <button type="submit" class="btn btn-primary btn-lg px-5">
                                         <i class="fas fa-save"></i> Mettre à jour
                                     </button>
-                                    @endcan                                                                                 
-            </div>
-        </div>
-    </section>
+                                    @endcan     
+                            </div>                                                                            
+                        </form>
+                    </div>  
+                </div>  
+            </div>  
+        </div>  
+    </div> 
+</section>
 @endsection
 
 @section('styles')
