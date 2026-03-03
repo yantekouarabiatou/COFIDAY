@@ -35,7 +35,8 @@ class DemandesCongesSeeder extends Seeder
         // Statuts possibles avec probabilités
         $statuts = [
             'en_attente' => 0.2,  // 20%
-            'approuve' => 0.6,     // 60%
+            'pre_approuve' => 0.4, // 10%
+            'approuve' => 0.2,     // 60%
             'refuse' => 0.1,       // 10%
             'annule' => 0.1,       // 10%
         ];
@@ -203,9 +204,9 @@ class DemandesCongesSeeder extends Seeder
 
         // Si la demande a été traitée, ajouter l'historique de traitement
         if ($demande->statut !== 'en_attente' && $demande->valide_par) {
-            $action = $demande->statut === 'approuve' ? 'demande_approuvee' : 'demande_refusee';
-            $commentaire = $demande->statut === 'approuve'
-                ? 'Demande approuvée par le gestionnaire'
+            $action = $demande->statut === 'pre_approuve' ? 'demande_approuvee' : 'demande_refusee';
+            $commentaire = $demande->statut === 'pre_approuve'
+                ? 'Demande approuvée par le superviseur, en attente de validation finale'
                 : 'Demande refusée pour cause de planification';
 
             $historiques[] = [

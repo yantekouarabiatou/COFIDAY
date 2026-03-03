@@ -25,6 +25,7 @@ return new class extends Migration {
 
             $table->enum('statut', [
                 'en_attente',
+                'pre_approuve',
                 'approuve',
                 'refuse',
                 'annule'

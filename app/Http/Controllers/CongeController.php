@@ -730,6 +730,102 @@ class CongeController extends Controller
     /**
      * Traitement des demandes (pour admin/manager)
      */
+    // public function traiter(Request $request, DemandeConge $demande)
+    // {
+    //     DB::beginTransaction();
+
+    //     try {
+    //         $user = Auth::user();
+
+    //         // Vérifier les permissions
+    //         if (!$user->hasRole('admin') && !$user->hasRole('manager')) {
+    //             abort(403, 'Accès non autorisé');
+    //         }
+
+    //         $validated = $request->validate([
+    //             'action' => 'required|in:approuve,refuse',
+    //             'commentaire' => 'nullable|string|max:1000',
+    //         ]);
+
+    //         $action = $request->action;
+
+    //         // Vérifier si la demande est encore en attente
+    //         if ($demande->statut !== 'en_attente') {
+    //             Alert::warning('Information', 'Cette demande a déjà été traitée.');
+    //             return back();
+    //         }
+
+    //         // Mettre à jour la demande
+    //         $demande->update([
+    //             'statut' => $action,
+    //             'valide_par' => $user->id,
+    //             'date_validation' => now(),
+    //         ]);
+
+    //         // Si approuvé et congé payé, mettre à jour le solde
+    //         // Si approuvé et congé payé, mettre à jour le solde
+    //         if ($action === 'approuve' && $demande->typeConge->est_paye) {
+
+    //             $solde = SoldeConge::where('user_id', $demande->user_id)
+    //                 ->where('annee', now()->year)
+    //                 ->firstOrFail();
+
+    //             $solde->update([
+    //                 'jours_pris' => $solde->jours_pris + $demande->nombre_jours,
+    //                 'jours_restants' => $solde->jours_acquis - ($solde->jours_pris + $demande->nombre_jours),
+    //             ]);
+
+    //             if ($solde->jours_restants < 0) {
+    //                 throw new \Exception('Le solde ne peut pas être négatif');
+    //             }
+    //         }
+
+    //         // Historique
+    //         HistoriqueConge::create([
+    //             'demande_conge_id' => $demande->id,
+    //             'action' => $action === 'approuve'
+    //                 ? 'demande_approuvee'
+    //                 : 'demande_refusee',
+    //             'effectue_par' => $user->id,
+    //             'commentaire' => $request->commentaire,
+    //         ]);
+
+    //         DB::commit();
+
+    //         /*
+    //         |----------------------------------------------------
+    //         | 📧 Envoi des emails
+    //         |----------------------------------------------------
+    //         */
+
+    //         $demandeur = $demande->user; // l’employé qui a demandé le congé
+
+    //         if ($action === 'approuve') {
+
+    //             Mail::to($demandeur->email)
+    //                 ->send(new LeaveApprovedMail($demande));
+    //         } else {
+
+    //             Mail::to($demandeur->email)
+    //                 ->send(new LeaveRejectedMail(
+    //                     $demande,
+    //                     $request->commentaire
+    //                 ));
+    //         }
+
+    //         $message = $action === 'approuve'
+    //             ? 'La demande a été approuvée avec succès.'
+    //             : 'La demande a été refusée avec succès.';
+
+    //         Alert::success('Succès', $message);
+    //         return redirect()->route('conges.index');
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         Alert::error('Erreur', 'Une erreur est survenue lors du traitement.');
+    //         return back();
+    //     }
+    // }
+
     public function traiter(Request $request, DemandeConge $demande)
     {
         DB::beginTransaction();
@@ -737,93 +833,160 @@ class CongeController extends Controller
         try {
             $user = Auth::user();
 
-            // Vérifier les permissions
             if (!$user->hasRole('admin') && !$user->hasRole('manager')) {
                 abort(403, 'Accès non autorisé');
             }
 
             $validated = $request->validate([
-                'action' => 'required|in:approuve,refuse',
+                'action'      => 'required|in:approuve,refuse',
                 'commentaire' => 'nullable|string|max:1000',
             ]);
 
-            $action = $request->action;
-
-            // Vérifier si la demande est encore en attente
             if ($demande->statut !== 'en_attente') {
                 Alert::warning('Information', 'Cette demande a déjà été traitée.');
                 return back();
             }
 
-            // Mettre à jour la demande
-            $demande->update([
-                'statut' => $action,
-                'valide_par' => $user->id,
-                'date_validation' => now(),
+            $action = $request->action;
+
+            if ($action === 'refuse') {
+                // Refus direct, pas besoin de validation finale
+                $demande->update([
+                    'statut'          => 'refuse',
+                    'valide_par'      => $user->id,
+                    'date_validation' => now(),
+                ]);
+
+                HistoriqueConge::create([
+                    'demande_conge_id' => $demande->id,
+                    'action'           => 'demande_refusee',
+                    'effectue_par'     => $user->id,
+                    'commentaire'      => $request->commentaire,
+                ]);
+
+                Mail::to($demande->user->email)->send(new LeaveRejectedMail($demande, $request->commentaire));
+
+            } else {
+                // Approbation du manager → passe en pré-approbation, attend validation finale
+                $demande->update([
+                    'statut'          => 'pre_approuve',
+                    'valide_par'      => $user->id,
+                    'date_validation' => now(),
+                ]);
+
+                HistoriqueConge::create([
+                    'demande_conge_id' => $demande->id,
+                    'action'           => 'demande_pre_approuvee',
+                    'effectue_par'     => $user->id,
+                    'commentaire'      => $request->commentaire ?? 'Pré-approuvée par le manager, en attente de validation finale',
+                ]);
+
+                // Notifier le DG et le RH
+                $valideurs = User::role(['directeur-general', 'rh'])->get();
+                foreach ($valideurs as $valideur) {
+                    Mail::to($valideur->email)->send(new LeaveRequestMail($demande, $valideur));
+                }
+            }
+
+            DB::commit();
+            Alert::success('Succès', $action === 'approuve'
+                ? 'Demande pré-approuvée. En attente de validation finale.'
+                : 'Demande refusée avec succès.');
+
+            return redirect()->route('conges.index');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Alert::error('Erreur', 'Une erreur est survenue : ' . $e->getMessage());
+            return back();
+        }
+    }
+
+    public function validerFinale(Request $request, DemandeConge $demande)
+    {
+        DB::beginTransaction();
+
+        try {
+            $user = Auth::user();
+
+            if (!$user->hasRole('directeur-general') && !$user->hasRole('rh') && !$user->hasRole('admin')) {
+                abort(403, 'Accès non autorisé');
+            }
+
+            if ($demande->statut !== 'pre_approuve') {
+                Alert::warning('Information', 'Cette demande n\'est pas en attente de validation finale.');
+                return back();
+            }
+
+            $validated = $request->validate([
+                'action'      => 'required|in:approuve,refuse',
+                'commentaire' => 'nullable|string|max:1000',
             ]);
 
-            // Si approuvé et congé payé, mettre à jour le solde
-            // Si approuvé et congé payé, mettre à jour le solde
-            if ($action === 'approuve' && $demande->typeConge->est_paye) {
+            $action = $request->action;
 
+            $demande->update([
+                'statut'                  => $action,
+                'statut_final'            => $action,
+                'valide_par_final'        => $user->id,
+                'date_validation_finale'  => now(),
+                'commentaire_final'       => $request->commentaire,
+            ]);
+
+            // Déduire du solde uniquement ici, après validation finale
+            if ($action === 'approuve' && $demande->typeConge->est_paye) {
                 $solde = SoldeConge::where('user_id', $demande->user_id)
                     ->where('annee', now()->year)
                     ->firstOrFail();
 
                 $solde->update([
-                    'jours_pris' => $solde->jours_pris + $demande->nombre_jours,
-                    'jours_restants' => $solde->jours_acquis - ($solde->jours_pris + $demande->nombre_jours),
+                    'jours_pris'      => $solde->jours_pris + $demande->nombre_jours,
+                    'jours_restants'  => $solde->jours_acquis - ($solde->jours_pris + $demande->nombre_jours),
                 ]);
-
-                if ($solde->jours_restants < 0) {
-                    throw new \Exception('Le solde ne peut pas être négatif');
-                }
             }
 
-            // Historique
             HistoriqueConge::create([
                 'demande_conge_id' => $demande->id,
-                'action' => $action === 'approuve'
-                    ? 'demande_approuvee'
-                    : 'demande_refusee',
-                'effectue_par' => $user->id,
-                'commentaire' => $request->commentaire,
+                'action'           => $action === 'approuve' ? 'demande_approuvee_finale' : 'demande_refusee_finale',
+                'effectue_par'     => $user->id,
+                'commentaire'      => $request->commentaire,
             ]);
 
-            DB::commit();
-
-            /*
-            |----------------------------------------------------
-            | 📧 Envoi des emails
-            |----------------------------------------------------
-            */
-
-            $demandeur = $demande->user; // l’employé qui a demandé le congé
-
+            // Notifier l'employé
             if ($action === 'approuve') {
-
-                Mail::to($demandeur->email)
-                    ->send(new LeaveApprovedMail($demande));
+                Mail::to($demande->user->email)->send(new LeaveApprovedMail($demande));
             } else {
-
-                Mail::to($demandeur->email)
-                    ->send(new LeaveRejectedMail(
-                        $demande,
-                        $request->commentaire
-                    ));
+                Mail::to($demande->user->email)->send(new LeaveRejectedMail($demande, $request->commentaire));
             }
 
-            $message = $action === 'approuve'
-                ? 'La demande a été approuvée avec succès.'
-                : 'La demande a été refusée avec succès.';
+            DB::commit();
+            Alert::success('Succès', $action === 'approuve'
+                ? 'Congé approuvé définitivement. Le solde a été mis à jour.'
+                : 'Congé refusé.');
 
-            Alert::success('Succès', $message);
-            return redirect()->route('conges.index');
+            return redirect()->route('conges.validation-finale.index');
+
         } catch (\Exception $e) {
             DB::rollBack();
-            Alert::error('Erreur', 'Une erreur est survenue lors du traitement.');
+            Alert::error('Erreur', 'Une erreur est survenue : ' . $e->getMessage());
             return back();
         }
+    }
+
+    public function validationFinaleIndex()
+    {
+        $user = Auth::user();
+
+        if (!$user->hasRole('directeur-general') && !$user->hasRole('rh') && !$user->hasRole('admin')) {
+            abort(403, 'Accès non autorisé');
+        }
+
+        $demandes = DemandeConge::with(['user', 'typeConge', 'validePar'])
+            ->where('statut', 'pre_approuve')
+            ->latest()
+            ->paginate(20);
+
+        return view('pages.conges.validation-finale', compact('demandes'));
     }
 
     /**

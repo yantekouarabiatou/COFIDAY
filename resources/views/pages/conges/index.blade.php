@@ -36,9 +36,19 @@
                             </a>
 
                             <a href="{{ route('conges.export.excel') }}?annee={{ date('Y') }}"
-                            class="btn btn-success" title="Tous les congés">
-                            <i class="fas fa-file-excel"></i> Tous
-                        </a>
+                                class="btn btn-success" title="Tous les congés">
+                                <i class="fas fa-file-excel"></i> Tous
+                            </a>
+
+                            @hasanyrole('directeur-general|rh')
+                            <a href="{{ route('conges.validation-finale.index') }}" class="btn btn-warning btn-icon icon-left ml-2">
+                                <i class="fas fa-check-double"></i> Validation finale
+                                @php $nbPreApprouves = \App\Models\DemandeConge::where('statut', 'pre_approuve')->count(); @endphp
+                                @if($nbPreApprouves > 0)
+                                    <span class="badge badge-danger ml-1">{{ $nbPreApprouves }}</span>
+                                @endif
+                            </a>
+                            @endhasanyrole
 
                         <!-- Export mes congés seulement -->
                         <a href="{{ route('conges.export.excel') }}?annee={{ date('Y') }}&user_id={{ auth()->id() }}"
@@ -94,6 +104,7 @@
                                     <select id="status-filter" class="form-control select2">
                                         <option value="">Tous les statuts</option>
                                         <option value="en_attente">En attente</option>
+                                        <option value="pre_approuve">Pré-approuvé</option>
                                         <option value="approuve">Approuvé</option>
                                         <option value="refuse">Refusé</option>
                                         <option value="annule">Annulé</option>
@@ -211,6 +222,15 @@
                                                             <br><small class="text-danger">En attente depuis {{ $demande->created_at->diffInDays(now()) }} jours</small>
                                                         @endif
                                                         @break
+                                                    @case('pre_approuve')
+                                                        <span class="badge badge-info">
+                                                            <i class="fas fa-hourglass-half"></i> Pré-approuvé
+                                                        </span>
+                                                        @if($demande->validePar)
+                                                            <br><small class="text-muted">Par {{ $demande->validePar->prenom }} {{ $demande->validePar->nom }}</small>
+                                                        @endif
+                                                        <br><small class="text-warning">En attente validation finale</small>
+                                                        @break
                                                     @case('approuve')
                                                         <span class="badge badge-success">
                                                             <i class="fas fa-check-circle"></i> Approuvé
@@ -257,14 +277,14 @@
                                                     @role('admin|manager')
                                                         @if($demande->statut === 'en_attente' && $demande->superieur_hierarchique_id == auth()->id() && auth()->id() !== $demande->user_id)
 
-                                                            <!-- Approuver -->
+                                                            <!-- Pré-approuver -->
                                                             <form action="{{ route('conges.traiter', $demande) }}"
                                                                 method="POST" class="d-inline approve-form">
                                                                 @csrf
                                                                 <input type="hidden" name="action" value="approuve">
                                                                 <button type="button"
                                                                         class="btn btn-success btn-sm approve-btn"
-                                                                        title="Approuver">
+                                                                        title="Pré-approuver">
                                                                     <i class="fas fa-check"></i>
                                                                 </button>
                                                             </form>
@@ -538,19 +558,17 @@ $(document).ready(function() {
         const form = $(this).closest('form');
 
         Swal.fire({
-            title: 'Confirmer l\'approbation',
-            text: 'Êtes-vous sûr de vouloir approuver cette demande de congé ?',
+            title: 'Confirmer la pré-approbation',
+            text: 'La demande sera transmise au Directeur Général / RH pour validation finale.',
             icon: 'question',
             input: 'textarea',
             inputLabel: 'Commentaire (optionnel)',
             inputPlaceholder: 'Ajouter un commentaire...',
-            inputAttributes: {
-                maxlength: 500
-            },
+            inputAttributes: { maxlength: 500 },
             showCancelButton: true,
             confirmButtonColor: '#28a745',
             cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Oui, approuver',
+            confirmButtonText: 'Oui, pré-approuver',
             cancelButtonText: 'Annuler'
         }).then((result) => {
             if (result.isConfirmed) {

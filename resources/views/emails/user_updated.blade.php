@@ -67,7 +67,7 @@
             <li><strong>Téléphone :</strong> {{ $user->telephone ?? 'N/A' }}</li>
             <li><strong>Nom d'utilisateur :</strong> {{ $user->username }}</li>
             <li><strong>Poste :</strong> {{ $user->poste?->intitule ?? 'N/A' }}</li>
-            <li><strong>Rôle :</strong> {{ $user->role?->name ?? 'N/A' }}</li>
+            <li><strong>Rôle :</strong> {{ $roleName ?? 'N/A' }}</li>
             <li><strong>Compte actif :</strong> {{ $user->is_active ? 'Oui' : 'Non' }}</li>
         </ul>
 

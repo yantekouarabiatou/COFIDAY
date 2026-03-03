@@ -3,7 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Demande de congé refusée</title>
+
+    @php
+        $isPermission = str_contains(strtolower($demande->typeConge->libelle ?? ''), 'permission');
+        $motLabel     = $isPermission ? 'permission' : 'congé';
+    @endphp
+
+    <title>Demande de {{ $motLabel }} refusée</title>
 
     <style>
         body {
@@ -36,6 +42,13 @@
             font-size: 22px;
             font-weight: bold;
             border-radius: 8px 8px 0 0;
+        }
+
+        .header .sub {
+            font-size: 14px;
+            font-weight: normal;
+            opacity: 0.85;
+            margin-top: 4px;
         }
 
         .card {
@@ -95,34 +108,34 @@
 <body>
 <div class="email-container">
 
-    <!-- LOGO -->
+    {{-- LOGO --}}
     <div class="logo-container">
         <img src="https://cofima.cc/wp-content/uploads/2020/09/logo-cofima-bon.jpg"
              alt="Logo COFIMA"
              class="logo">
     </div>
 
-    <!-- HEADER -->
+    {{-- HEADER --}}
     <div class="header">
-        Demande de congé refusée
+        Demande de {{ $motLabel }} refusée
+        <div class="sub">{{ $demande->typeConge->libelle ?? '—' }}</div>
     </div>
 
-    <!-- CARD -->
+    {{-- CARD --}}
     <div class="card">
         <div class="content">
 
-            <h2>
-                Bonjour {{ $demande->user->prenom ?? $demande->user->name }},
-            </h2>
+            <h2>Bonjour {{ $demande->user->prenom ?? $demande->user->name }},</h2>
 
             <p>
-                Nous vous informons que votre demande de congé a été
+                Nous vous informons que votre demande de
+                <strong>{{ $motLabel }}</strong> a été
                 <strong>refusée</strong> après examen.
             </p>
 
             <ul class="info-list">
                 <li>
-                    <strong>Type de congé :</strong>
+                    <strong>Type de {{ $motLabel }} :</strong>
                     {{ $demande->typeConge->libelle ?? '—' }}
                 </li>
                 <li>
@@ -147,9 +160,16 @@
             @endif
 
             <p style="margin-top:20px;">
-                Pour toute information complémentaire ou clarification,
-                nous vous invitons à contacter votre responsable hiérarchique
-                ou le service des ressources humaines.
+                @if($isPermission)
+                    Pour toute information complémentaire ou si vous souhaitez
+                    soumettre une nouvelle demande de permission, nous vous invitons
+                    à contacter votre responsable hiérarchique ou le service des
+                    ressources humaines.
+                @else
+                    Pour toute information complémentaire ou clarification,
+                    nous vous invitons à contacter votre responsable hiérarchique
+                    ou le service des ressources humaines.
+                @endif
             </p>
 
             <p style="margin-top:20px;">
@@ -160,7 +180,7 @@
         </div>
     </div>
 
-    <!-- FOOTER -->
+    {{-- FOOTER --}}
     <div class="footer">
         © {{ date('Y') }} COFIMA BENIN — Tous droits réservés.
     </div>

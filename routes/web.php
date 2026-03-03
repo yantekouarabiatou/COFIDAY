@@ -84,6 +84,11 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
     Route::resource('postes', PosteController::class);
     // Cadeau Invitations
 
+    Route::get('/conges/validation-finale', [CongeController::class, 'validationFinaleIndex'])
+        ->name('conges.validation-finale.index');
+
+    Route::post('/conges/{demande}/valider-finale', [CongeController::class, 'validerFinale'])
+        ->name('conges.valider-finale');
 
     Route::get('/error_404', function () {
         return view('errors.errors-404');
@@ -208,7 +213,8 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
     // Ajoutez cette route APRES la route resource
     Route::post('/dossiers/{dossier}/collaborateurs/gestion', [DossierController::class, 'gestionCollaborateurs'])
         ->name('dossiers.collaborateurs.gestion');
-
+    Route::post('dossiers/{dossier}/collaborateurs', [DossierController::class, 'gestionCollaborateurs'])
+    ->name('dossiers.collaborateurs.gestion');
     // OU si vous voulez regrouper :
     Route::prefix('dossiers')->name('dossiers.')->group(function () {
         Route::resource('/', DossierController::class)->names([

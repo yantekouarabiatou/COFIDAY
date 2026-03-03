@@ -25,7 +25,6 @@ class User extends Authenticatable implements MustVerifyEmail
         'poste_id',
         'created_by',
         'telephone',
-        'role_id',
         'is_active', // tu l'as dans $fillable mais pas dans la migration → à ajouter si tu veux l'utiliser
     ];
 
