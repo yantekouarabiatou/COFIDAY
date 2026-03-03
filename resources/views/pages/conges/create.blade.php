@@ -26,54 +26,95 @@
                     </div>
 
                     <div class="card-body">
-                        <!-- Info solde -->
-                        @if(isset($solde))
+
+                        {{-- ── Bloc solde multi-années ──────────────────────────────────── --}}
+                        @if(isset($soldesParAnnee) && $soldesParAnnee->count() > 0)
                         <div class="alert alert-info">
-                            <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap">
                                 <div>
                                     <i class="fas fa-info-circle"></i>
-                                    <strong>Votre solde de congés payés :</strong>
+                                    <strong>Votre solde de congés disponible :</strong>
                                 </div>
-                                <div class="text-right">
-                                    <span class="badge badge-success">{{ $solde->jours_acquis }} jours acquis</span>
-                                    <span class="badge badge-warning">{{ $solde->jours_pris }} jours pris</span>
-                                    <span class="badge badge-primary">{{ $solde->jours_restants }} jours restants</span>
+                                <div>
+                                    <span class="badge badge-success badge-lg" style="font-size:1rem; padding:.5rem .9rem;">
+                                        <i class="fas fa-coins"></i>
+                                        {{ $totalJoursDisponibles }} jours disponibles (toutes années)
+                                    </span>
                                 </div>
                             </div>
 
-                            @if($solde->jours_restants <= 0)
-                            <div class="mt-2">
-                                <i class="fas fa-exclamation-triangle text-warning"></i>
-                                Votre solde de congés payés est épuisé. Vous pouvez seulement demander des congés non payés.
+                            {{-- Détail par année --}}
+                            <div class="mt-3">
+                                <strong><i class="fas fa-layer-group"></i> Détail par année (ordre de déduction) :</strong>
+                                <div class="row mt-2">
+                                    @foreach($soldesParAnnee as $s)
+                                    <div class="col-md-3 col-sm-6 mb-2">
+                                        <div class="card mb-0 border
+                                            {{ $s->annee == now()->year ? 'border-primary' : 'border-secondary' }}">
+                                            <div class="card-body p-2 text-center">
+                                                <div class="font-weight-bold
+                                                    {{ $s->annee == now()->year ? 'text-primary' : 'text-muted' }}">
+                                                    {{ $s->annee }}
+                                                    @if($s->annee == now()->year)
+                                                        <span class="badge badge-primary" style="font-size:.65rem;">Courante</span>
+                                                    @else
+                                                        <span class="badge badge-warning" style="font-size:.65rem;">Prioritaire</span>
+                                                    @endif
+                                                </div>
+                                                <div class="text-success font-weight-bold" style="font-size:1.1rem;">
+                                                    {{ $s->jours_restants }} j.
+                                                </div>
+                                                <small class="text-muted">restants</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    @endforeach
+                                </div>
+                                <small class="text-muted">
+                                    <i class="fas fa-sort-amount-up"></i>
+                                    Les années les plus anciennes sont déduites en priorité.
+                                </small>
                             </div>
-                            @elseif($solde->jours_restants < 5)
-                            <div class="mt-2">
-                                <i class="fas fa-info-circle text-info"></i>
-                                Il vous reste seulement {{ $solde->jours_restants }} jours de congés payés.
+
+                            @if($totalJoursDisponibles <= 0)
+                            <div class="mt-2 text-danger">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                Votre solde total est épuisé. Vous pouvez uniquement demander des congés non payés.
+                            </div>
+                            @elseif($totalJoursDisponibles < 5)
+                            <div class="mt-2 text-warning">
+                                <i class="fas fa-exclamation-circle"></i>
+                                Attention : il ne vous reste que <strong>{{ $totalJoursDisponibles }}</strong> jours au total.
                             </div>
                             @endif
                         </div>
+                        @elseif(isset($solde))
+                        {{-- Fallback : affichage simple si soldesParAnnee n'est pas transmis --}}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Solde {{ now()->year }} :</strong>
+                            <span class="badge badge-success">{{ $solde->jours_acquis }} acquis</span>
+                            <span class="badge badge-warning">{{ $solde->jours_pris }} pris</span>
+                            <span class="badge badge-primary">{{ $solde->jours_restants }} restants</span>
+                        </div>
                         @endif
 
-                        <!-- Information sur le calcul -->
-                        <div class="alert alert-info">
-                            <i class="fas fa-calculator"></i>
+                        {{-- ── Info calcul ───────────────────────────────────────────────── --}}
+                        <div class="alert alert-light border-left border-info">
+                            <i class="fas fa-calculator text-info"></i>
                             <strong>Mode de calcul :</strong>
-                            <ul class="mb-0 mt-1">
-                                <li>Seuls les <strong>jours ouvrés (lundi à vendredi)</strong> sont comptabilisés</li>
-                                <li>Les <strong>week-ends (samedi et dimanche)</strong> sont exclus du calcul</li>
-                                <li>Les <strong>jours fériés</strong> sont exclus du calcul</li>
-                                <li>Le nombre de jours affiché correspond aux <strong>jours ouvrés uniquement</strong></li>
-                            </ul>
+                            seuls les <strong>jours ouvrés (lun.–ven.)</strong> hors week-ends et jours fériés
+                            sont comptabilisés.
                         </div>
 
+                        {{-- ── Formulaire ────────────────────────────────────────────────── --}}
                         <form action="{{ route('conges.store') }}" method="POST" id="demande-form">
                             @csrf
-
-                            <!-- Champ hidden pour envoyer le nombre de jours calculé -->
-                            <input type="hidden" name="nombre_jours" id="nombre_jours_hidden" value="{{ old('nombre_jours') }}">
+                            <input type="hidden" name="nombre_jours" id="nombre_jours_hidden"
+                                   value="{{ old('nombre_jours') }}">
 
                             <div class="row">
+                                {{-- Type de congé --}}
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label>Type de congé <span class="text-danger">*</span></label>
@@ -89,38 +130,33 @@
                                                         {{ old('type_conge_id') == $type->id ? 'selected' : '' }}>
                                                     {{ $type->libelle }}
                                                     @if($type->est_annuel)
-                                                        <span class="text-success"> (Annuel - déduit du solde)</span>
+                                                        (Annuel — déduit du solde)
                                                     @elseif($type->est_paye)
-                                                        <span class="text-primary"> (Payé - non déduit)</span>
+                                                        (Payé — non déduit)
                                                     @else
-                                                        <span class="text-warning"> (Non payé)</span>
+                                                        (Non payé)
                                                     @endif
                                                 </option>
                                             @endforeach
                                         </select>
-                                        <small class="form-text text-muted" id="type-conge-info">
-                                            Sélectionnez un type pour voir les détails
-                                        </small>
                                         @error('type_conge_id')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
+
+                                {{-- Nombre de jours --}}
                                 <div class="col-md-6">
                                     <div class="form-group">
-                                        <label>Nombre de jours <span class="text-danger">*</span></label>
+                                        <label>Nombre de jours ouvrés</label>
                                         <div class="input-group">
-                                            <input type="number" id="nombre_jours_display"
-                                                   class="form-control-plaintext"
-                                                   value="{{ old('nombre_jours', '0') }}"
-                                                   readonly>
+                                            <input type="text" id="nombre_jours_display"
+                                                   class="form-control" value="0" readonly>
                                             <div class="input-group-append">
                                                 <span class="input-group-text">jours ouvrés</span>
                                             </div>
                                         </div>
-                                        <small class="form-text text-muted">
-                                            Calculé automatiquement (jours ouvrés uniquement)
-                                        </small>
+                                        <small class="form-text text-muted">Calculé automatiquement</small>
                                         @error('nombre_jours')
                                             <div class="text-danger small">{{ $message }}</div>
                                         @enderror
@@ -129,76 +165,69 @@
                             </div>
 
                             <div class="row">
+                                {{-- Date début --}}
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label>Date de début <span class="text-danger">*</span></label>
                                         <input type="date" name="date_debut" id="date_debut"
                                                class="form-control @error('date_debut') is-invalid @enderror"
                                                value="{{ old('date_debut') }}"
-                                               min="{{ date('Y-m-d') }}"
-                                               required>
+                                               min="{{ date('Y-m-d') }}" required>
                                         @error('date_debut')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
-                                        <div id="date_debut_info" class="text-info small mt-1" style="display: none;"></div>
+                                        <div id="date_debut_info" class="text-info small mt-1" style="display:none;"></div>
                                     </div>
                                 </div>
+
+                                {{-- Date fin --}}
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label>Date de fin <span class="text-danger">*</span></label>
                                         <input type="date" name="date_fin" id="date_fin"
                                                class="form-control @error('date_fin') is-invalid @enderror"
                                                value="{{ old('date_fin') }}"
-                                               min="{{ date('Y-m-d') }}"
-                                               required>
+                                               min="{{ date('Y-m-d') }}" required>
                                         @error('date_fin')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
-                                        <div id="date_fin_info" class="text-info small mt-1" style="display: none;"></div>
+                                        <div id="date_fin_info" class="text-info small mt-1" style="display:none;"></div>
                                     </div>
                                 </div>
                             </div>
 
                             <div class="row">
+                                {{-- Supérieur --}}
                                 <div class="col-md-6">
                                     <div class="form-group">
-                                        <label for="superieur_hierarchique_id">
-                                            Supérieur hiérarchique <span class="text-danger">*</span>
-                                        </label>
-                                        <select
-                                            name="superieur_hierarchique_id"
-                                            id="superieur_hierarchique_id"
-                                            class="form-control select2 @error('superieur_hierarchique_id') is-invalid @enderror"
-                                            required
-                                        >
+                                        <label>Supérieur hiérarchique <span class="text-danger">*</span></label>
+                                        <select name="superieur_hierarchique_id" id="superieur_hierarchique_id"
+                                                class="form-control select2 @error('superieur_hierarchique_id') is-invalid @enderror"
+                                                required>
                                             <option value="">Sélectionner un supérieur</option>
                                             @foreach($users as $u)
                                                 @if($u->id !== auth()->id())
-                                                    <option
-                                                        value="{{ $u->id }}"
-                                                        {{ old('superieur_hierarchique_id') == $u->id ? 'selected' : '' }}
-                                                    >
+                                                    <option value="{{ $u->id }}"
+                                                        {{ old('superieur_hierarchique_id') == $u->id ? 'selected' : '' }}>
                                                         {{ $u->prenom }} {{ $u->nom }} — {{ $u->email }}
                                                     </option>
                                                 @endif
                                             @endforeach
                                         </select>
-                                        <small class="form-text text-muted">
-                                            Vous pouvez rechercher par nom, prénom ou email
-                                        </small>
                                         @error('superieur_hierarchique_id')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
+
+                                {{-- Motif --}}
                                 <div class="col-md-6">
                                     <div class="form-group">
-                                        <label>Motif</label>
-                                        <textarea name="motif" class="form-control @error('motif') is-invalid @enderror"
-                                                required rows="3" placeholder="Raison de votre demande de congé...">{{ old('motif') }}</textarea>
-                                        <small class="form-text text-muted">
-                                            Maximum 1000 caractères
-                                        </small>
+                                        <label>Motif <span class="text-danger">*</span></label>
+                                        <textarea name="motif"
+                                                  class="form-control @error('motif') is-invalid @enderror"
+                                                  rows="3" required
+                                                  placeholder="Raison de votre demande...">{{ old('motif') }}</textarea>
                                         @error('motif')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
@@ -206,44 +235,48 @@
                                 </div>
                             </div>
 
-                            <!-- Informations sur la période -->
-                            <div id="periode-info" class="alert alert-light mt-3" style="display: none;">
+                            {{-- Détails période --}}
+                            <div id="periode-info" class="alert alert-light mt-3" style="display:none;">
                                 <i class="fas fa-info-circle text-primary"></i>
                                 <strong>Informations sur la période :</strong>
                                 <div id="jours-details" class="mt-1"></div>
                             </div>
 
-                            <!-- Prévisualisation -->
-                            <div class="card preview-card" style="display: none;" id="preview-card">
-                                <div class="card-header">
-                                    <h4>Récapitulatif</h4>
+                            {{-- Simulation déduction multi-années --}}
+                            <div id="deduction-preview" class="alert alert-warning mt-3" style="display:none;">
+                                <i class="fas fa-layer-group"></i>
+                                <strong>Simulation de déduction sur vos soldes :</strong>
+                                <div id="deduction-details" class="mt-2"></div>
+                            </div>
+
+                            {{-- Récapitulatif --}}
+                            <div class="card border-primary" id="preview-card" style="display:none;">
+                                <div class="card-header bg-light">
+                                    <h4 class="mb-0"><i class="fas fa-clipboard-check"></i> Récapitulatif</h4>
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-md-4">
-                                            <strong>Type :</strong>
-                                            <span id="preview-type"></span>
+                                            <strong>Type :</strong> <span id="preview-type"></span>
                                         </div>
                                         <div class="col-md-4">
-                                            <strong>Période :</strong>
-                                            <span id="preview-period"></span>
+                                            <strong>Période :</strong> <span id="preview-period"></span>
                                         </div>
                                         <div class="col-md-4">
-                                            <strong>Durée :</strong>
-                                            <span id="preview-duration"></span>
+                                            <strong>Durée :</strong> <span id="preview-duration"></span>
                                         </div>
                                     </div>
-                                    <div class="row mt-3">
+                                    <div class="row mt-2">
                                         <div class="col-md-12">
-                                            <strong>Solde après congé :</strong>
+                                            <strong>Impact sur le solde :</strong>
                                             <span id="preview-solde"></span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="text-right">
-                                <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+                            <div class="text-right mt-3">
+                                <button type="submit" class="btn btn-primary btn-lg" id="submit-btn" disabled>
                                     <i class="fas fa-paper-plane"></i> Soumettre la Demande
                                 </button>
                             </div>
@@ -266,449 +299,401 @@
     .select2-container--default .select2-selection--single .select2-selection__rendered {
         line-height: 40px;
     }
-    .preview-card {
-        border-left: 4px solid #3B82F6;
-        margin-bottom: 20px;
-    }
-    .text-success {
-        color: #28a745 !important;
-    }
-    .text-warning {
-        color: #ffc107 !important;
-    }
-    #jours-details ul {
-        margin-bottom: 0;
-    }
-    .form-control-plaintext {
-        background-color: #f8f9fa;
-        padding: 0.375rem 0.75rem;
-        border: 1px solid #ced4da;
-        border-radius: 0.25rem;
-        font-weight: 500;
-        color: #495057;
-    }
+    .border-left { border-left: 4px solid !important; }
+    .border-info  { border-color: #17a2b8 !important; }
 </style>
 @endpush
 
 @push('scripts')
 <script src="{{ asset('assets/bundles/select2/dist/js/select2.full.min.js') }}"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+@php
+    // Sérialisation PHP → JS propre (pas de closures dans @json)
+    $soldesParAnneeJson = isset($soldesParAnnee)
+        ? $soldesParAnnee->map(fn($s) => ['annee' => $s->annee, 'jours_restants' => (float)$s->jours_restants])->values()->toArray()
+        : [];
+
+    $totalJoursDisponiblesVal = isset($totalJoursDisponibles) ? (float)$totalJoursDisponibles : 0;
+@endphp
+
 <script>
-$(document).ready(function() {
-    // Initialiser Select2
-    $('.select2').select2({
-        placeholder: "Sélectionner...",
-        allowClear: true
-    });
+$(document).ready(function () {
 
-    // Définir la date minimale à aujourd'hui
-    var today = new Date().toISOString().split('T')[0];
-    $('#date_debut').attr('min', today);
-    $('#date_fin').attr('min', today);
+    // ── Données PHP → JS ───────────────────────────────────────────────────
+    var soldesParAnnee        = @json($soldesParAnneeJson);     // [{annee, jours_restants}, …]
+    var totalJoursDisponibles = @json($totalJoursDisponiblesVal);
+    var routeCreate           = @json(route('conges.create'));
+    var joursFeries           = [];
 
-    // Charger les jours fériés
-    var joursFeries = [];
-    loadJoursFeries();
-});
+    // ── Select2 ────────────────────────────────────────────────────────────
+    $('.select2').select2({ placeholder: 'Sélectionner…', allowClear: true });
 
-// Charger les jours fériés depuis le serveur
-function loadJoursFeries() {
+    // ── Jours fériés ───────────────────────────────────────────────────────
     $.ajax({
         url: '{{ route("conges.get-feries") }}',
         method: 'GET',
-        success: function(data) {
-            joursFeries = data.jours_feries || [];
-        },
-        error: function() {
-            joursFeries = [];
-        }
+        success: function (data) { joursFeries = data.jours_feries || []; },
+        error:   function ()     { joursFeries = []; }
     });
-}
 
-// Vérifier si un jour est un week-end
-function isWeekend(dateStr) {
-    var date = new Date(dateStr);
-    var day = date.getDay(); // 0 = dimanche, 6 = samedi
-    return day === 0 || day === 6;
-}
-
-// Vérifier si un jour est férié
-function isJourFerie(dateStr) {
-    if (!joursFeries || !Array.isArray(joursFeries)) return false;
-    
-    var date = new Date(dateStr);
-    var mois = (date.getMonth() + 1).toString().padStart(2, '0');
-    var jour = date.getDate().toString().padStart(2, '0');
-    var dateFormatted = mois + '-' + jour;
-    
-    return joursFeries.some(function(ferie) {
-        return ferie.date === dateFormatted;
-    });
-}
-
-// Obtenir le nom d'un jour férié
-function getNomJourFerie(dateStr) {
-    if (!joursFeries || !Array.isArray(joursFeries)) return 'Jour férié';
-    
-    var date = new Date(dateStr);
-    var mois = (date.getMonth() + 1).toString().padStart(2, '0');
-    var jour = date.getDate().toString().padStart(2, '0');
-    var dateFormatted = mois + '-' + jour;
-    
-    var ferie = joursFeries.find(function(f) {
-        return f.date === dateFormatted;
-    });
-    
-    return ferie ? ferie.nom : 'Jour férié';
-}
-
-// Obtenir le nom du jour de la semaine
-function getJourSemaine(dateStr) {
-    var jours = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-    var date = new Date(dateStr);
-    return jours[date.getDay()];
-}
-
-// Formater une date en français
-function formatDateFr(dateStr) {
-    var date = new Date(dateStr);
-    return date.toLocaleDateString('fr-FR', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
-}
-
-// Analyser la période sélectionnée
-function analyzePeriod() {
-    var dateDebut = $('#date_debut').val();
-    var dateFin = $('#date_fin').val();
-    
-    // Masquer les infos précédentes
-    $('#date_debut_info').hide().empty();
-    $('#date_fin_info').hide().empty();
-    $('#periode-info').hide();
-    $('#jours-details').empty();
-    $('#nombre_jours_display').val('0');
-    $('#nombre_jours_hidden').val('0');
-    $('#preview-card').hide();
-    $('#submit-btn').prop('disabled', true);
-    
-    if (!dateDebut || !dateFin) {
-        return false;
+    // ── Helpers dates ──────────────────────────────────────────────────────
+    function isWeekend(dateStr) {
+        var d = new Date(dateStr);
+        return d.getDay() === 0 || d.getDay() === 6;
     }
-    
-    // Vérifier que la date de fin est après la date de début
-    if (new Date(dateFin) < new Date(dateDebut)) {
-        $('#date_fin_info').text('La date de fin doit être postérieure à la date de début').show();
-        return false;
+
+    function isJourFerie(dateStr) {
+        var d  = new Date(dateStr);
+        var mm = String(d.getMonth() + 1).padStart(2, '0');
+        var jj = String(d.getDate()).padStart(2, '0');
+        var fmt = mm + '-' + jj;
+        return joursFeries.some(function (f) { return f.date === fmt; });
     }
-    
-    // Afficher des infos sur les dates sélectionnées
-    var debutJour = getJourSemaine(dateDebut);
-    var finJour = getJourSemaine(dateFin);
-    
-    if (isWeekend(dateDebut)) {
-        $('#date_debut_info').text(debutJour + ' (week-end - non comptabilisé)').show();
-    } else if (isJourFerie(dateDebut)) {
-        var nomFerie = getNomJourFerie(dateDebut);
-        $('#date_debut_info').text(debutJour + ' (' + nomFerie + ' - non comptabilisé)').show();
+
+    function getNomJourFerie(dateStr) {
+        var d   = new Date(dateStr);
+        var mm  = String(d.getMonth() + 1).padStart(2, '0');
+        var jj  = String(d.getDate()).padStart(2, '0');
+        var fmt = mm + '-' + jj;
+        var f   = joursFeries.find(function (f) { return f.date === fmt; });
+        return f ? f.nom : 'Jour férié';
     }
-    
-    if (isWeekend(dateFin)) {
-        $('#date_fin_info').text(finJour + ' (week-end - non comptabilisé)').show();
-    } else if (isJourFerie(dateFin)) {
-        var nomFerie = getNomJourFerie(dateFin);
-        $('#date_fin_info').text(finJour + ' (' + nomFerie + ' - non comptabilisé)').show();
+
+    function getJourSemaine(dateStr) {
+        var j = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+        return j[new Date(dateStr).getDay()];
     }
-    
-    // Analyser tous les jours de la période
-    var startDate = new Date(dateDebut);
-    var endDate = new Date(dateFin);
-    var joursOuvrables = 0;
-    var joursNonOuvrables = [];
-    var currentDate = new Date(startDate);
-    
-    while (currentDate <= endDate) {
-        var dateStr = currentDate.toISOString().split('T')[0];
-        var jourSemaine = getJourSemaine(dateStr);
-        
-        if (isWeekend(dateStr)) {
-            joursNonOuvrables.push({
-                date: formatDateFr(dateStr),
-                raison: 'Week-end (' + jourSemaine + ')',
-                type: 'weekend'
+
+    function formatDateFr(dateStr) {
+        return new Date(dateStr).toLocaleDateString('fr-FR', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+    }
+
+    // ── Simulation de déduction FIFO ───────────────────────────────────────
+    /**
+     * Simule comment les jours seraient déduits des soldes (du plus ancien au plus récent).
+     * Retourne un tableau [{annee, jours_pris, jours_restants_apres}, …]
+     */
+    function simulerDeductionFIFO(joursADeduire) {
+        var reste  = joursADeduire;
+        var result = [];
+
+        // Trier du plus ancien au plus récent (comme côté PHP)
+        var soldesTries = soldesParAnnee.slice().sort(function (a, b) { return a.annee - b.annee; });
+
+        soldesTries.forEach(function (s) {
+            if (reste <= 0) return;
+            var pris  = Math.min(s.jours_restants, reste);
+            reste    -= pris;
+            result.push({
+                annee:                s.annee,
+                jours_pris:           pris,
+                jours_restants_apres: s.jours_restants - pris
             });
-        } else if (isJourFerie(dateStr)) {
-            var nomFerie = getNomJourFerie(dateStr);
-            joursNonOuvrables.push({
-                date: formatDateFr(dateStr),
-                raison: nomFerie,
-                type: 'ferie'
-            });
-        } else {
-            joursOuvrables++;
-        }
-        
-        currentDate.setDate(currentDate.getDate() + 1);
+        });
+
+        return result;
     }
-    
-    // Mettre à jour le nombre de jours ouvrés
-    if (joursOuvrables > 0) {
+
+    // ── Analyse de la période ──────────────────────────────────────────────
+    function analyzePeriod() {
+        var dateDebut = $('#date_debut').val();
+        var dateFin   = $('#date_fin').val();
+
+        // Reset
+        $('#date_debut_info, #date_fin_info').hide().empty();
+        $('#periode-info').hide();
+        $('#jours-details').empty();
+        $('#deduction-preview').hide();
+        $('#deduction-details').empty();
+        $('#nombre_jours_display').val('0');
+        $('#nombre_jours_hidden').val('0');
+        $('#preview-card').hide();
+        $('#submit-btn').prop('disabled', true);
+
+        if (!dateDebut || !dateFin) return false;
+
+        if (new Date(dateFin) < new Date(dateDebut)) {
+            $('#date_fin_info').text('La date de fin doit être postérieure à la date de début').show();
+            return false;
+        }
+
+        // Infos sur les dates de début / fin
+        if (isWeekend(dateDebut)) {
+            $('#date_debut_info').text(getJourSemaine(dateDebut) + ' (week-end – non comptabilisé)').show();
+        } else if (isJourFerie(dateDebut)) {
+            $('#date_debut_info').text(getJourSemaine(dateDebut) + ' (' + getNomJourFerie(dateDebut) + ' – non comptabilisé)').show();
+        }
+
+        if (isWeekend(dateFin)) {
+            $('#date_fin_info').text(getJourSemaine(dateFin) + ' (week-end – non comptabilisé)').show();
+        } else if (isJourFerie(dateFin)) {
+            $('#date_fin_info').text(getJourSemaine(dateFin) + ' (' + getNomJourFerie(dateFin) + ' – non comptabilisé)').show();
+        }
+
+        // Compter les jours ouvrés
+        var startDate         = new Date(dateDebut);
+        var endDate           = new Date(dateFin);
+        var joursOuvrables    = 0;
+        var joursNonOuvrables = [];
+        var current           = new Date(startDate);
+
+        while (current <= endDate) {
+            var ds = current.toISOString().split('T')[0];
+            if (isWeekend(ds)) {
+                joursNonOuvrables.push({ date: formatDateFr(ds), raison: 'Week-end', type: 'weekend' });
+            } else if (isJourFerie(ds)) {
+                joursNonOuvrables.push({ date: formatDateFr(ds), raison: getNomJourFerie(ds), type: 'ferie' });
+            } else {
+                joursOuvrables++;
+            }
+            current.setDate(current.getDate() + 1);
+        }
+
+        if (joursOuvrables <= 0) {
+            $('#jours-details').html('La période ne contient aucun jour ouvrable. Veuillez modifier les dates.');
+            $('#periode-info').show();
+            return false;
+        }
+
         $('#nombre_jours_display').val(joursOuvrables);
         $('#nombre_jours_hidden').val(joursOuvrables);
         $('#submit-btn').prop('disabled', false);
-        
-        // Afficher les détails de la période
-        var totalJours = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
-        var message = '<div class="mb-2">';
-        message += '<strong>Période totale :</strong> ' + totalJours + ' jour(s) calendaire(s)<br>';
-        message += '<strong>Jours ouvrés :</strong> ' + joursOuvrables + ' jour(s)<br>';
-        message += '<strong>Jours exclus :</strong> ' + joursNonOuvrables.length + ' jour(s)</div>';
-        
+
+        // Afficher détails
+        var total   = Math.floor((endDate - startDate) / 864e5) + 1;
+        var message = '<strong>Période totale :</strong> ' + total + ' j. calendaires — '
+                    + '<strong>Jours ouvrés :</strong> ' + joursOuvrables + ' — '
+                    + '<strong>Exclus :</strong> ' + joursNonOuvrables.length + ' j.';
+
         if (joursNonOuvrables.length > 0) {
-            message += '<details>';
-            message += '<summary class="text-primary"><small>Voir les jours exclus du calcul</small></summary>';
-            message += '<ul class="mt-2 mb-0 pl-3">';
-            joursNonOuvrables.forEach(function(jour) {
-                var icon = jour.type === 'weekend' ? '🏖️' : '🎉';
-                message += '<li><small>' + icon + ' ' + jour.date + ' (' + jour.raison + ')</small></li>';
+            message += '<details class="mt-1"><summary class="text-primary"><small>Voir les jours exclus</small></summary><ul class="mt-1 mb-0 pl-3">';
+            joursNonOuvrables.forEach(function (j) {
+                message += '<li><small>' + (j.type === 'weekend' ? '🏖️' : '🎉') + ' ' + j.date + ' (' + j.raison + ')</small></li>';
             });
-            message += '</ul>';
-            message += '</details>';
+            message += '</ul></details>';
         }
-        
+
         $('#jours-details').html(message);
         $('#periode-info').show();
-        
-        // Mettre à jour la prévisualisation
+
         updatePreview();
         checkSolde();
-        
+
         return true;
-    } else {
-        $('#jours-details').html('La période sélectionnée ne contient aucun jour ouvrable. Veuillez modifier les dates.');
-        $('#periode-info').show();
-        return false;
-    }
-}
-
-// Mettre à jour la prévisualisation
-function updatePreview() {
-    var typeText = $('#type_conge_id option:selected').text();
-    var dateDebut = $('#date_debut').val();
-    var dateFin = $('#date_fin').val();
-    var nombreJours = $('#nombre_jours_hidden').val();
-    var selectedOption = $('#type_conge_id option:selected');
-    var estPaye = selectedOption.data('est-paye');
-    var estAnnuel = selectedOption.data('est-annuel');
-    var soldeRestant = {{ isset($solde) ? $solde->jours_restants : 0 }};
-
-    if (!typeText || !dateDebut || !dateFin || !nombreJours) {
-        $('#preview-card').hide();
-        return;
     }
 
-    $('#preview-type').html(typeText);
-    $('#preview-period').html(formatDateFr(dateDebut) + ' au ' + formatDateFr(dateFin));
-    $('#preview-duration').html(nombreJours + ' jour(s) ouvrable(s)');
+    // ── Simulation déduction et affichage ──────────────────────────────────
+    function afficherDeductionSimulee(nombreJours) {
+        var selectedOption = $('#type_conge_id option:selected');
+        var estAnnuel      = selectedOption.data('est-annuel');
 
-    // Afficher l'impact sur le solde selon le type
-    if (estAnnuel == '1') {
-        var nouveauSolde = soldeRestant - parseFloat(nombreJours);
-        var soldeClass = nouveauSolde >= 0 ? 'text-success' : 'text-danger';
-        var soldeText = nouveauSolde >= 0 ?
-            nouveauSolde.toFixed(1) + ' jours restants' :
-            'Dépassement de ' + Math.abs(nouveauSolde).toFixed(1) + ' jours';
+        if (estAnnuel != '1' || nombreJours <= 0 || !soldesParAnnee.length) {
+            $('#deduction-preview').hide();
+            return;
+        }
 
-        $('#preview-solde').html('<span class="' + soldeClass + '">' + soldeText + '</span>');
-    } else if (estPaye == '1') {
-        $('#preview-solde').html('<span class="text-info">Congé payé (non déduit du solde annuel)</span>');
-    } else {
-        $('#preview-solde').html('<span class="text-secondary">Congé non payé</span>');
-    }
+        var deductions = simulerDeductionFIFO(nombreJours);
 
-    $('#preview-card').show();
-}
+        if (!deductions.length) {
+            $('#deduction-preview').hide();
+            return;
+        }
 
-// Vérifier le solde
-function checkSolde() {
-    var typeCongeId = $('#type_conge_id').val();
-    var nombreJours = parseFloat($('#nombre_jours_hidden').val()) || 0;
-
-    if (!typeCongeId || !nombreJours) {
-        $('#submit-btn').prop('disabled', true);
-        return;
-    }
-
-    var selectedOption = $('#type_conge_id option:selected');
-    var estAnnuel = selectedOption.data('est-annuel');
-    var soldeRestant = {{ isset($solde) ? $solde->jours_restants : 0 }};
-    var maxJours = selectedOption.data('max-jours');
-
-    // Vérifier le maximum de jours
-    if (maxJours && nombreJours > maxJours) {
-        $('#submit-btn').prop('disabled', true);
-        Swal.fire({
-            icon: 'warning',
-            title: 'Dépassement',
-            text: 'Le nombre de jours demandé (' + nombreJours + ') dépasse le maximum autorisé (' + maxJours + ' jours) pour ce type de congé.',
+        var html = '<div class="row">';
+        deductions.forEach(function (d) {
+            html += '<div class="col-md-3 col-sm-6 mb-2">'
+                  + '<div class="card mb-0 border-warning">'
+                  + '<div class="card-body p-2 text-center">'
+                  + '<div class="font-weight-bold">' + d.annee + '</div>'
+                  + '<div class="text-danger">−' + d.jours_pris + ' j.</div>'
+                  + '<div class="text-success small">Reste : ' + d.jours_restants_apres.toFixed(1) + ' j.</div>'
+                  + '</div></div></div>';
         });
-        return;
+        html += '</div>';
+
+        $('#deduction-details').html(html);
+        $('#deduction-preview').show();
     }
 
-    // Vérifier uniquement pour les congés annuels
-    if (estAnnuel == '1') {
-        if (nombreJours > soldeRestant) {
+    // ── Prévisualisation ───────────────────────────────────────────────────
+    function updatePreview() {
+        var typeText       = $('#type_conge_id option:selected').text().trim();
+        var dateDebut      = $('#date_debut').val();
+        var dateFin        = $('#date_fin').val();
+        var nombreJours    = parseFloat($('#nombre_jours_hidden').val()) || 0;
+        var selectedOption = $('#type_conge_id option:selected');
+        var estAnnuel      = selectedOption.data('est-annuel');
+        var estPaye        = selectedOption.data('est-paye');
+
+        if (!typeText || !dateDebut || !dateFin || !nombreJours) {
+            $('#preview-card').hide();
+            return;
+        }
+
+        $('#preview-type').html(typeText);
+        $('#preview-period').html(formatDateFr(dateDebut) + ' au ' + formatDateFr(dateFin));
+        $('#preview-duration').html(nombreJours + ' jour(s) ouvré(s)');
+
+        if (estAnnuel == '1') {
+            var nouveauTotal   = totalJoursDisponibles - nombreJours;
+            var soldeClass     = nouveauTotal >= 0 ? 'text-success' : 'text-danger';
+            var soldeText      = nouveauTotal >= 0
+                ? 'Solde global : ' + totalJoursDisponibles + ' → ' + nouveauTotal.toFixed(1) + ' j.'
+                : 'Dépassement de ' + Math.abs(nouveauTotal).toFixed(1) + ' j. par rapport au solde global';
+
+            $('#preview-solde').html('<span class="' + soldeClass + '">' + soldeText + '</span>');
+            afficherDeductionSimulee(nombreJours);
+        } else if (estPaye == '1') {
+            $('#preview-solde').html('<span class="text-info">Congé payé (non déduit du solde annuel)</span>');
+            $('#deduction-preview').hide();
+        } else {
+            $('#preview-solde').html('<span class="text-secondary">Congé non payé</span>');
+            $('#deduction-preview').hide();
+        }
+
+        $('#preview-card').show();
+    }
+
+    // ── Vérification du solde ──────────────────────────────────────────────
+    function checkSolde() {
+        var typeCongeId    = $('#type_conge_id').val();
+        var nombreJours    = parseFloat($('#nombre_jours_hidden').val()) || 0;
+        var selectedOption = $('#type_conge_id option:selected');
+        var estAnnuel      = selectedOption.data('est-annuel');
+        var maxJours       = selectedOption.data('max-jours');
+
+        if (!typeCongeId || !nombreJours) {
             $('#submit-btn').prop('disabled', true);
-            
-            var typeText = selectedOption.text().replace(/<[^>]*>/g, '');
+            return;
+        }
+
+        // Limite max du type
+        if (maxJours && nombreJours > maxJours) {
+            $('#submit-btn').prop('disabled', true);
             Swal.fire({
-                icon: 'error',
-                title: 'Solde insuffisant',
-                html: '<div class="text-left">' +
-                      '<p><strong>Type :</strong> ' + typeText + ' (Congé annuel)</p>' +
-                      '<p><strong>Solde disponible :</strong> ' + soldeRestant + ' jours</p>' +
-                      '<p><strong>Demandé :</strong> ' + nombreJours + ' jours</p>' +
-                      '<p class="text-danger"><strong>Manquant :</strong> ' + (nombreJours - soldeRestant) + ' jours</p>' +
-                      '<hr>' +
-                      '<p class="mb-2"><strong>Options :</strong></p>' +
-                      '<ul class="text-left">' +
-                      '<li>Réduire la durée du congé</li>' +
-                      '<li>Choisir un autre type de congé</li>' +
-                      '</ul>' +
-                      '</div>',
-                confirmButtonText: 'Compris'
+                icon: 'warning',
+                title: 'Dépassement',
+                text: 'Le nombre de jours demandé (' + nombreJours + ') dépasse le maximum autorisé (' + maxJours + ' j.).'
             });
+            return;
+        }
+
+        // Vérification solde uniquement pour congés annuels
+        if (estAnnuel == '1') {
+            if (nombreJours > totalJoursDisponibles) {
+                $('#submit-btn').prop('disabled', true);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Solde insuffisant',
+                    html: '<p><strong>Solde total disponible (toutes années) :</strong> ' + totalJoursDisponibles + ' j.</p>'
+                        + '<p><strong>Demandé :</strong> ' + nombreJours + ' j.</p>'
+                        + '<p class="text-danger"><strong>Manquant :</strong> ' + (nombreJours - totalJoursDisponibles).toFixed(1) + ' j.</p>'
+                });
+            } else {
+                $('#submit-btn').prop('disabled', false);
+            }
         } else {
             $('#submit-btn').prop('disabled', false);
         }
-    } else {
-        // Pour tous les autres types, activer le bouton si tout est valide
-        $('#submit-btn').prop('disabled', false);
     }
-}
 
-// Validation du formulaire
-$('#demande-form').on('submit', function(e) {
-    e.preventDefault();
-    
-    var typeCongeId = $('#type_conge_id').val();
-    var dateDebut = $('#date_debut').val();
-    var dateFin = $('#date_fin').val();
-    var nombreJours = parseFloat($('#nombre_jours_hidden').val()) || 0;
-    var selectedOption = $('#type_conge_id option:selected');
-    var estAnnuel = selectedOption.data('est-annuel');
-    var maxJours = selectedOption.data('max-jours');
-    var soldeRestant = {{ isset($solde) ? $solde->jours_restants : 0 }};
-    
-    // Validation basique
-    if (!typeCongeId || !dateDebut || !dateFin || !nombreJours) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Champs obligatoires',
-            text: 'Veuillez remplir tous les champs obligatoires',
-        });
-        return false;
-    }
-    
-    // Vérifier la date de fin
-    if (new Date(dateFin) < new Date(dateDebut)) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Dates invalides',
-            text: 'La date de fin doit être postérieure à la date de début',
-        });
-        return false;
-    }
-    
-    // Vérifier si au moins 1 jour ouvrable
-    if (nombreJours <= 0) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Durée invalide',
-            text: 'La période sélectionnée ne contient aucun jour ouvrable.',
-        });
-        return false;
-    }
-    
-    // Vérifier le maximum de jours
-    if (maxJours && nombreJours > maxJours) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Dépassement',
-            text: 'Le nombre de jours demandé dépasse le maximum autorisé pour ce type de congé.',
-        });
-        return false;
-    }
-    
-    // Vérifier le solde uniquement pour les congés annuels
-    if (estAnnuel == '1' && nombreJours > soldeRestant) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Solde insuffisant',
-            html: 'Vous n\'avez pas assez de jours de congés annuels disponibles.<br>' +
-                  'Solde restant : <strong>' + soldeRestant + ' jours</strong><br>' +
-                  'Demandé : <strong>' + nombreJours + ' jours</strong>',
-        });
-        return false;
-    }
-    
-    // Demander confirmation avec détails du calcul
-    var totalJours = Math.floor((new Date(dateFin) - new Date(dateDebut)) / (1000 * 60 * 60 * 24)) + 1;
-    var confirmationMessage = '<div class="text-left">';
-    confirmationMessage += '<p><strong>Type :</strong> ' + $('#type_conge_id option:selected').text() + '</p>';
-    confirmationMessage += '<p><strong>Période calendaire :</strong> ' + formatDateFr(dateDebut) + ' au ' + formatDateFr(dateFin) + ' (' + totalJours + ' jours)</p>';
-    confirmationMessage += '<p><strong>Jours ouvrés pris :</strong> ' + nombreJours + ' jour(s)</p>';
-    
-    if (estAnnuel == '1') {
-        var nouveauSolde = soldeRestant - nombreJours;
-        confirmationMessage += '<p><strong>Impact sur solde annuel :</strong> ' + soldeRestant + ' → ' + nouveauSolde + ' jours</p>';
-    }
-    
-    confirmationMessage += '<hr><p class="text-muted"><small><i class="fas fa-info-circle"></i> Les week-ends et jours fériés ne sont pas comptabilisés dans le calcul.</small></p>';
-    confirmationMessage += '</div>';
+    // ── Soumission ─────────────────────────────────────────────────────────
+    $('#demande-form').on('submit', function (e) {
+        e.preventDefault();
 
-    Swal.fire({
-        title: 'Confirmer la demande',
-        html: confirmationMessage,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33',
-        confirmButtonText: 'Oui, soumettre',
-        cancelButtonText: 'Annuler',
-        reverseButtons: true,
-        width: 600
-    }).then((result) => {
-        if (result.isConfirmed) {
-            // Soumettre le formulaire
-            $(this).off('submit').submit();
+        var typeCongeId    = $('#type_conge_id').val();
+        var dateDebut      = $('#date_debut').val();
+        var dateFin        = $('#date_fin').val();
+        var nombreJours    = parseFloat($('#nombre_jours_hidden').val()) || 0;
+        var selectedOption = $('#type_conge_id option:selected');
+        var estAnnuel      = selectedOption.data('est-annuel');
+        var maxJours       = selectedOption.data('max-jours');
+
+        // Validations
+        if (!typeCongeId || !dateDebut || !dateFin || !nombreJours) {
+            Swal.fire({ icon: 'error', title: 'Champs obligatoires', text: 'Veuillez remplir tous les champs.' });
+            return false;
+        }
+
+        if (new Date(dateFin) < new Date(dateDebut)) {
+            Swal.fire({ icon: 'error', title: 'Dates invalides', text: 'La date de fin doit être postérieure à la date de début.' });
+            return false;
+        }
+
+        if (nombreJours <= 0) {
+            Swal.fire({ icon: 'error', title: 'Durée invalide', text: 'La période ne contient aucun jour ouvrable.' });
+            return false;
+        }
+
+        if (maxJours && nombreJours > maxJours) {
+            Swal.fire({ icon: 'error', title: 'Dépassement', text: 'Le nombre de jours dépasse le maximum autorisé pour ce type.' });
+            return false;
+        }
+
+        if (estAnnuel == '1' && nombreJours > totalJoursDisponibles) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Solde insuffisant',
+                html: 'Solde global disponible : <strong>' + totalJoursDisponibles + ' j.</strong><br>'
+                    + 'Demandé : <strong>' + nombreJours + ' j.</strong>'
+            });
+            return false;
+        }
+
+        // Construire le résumé de déduction pour la confirmation
+        var deductionHtml = '';
+        if (estAnnuel == '1') {
+            var deductions = simulerDeductionFIFO(nombreJours);
+            if (deductions.length) {
+                deductionHtml = '<hr><p><strong><i class="fas fa-layer-group"></i> Déduction par année :</strong></p><ul class="text-left">';
+                deductions.forEach(function (d) {
+                    deductionHtml += '<li>' + d.annee + ' : −' + d.jours_pris + ' j. (reste ' + d.jours_restants_apres.toFixed(1) + ' j.)</li>';
+                });
+                deductionHtml += '</ul>';
+            }
+        }
+
+        var total = Math.floor((new Date(dateFin) - new Date(dateDebut)) / 864e5) + 1;
+        Swal.fire({
+            title: 'Confirmer la demande',
+            html: '<div class="text-left">'
+                + '<p><strong>Type :</strong> ' + selectedOption.text().trim() + '</p>'
+                + '<p><strong>Période :</strong> ' + formatDateFr(dateDebut) + ' au ' + formatDateFr(dateFin) + ' (' + total + ' j. calendaires)</p>'
+                + '<p><strong>Jours ouvrés décomptés :</strong> ' + nombreJours + ' j.</p>'
+                + deductionHtml
+                + '</div>',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor:  '#d33',
+            confirmButtonText:  'Oui, soumettre',
+            cancelButtonText:   'Annuler',
+            reverseButtons: true,
+            width: 640
+        }).then(function (result) {
+            if (result.isConfirmed) {
+                $('#demande-form').off('submit').submit();
+            }
+        });
+
+        return false;
+    });
+
+    // ── Événements ─────────────────────────────────────────────────────────
+    $('#date_debut, #date_fin').on('change', function () { analyzePeriod(); });
+    $('#type_conge_id').on('change', function () {
+        if ($('#date_debut').val() && $('#date_fin').val()) {
+            checkSolde();
+            updatePreview();
         }
     });
 
-    return false;
-});
-
-// Événements de changement
-$('#date_debut, #date_fin').on('change', function() {
-    analyzePeriod();
-});
-
-$('#type_conge_id').on('change', function() {
+    // Initialiser si valeurs existantes (retour sur erreur de validation)
     if ($('#date_debut').val() && $('#date_fin').val()) {
-        checkSolde();
-        updatePreview();
-    }
-});
-
-// Initialiser l'affichage si des valeurs existent déjà (en cas d'erreur de validation)
-$(document).ready(function() {
-    if ($('#date_debut').val() && $('#date_fin').val()) {
-        setTimeout(function() {
-            analyzePeriod();
-        }, 500);
+        setTimeout(function () { analyzePeriod(); }, 500);
     }
 });
 </script>

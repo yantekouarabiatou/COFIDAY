@@ -25,109 +25,127 @@ use App\Mail\LeaveRejectedMail;
 
 class CongeController extends Controller
 {
-    /**
-     * Afficher la liste des demandes de congés
-     */
-    public function index()
-    {
-        $user = Auth::user();
-        $anneeCourante = now()->year;
-
-        // Charger les relations nécessaires
-        $query = DemandeConge::with(['user', 'typeConge', 'validePar']);
-
-        // Filtre pour les non-admins
-        if (!$user->hasRole('admin') && !$user->hasRole('manager')) {
-            $query->where('user_id', $user->id);
-        }
-
-        // Récupérer les types de congés pour les filtres
-        $typesConges = TypeConge::where('actif', true)->get();
-
-        // Décider de paginer ou non
-        $isAdmin = $user->hasRole('admin') || $user->hasRole('manager');
-
-        if ($isAdmin) {
-            // Pagination pour les admins (beaucoup de données)
-            $demandes = $query->latest()->paginate(20);
-
-            // Statistiques
-            $totalDemandes = $query->count();
-            $enAttente = $query->clone()->where('statut', 'en_attente')->count();
-            $approuves = $query->clone()->where('statut', 'approuve')->count();
-            $refuses = $query->clone()->where('statut', 'refuse')->count();
-
-            $usePagination = true;
-        } else {
-            // Pas de pagination pour les employés (peu de données)
-            $demandes = $query->latest()->paginate(20);
-
-            // Statistiques
-            $totalDemandes = $demandes->count();
-            $enAttente = $demandes->where('statut', 'en_attente')->count();
-            $approuves = $demandes->where('statut', 'approuve')->count();
-            $refuses = $demandes->where('statut', 'refuse')->count();
-
-            $usePagination = false;
-        }
-
-        return view('pages.conges.index', compact(
-            'demandes',
-            'typesConges',
-            'totalDemandes',
-            'enAttente',
-            'approuves',
-            'refuses',
-            'usePagination'
-        ));
-    }
+    // =========================================================================
+    //  HELPERS : Gestion multi-années du solde
+    // =========================================================================
 
     /**
-     * Afficher le formulaire de création
+     * Retourne tous les soldes disponibles d'un utilisateur,
+     * des années ANTÉRIEURES à l'année courante + l'année courante,
+     * triés du plus ancien au plus récent (FIFO).
+     *
+     * Seules les années dont jours_restants > 0 sont retournées.
      */
-    public function create()
+    private function getSoldesDisponibles(int $userId): \Illuminate\Support\Collection
     {
-        $user = Auth::user();
-        $anneeCourante = now()->year;
-
-        // Récupérer les types de congés actifs
-        $typesConges = TypeConge::where('actif', true)->get();
-
-        // Vérifier le solde de congés
-        $solde = SoldeConge::where('user_id', $user->id)
-            ->where('annee', $anneeCourante)
-            ->first();
-
-        if (!$solde) {
-            // Créer un solde si inexistant
-            $solde = $this->creerSoldeInitial($user->id, $anneeCourante);
-        }
-
-        // Récupérer tous les utilisateurs (seulement pour les admins)
-        $users = User::select('id', 'nom', 'prenom', 'email')
-            ->orderBy('nom')
-            ->orderBy('prenom')
+        return SoldeConge::where('user_id', $userId)
+            ->where('jours_restants', '>', 0)
+            ->orderBy('annee', 'asc') // plus ancienne d'abord
             ->get();
-
-        return view('pages.conges.create', compact('typesConges', 'solde', 'users'));
     }
 
-    // Dans votre CongeController.php
-    private function estJourOuvrable($date)
+    /**
+     * Calcule le total de jours disponibles toutes années confondues.
+     */
+    private function getTotalJoursDisponibles(int $userId): float
+    {
+        return SoldeConge::where('user_id', $userId)
+            ->where('jours_restants', '>', 0)
+            ->sum('jours_restants');
+    }
+
+    /**
+     * Déduit $joursADeduire des soldes en commençant par le plus ancien (FIFO).
+     * Retourne un tableau décrivant ce qui a été déduit par année.
+     *
+     * @throws \Exception si le solde global est insuffisant
+     */
+    private function deduireSoldesMultiAnnees(int $userId, float $joursADeduire): array
+    {
+        $soldes = $this->getSoldesDisponibles($userId);
+
+        $totalDisponible = $soldes->sum('jours_restants');
+
+        if ($totalDisponible < $joursADeduire) {
+            throw new \Exception(
+                "Solde insuffisant. Total disponible : {$totalDisponible} jours (toutes années confondues). Demandé : {$joursADeduire} jours."
+            );
+        }
+
+        $deductions = [];   // journal des déductions pour l'historique
+        $resteADeduire = $joursADeduire;
+
+        foreach ($soldes as $solde) {
+            if ($resteADeduire <= 0) {
+                break;
+            }
+
+            // Combien peut-on prendre sur ce solde ?
+            $pris = min($solde->jours_restants, $resteADeduire);
+
+            $solde->update([
+                'jours_pris'     => $solde->jours_pris + $pris,
+                'jours_restants' => $solde->jours_restants - $pris,
+            ]);
+
+            $deductions[] = [
+                'annee'      => $solde->annee,
+                'jours_pris' => $pris,
+            ];
+
+            $resteADeduire -= $pris;
+        }
+
+        return $deductions;
+    }
+
+    /**
+     * Annule une déduction multi-années (lors d'un rollback ou annulation).
+     * Restitue les jours déduits dans chaque solde d'origine.
+     */
+    private function restituerSoldesMultiAnnees(int $userId, array $deductions): void
+    {
+        foreach ($deductions as $deduction) {
+            $solde = SoldeConge::where('user_id', $userId)
+                ->where('annee', $deduction['annee'])
+                ->first();
+
+            if ($solde) {
+                $solde->update([
+                    'jours_pris'     => max(0, $solde->jours_pris - $deduction['jours_pris']),
+                    'jours_restants' => $solde->jours_restants + $deduction['jours_pris'],
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Construit un résumé lisible des déductions pour l'historique / les messages.
+     */
+    private function resumeDeductions(array $deductions): string
+    {
+        return collect($deductions)
+            ->map(fn($d) => "{$d['jours_pris']} j. sur solde {$d['annee']}")
+            ->implode(', ');
+    }
+
+    // =========================================================================
+    //  HELPERS : Calcul des jours ouvrés
+    // =========================================================================
+
+    private function estJourOuvrable($date): bool
     {
         $date = Carbon::parse($date);
 
-        // Vérifier si c'est un week-end
         if ($date->isWeekend()) {
             return false;
         }
 
-        // Vérifier si c'est un jour férié
         $regles = RegleConge::first();
         if ($regles && $regles->jours_feries) {
             $joursFeries = json_decode($regles->jours_feries, true);
             if (is_array($joursFeries)) {
-                $dateStr = $date->format('m-d'); // Format MM-JJ
+                $dateStr = $date->format('m-d');
                 foreach ($joursFeries as $jour) {
                     if (isset($jour['date']) && $jour['date'] === $dateStr) {
                         return false;
@@ -139,7 +157,22 @@ class CongeController extends Controller
         return true;
     }
 
-    private function estPeriodeBloquee($date)
+    private function calculerJoursOuvres(Carbon $start, Carbon $end): int
+    {
+        $jours   = 0;
+        $current = $start->copy();
+
+        while ($current->lte($end)) {
+            if ($this->estJourOuvrable($current)) {
+                $jours++;
+            }
+            $current->addDay();
+        }
+
+        return $jours;
+    }
+
+    private function estPeriodeBloquee($date): bool
     {
         $regles = RegleConge::first();
         if (!$regles || !$regles->periodes_bloquees) {
@@ -156,7 +189,7 @@ class CongeController extends Controller
         foreach ($periodesBloquees as $periode) {
             if (isset($periode['debut']) && isset($periode['fin'])) {
                 $debut = Carbon::parse($periode['debut']);
-                $fin = Carbon::parse($periode['fin']);
+                $fin   = Carbon::parse($periode['fin']);
 
                 if ($date->between($debut, $fin)) {
                     return true;
@@ -167,275 +200,588 @@ class CongeController extends Controller
         return false;
     }
 
-    private function verifierJoursAutorises($dateDebut, $dateFin)
-    {
-        $joursNonOuvrables = [];
-        $date = Carbon::parse($dateDebut);
-        $fin = Carbon::parse($dateFin);
+    // =========================================================================
+    //  INDEX
+    // =========================================================================
 
-        while ($date->lte($fin)) {
-            if (!$this->estJourOuvrable($date)) {
-                $joursNonOuvrables[] = $date->format('d/m/Y');
-            } elseif ($this->estPeriodeBloquee($date)) {
-                $joursNonOuvrables[] = $date->format('d/m/Y') . ' (période bloquée)';
-            }
-            $date->addDay();
+    public function index()
+    {
+        $user  = Auth::user();
+        $query = DemandeConge::with(['user', 'typeConge', 'validePar']);
+
+        if (!$user->hasRole('admin') && !$user->hasRole('manager')) {
+            $query->where('user_id', $user->id);
         }
 
-        return $joursNonOuvrables;
+        $typesConges = TypeConge::where('actif', true)->get();
+        $isAdmin     = $user->hasRole('admin') || $user->hasRole('manager');
+
+        $demandes      = $query->latest()->paginate(20);
+        $totalDemandes = $query->count();
+        $enAttente     = (clone $query)->where('statut', 'en_attente')->count();
+        $approuves     = (clone $query)->where('statut', 'approuve')->count();
+        $refuses       = (clone $query)->where('statut', 'refuse')->count();
+        $usePagination = $isAdmin;
+
+        return view('pages.conges.index', compact(
+            'demandes', 'typesConges', 'totalDemandes',
+            'enAttente', 'approuves', 'refuses', 'usePagination'
+        ));
     }
 
+    // =========================================================================
+    //  CREATE
+    // =========================================================================
 
-    // Ajoutez ces méthodes privées dans votre contrôleur
-    private function verifierJoursOuvrables($dateDebut, $dateFin)
+    public function create()
     {
-        $joursNonOuvrables = [];
-        $date = Carbon::parse($dateDebut);
-        $fin = Carbon::parse($dateFin);
+        $user          = Auth::user();
+        $anneeCourante = now()->year;
 
-        while ($date->lte($fin)) {
-            // Vérifier si c'est un week-end
-            if ($date->isWeekend()) {
-                $joursNonOuvrables[] = [
-                    'date' => $date->format('d/m/Y'),
-                    'raison' => 'Week-end'
-                ];
-            } else {
-                // Vérifier si c'est un jour férié
-                $regles = RegleConge::first();
-                if ($regles && $regles->jours_feries) {
-                    $joursFeries = is_array($regles->jours_feries)
-                        ? $regles->jours_feries
-                        : json_decode($regles->jours_feries, true);
+        $typesConges = TypeConge::where('actif', true)->get();
 
-                    if (is_array($joursFeries)) {
-                        $dateStr = $date->format('m-d'); // Format MM-DD
-                        foreach ($joursFeries as $jour) {
-                            if (isset($jour['date']) && $jour['date'] === $dateStr) {
-                                $joursNonOuvrables[] = [
-                                    'date' => $date->format('d/m/Y'),
-                                    'raison' => $jour['nom'] ?? 'Jour férié'
-                                ];
-                                break;
-                            }
-                        }
-                    }
-                }
+        // Solde de l'année courante (créé si inexistant)
+        $solde = SoldeConge::where('user_id', $user->id)
+            ->where('annee', $anneeCourante)
+            ->first();
 
-                // Vérifier si c'est dans une période bloquée
-                if ($regles && $regles->periodes_bloquees) {
-                    $periodesBloquees = is_array($regles->periodes_bloquees)
-                        ? $regles->periodes_bloquees
-                        : json_decode($regles->periodes_bloquees, true);
-
-                    if (is_array($periodesBloquees)) {
-                        foreach ($periodesBloquees as $periode) {
-                            if (isset($periode['debut']) && isset($periode['fin'])) {
-                                try {
-                                    $debutPeriode = Carbon::parse($periode['debut']);
-                                    $finPeriode = Carbon::parse($periode['fin']);
-
-                                    if ($date->between($debutPeriode, $finPeriode)) {
-                                        $joursNonOuvrables[] = [
-                                            'date' => $date->format('d/m/Y'),
-                                            'raison' => $periode['nom'] ?? 'Période bloquée'
-                                        ];
-                                        break;
-                                    }
-                                } catch (\Exception $e) {
-                                    continue;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            $date->addDay();
+        if (!$solde) {
+            $solde = $this->creerSoldeInitial($user->id, $anneeCourante);
         }
 
-        return $joursNonOuvrables;
-    }
-    // Modifiez la méthode store()
-    // Dans votre CongeController.php
+        // Total disponible toutes années confondues
+        $totalJoursDisponibles = $this->getTotalJoursDisponibles($user->id);
 
-    // REMPLACEZ ou MODIFIEZ ces méthodes :
+        // Détail par année pour affichage dans la vue
+        $soldesParAnnee = $this->getSoldesDisponibles($user->id);
 
-    private function calculerJoursOuvres(Carbon $start, Carbon $end)
-    {
-        $jours = 0;
-        $current = $start->copy();
+        $users = User::select('id', 'nom', 'prenom', 'email')
+            ->orderBy('nom')->orderBy('prenom')->get();
 
-        while ($current->lte($end)) {
-            // Vérifier si c'est un jour ouvrable (lundi à vendredi hors jours fériés)
-            if ($this->estJourOuvrable($current)) {
-                $jours++;
-            }
-            $current->addDay();
-        }
-
-        return $jours;
+        return view('pages.conges.create', compact(
+            'typesConges', 'solde', 'users',
+            'totalJoursDisponibles', 'soldesParAnnee'
+        ));
     }
 
-    // SUPPRIMEZ ou MODIFIEZ la méthode verifierJoursOuvrables pour ne plus bloquer
-    // À la place, utilisez cette méthode pour simplement informer
+    // =========================================================================
+    //  STORE
+    // =========================================================================
 
-    private function getJoursNonOuvrablesInfo($dateDebut, $dateFin)
-    {
-        $joursNonOuvrables = [];
-        $date = Carbon::parse($dateDebut);
-        $fin = Carbon::parse($dateFin);
-
-        while ($date->lte($fin)) {
-            // Vérifier si c'est un week-end
-            if ($date->isWeekend()) {
-                $joursNonOuvrables[] = [
-                    'date' => $date->format('d/m/Y'),
-                    'raison' => 'Week-end'
-                ];
-            } else {
-                // Vérifier si c'est un jour férié
-                $regles = RegleConge::first();
-                if ($regles && $regles->jours_feries) {
-                    $joursFeries = is_array($regles->jours_feries)
-                        ? $regles->jours_feries
-                        : json_decode($regles->jours_feries, true);
-
-                    if (is_array($joursFeries)) {
-                        $dateStr = $date->format('m-d');
-                        foreach ($joursFeries as $jour) {
-                            if (isset($jour['date']) && $jour['date'] === $dateStr) {
-                                $joursNonOuvrables[] = [
-                                    'date' => $date->format('d/m/Y'),
-                                    'raison' => $jour['nom'] ?? 'Jour férié'
-                                ];
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-
-            $date->addDay();
-        }
-
-        return $joursNonOuvrables;
-    }
-
-    // MODIFIEZ la méthode store() pour ne pas bloquer
     public function store(Request $request)
     {
         DB::beginTransaction();
 
         try {
-            $user = Auth::user();
+            $user          = Auth::user();
             $anneeCourante = now()->year;
 
-            // Validation
             $validated = $request->validate([
-                'type_conge_id' => 'required|exists:types_conges,id',
-                'date_debut' => 'required|date|after_or_equal:today',
-                'date_fin' => 'required|date|after_or_equal:date_debut',
-                'motif' => 'required|string|max:1000',
-                'superieur_hierarchique_id' => 'required|exists:users,id',
-                'nombre_jours' => 'required|numeric|min:0.5' // AJOUTEZ cette validation
+                'type_conge_id'              => 'required|exists:types_conges,id',
+                'date_debut'                 => 'required|date|after_or_equal:today',
+                'date_fin'                   => 'required|date|after_or_equal:date_debut',
+                'motif'                      => 'required|string|max:1000',
+                'superieur_hierarchique_id'  => 'required|exists:users,id',
+                'nombre_jours'               => 'required|numeric|min:0.5',
             ]);
 
-            $dateDebut = Carbon::parse($request->date_debut);
-            $dateFin = Carbon::parse($request->date_fin);
+            $dateDebut   = Carbon::parse($request->date_debut);
+            $dateFin     = Carbon::parse($request->date_fin);
+            $nombreJours = (float) $request->nombre_jours;
 
-            // Calculer le nombre de jours ouvrés côté serveur (pour vérification)
-            $nombreJoursCalcule = $this->calculerJoursOuvres($dateDebut, $dateFin);
-
-            // Utiliser le nombre de jours envoyé depuis le formulaire (calculé côté client)
-            $nombreJours = $request->nombre_jours;
-
-            // Vérifier les limites du type de congé
             $typeConge = TypeConge::findOrFail($request->type_conge_id);
 
+            // Vérifier la limite max du type
             if ($typeConge->nombre_jours_max && $nombreJours > $typeConge->nombre_jours_max) {
                 Alert::error('Erreur', "Ce type de congé ne peut pas dépasser {$typeConge->nombre_jours_max} jours.");
                 return back()->withInput();
             }
 
-            // VÉRIFICATION MODIFIÉE : Uniquement pour les congés annuels
+            // ── Vérification & déduction du solde (congés annuels) ───────────
+            $deductions = [];
+
             if ($typeConge->est_annuel) {
-                $solde = SoldeConge::where('user_id', $user->id)
-                    ->where('annee', $anneeCourante)
-                    ->first();
+                $totalDisponible = $this->getTotalJoursDisponibles($user->id);
 
-                // Vérifier si le solde existe
-                if (!$solde) {
-                    Alert::error('Erreur', 'Aucun solde de congé trouvé pour cette année.');
+                if ($totalDisponible < $nombreJours) {
+                    Alert::error(
+                        'Solde insuffisant',
+                        "Solde global disponible (toutes années) : {$totalDisponible} j. — Demandé : {$nombreJours} j."
+                    );
                     return back()->withInput();
                 }
 
-                // Vérifier le solde
-                if ($solde->jours_restants < $nombreJours) {
-                    Alert::error('Erreur', "Solde insuffisant. Il vous reste {$solde->jours_restants} jours sur {$solde->jours_acquis} acquis.");
-                    return back()->withInput();
-                }
+                // Déduire FIFO (années les plus anciennes d'abord)
+                $deductions = $this->deduireSoldesMultiAnnees($user->id, $nombreJours);
             }
 
-            // Créer la demande (statut = en_attente par défaut)
+            // ── Créer la demande ─────────────────────────────────────────────
             $demande = DemandeConge::create([
-                'user_id' => $user->id,
+                'user_id'                   => $user->id,
                 'superieur_hierarchique_id' => $request->superieur_hierarchique_id,
-                'type_conge_id' => $request->type_conge_id,
-                'date_debut' => $request->date_debut,
-                'date_fin' => $request->date_fin,
-                'nombre_jours' => $nombreJours,
-                'motif' => $request->motif,
-                'statut' => 'en_attente',
+                'type_conge_id'             => $request->type_conge_id,
+                'date_debut'                => $request->date_debut,
+                'date_fin'                  => $request->date_fin,
+                'nombre_jours'              => $nombreJours,
+                'motif'                     => $request->motif,
+                'statut'                    => 'en_attente',
             ]);
 
-            // Historique
+            // Stocker le détail des déductions dans les métadonnées de la demande
+            // (utile pour annulation / rollback)
+            if (!empty($deductions)) {
+                $demande->update([
+                    'meta_deductions' => json_encode($deductions),
+                ]);
+            }
+
+            // ── Historique ───────────────────────────────────────────────────
+            $commentaireHistorique = 'Demande initiale soumise.';
+            if (!empty($deductions)) {
+                $commentaireHistorique .= ' Déduction : ' . $this->resumeDeductions($deductions);
+            }
+
             HistoriqueConge::create([
                 'demande_conge_id' => $demande->id,
-                'action' => 'demande_soumise',
-                'effectue_par' => $user->id,
-                'commentaire' => 'Demande initiale soumise',
+                'action'           => 'demande_soumise',
+                'effectue_par'     => $user->id,
+                'commentaire'      => $commentaireHistorique,
             ]);
 
+            // ── PDF + Mail ───────────────────────────────────────────────────
             $superieur = User::findOrFail($request->superieur_hierarchique_id);
-            // -----------------------------
-            // 5. Génération du PDF
-            // -----------------------------
-            $pdf = Pdf::loadView('pdfs.leave_request', [
-                'leave' => $demande,
-                'superieur' => $superieur,
-            ]);
-
-            $pdfPath = storage_path("app/temp/demande_{$demande->id}.pdf");
+            $pdf       = Pdf::loadView('pdfs.leave_request', ['leave' => $demande, 'superieur' => $superieur]);
+            $pdfPath   = storage_path("app/temp/demande_{$demande->id}.pdf");
 
             if (!is_dir(dirname($pdfPath))) {
                 mkdir(dirname($pdfPath), 0755, true);
             }
 
             $pdf->save($pdfPath);
-
-            // -----------------------------
-            // Envoi du mail
-            // -----------------------------
             Mail::to($superieur->email)->send(new LeaveRequestMail($demande, $superieur, $pdfPath));
 
             DB::commit();
 
             Alert::success('Succès', 'Votre demande de congé a été soumise avec succès. En attente de validation.');
             return redirect()->route('conges.index');
+
         } catch (\Exception $e) {
             DB::rollBack();
-            Alert::error('Erreur', 'Une erreur est survenue lors de la soumission de la demande. ' . $e->getMessage());
+            Alert::error('Erreur', 'Une erreur est survenue : ' . $e->getMessage());
             return back()->withInput();
         }
     }
 
+    // =========================================================================
+    //  EDIT
+    // =========================================================================
 
+    public function edit(DemandeConge $demande)
+    {
+        if ($demande->statut !== 'en_attente') {
+            Alert::warning('Information', 'Vous ne pouvez pas modifier une demande déjà traitée.');
+            return redirect()->route('conges.show', $demande);
+        }
 
-    // AJOUTEZ cette méthode pour récupérer les jours fériés
+        $typesConges = TypeConge::where('actif', true)->get();
+        $users       = User::select('id', 'nom', 'prenom', 'email')
+            ->orderBy('nom')->orderBy('prenom')->get();
+
+        return view('pages.conges.edit', compact('demande', 'typesConges', 'users'));
+    }
+
+    // =========================================================================
+    //  UPDATE
+    // =========================================================================
+
+    public function update(Request $request, DemandeConge $demande)
+    {
+        DB::beginTransaction();
+
+        try {
+            $user = Auth::user();
+
+            if ($demande->user_id !== $user->id) {
+                abort(403, 'Accès non autorisé');
+            }
+
+            if ($demande->statut !== 'en_attente') {
+                Alert::warning('Information', 'Vous ne pouvez pas modifier une demande déjà traitée.');
+                return redirect()->route('conges.show', $demande);
+            }
+
+            $validated = $request->validate([
+                'type_conge_id'             => 'required|exists:types_conges,id',
+                'date_debut'                => 'required|date|after_or_equal:today',
+                'date_fin'                  => 'required|date|after_or_equal:date_debut',
+                'motif'                     => 'required|string|max:1000',
+                'superieur_hierarchique_id' => 'required|exists:users,id',
+                'nombre_jours'              => 'required|numeric|min:0.5',
+            ]);
+
+            $nombreJours     = (float) $request->nombre_jours;
+            $typeConge       = TypeConge::findOrFail($request->type_conge_id);
+            $ancienTypeConge = TypeConge::find($demande->type_conge_id);
+
+            // Limite max
+            if ($typeConge->nombre_jours_max && $nombreJours > $typeConge->nombre_jours_max) {
+                Alert::error('Erreur', "Ce type de congé ne peut pas dépasser {$typeConge->nombre_jours_max} jours.");
+                return back()->withInput();
+            }
+
+            // ── Gestion du solde multi-années ─────────────────────────────────
+            $deductions = [];
+
+            if ($typeConge->est_annuel) {
+
+                // 1. Restituer les jours de l'ancienne demande (si elle était annuelle)
+                if ($ancienTypeConge && $ancienTypeConge->est_annuel) {
+                    $anciennesDeductions = json_decode($demande->meta_deductions ?? '[]', true);
+
+                    if (!empty($anciennesDeductions)) {
+                        $this->restituerSoldesMultiAnnees($user->id, $anciennesDeductions);
+                    } else {
+                        // Fallback : restituer sur l'année de la demande originale
+                        $anneeOrigine = Carbon::parse($demande->date_debut)->year;
+                        $soldeOrigine = SoldeConge::where('user_id', $user->id)
+                            ->where('annee', $anneeOrigine)
+                            ->first();
+
+                        if ($soldeOrigine) {
+                            $soldeOrigine->update([
+                                'jours_pris'     => max(0, $soldeOrigine->jours_pris - $demande->nombre_jours),
+                                'jours_restants' => $soldeOrigine->jours_restants + $demande->nombre_jours,
+                            ]);
+                        }
+                    }
+                }
+
+                // 2. Vérifier et déduire le nouveau nombre de jours (FIFO)
+                $totalDisponible = $this->getTotalJoursDisponibles($user->id);
+
+                if ($totalDisponible < $nombreJours) {
+                    // Annuler la restitution avant de retourner
+                    DB::rollBack();
+                    Alert::error(
+                        'Solde insuffisant',
+                        "Solde global disponible (toutes années) : {$totalDisponible} j. — Demandé : {$nombreJours} j."
+                    );
+                    return back()->withInput();
+                }
+
+                $deductions = $this->deduireSoldesMultiAnnees($user->id, $nombreJours);
+            }
+
+            // ── Mise à jour de la demande ─────────────────────────────────────
+            $demande->update([
+                'superieur_hierarchique_id' => $request->superieur_hierarchique_id,
+                'type_conge_id'             => $request->type_conge_id,
+                'date_debut'                => $request->date_debut,
+                'date_fin'                  => $request->date_fin,
+                'nombre_jours'              => $nombreJours,
+                'motif'                     => $request->motif,
+                'meta_deductions'           => !empty($deductions) ? json_encode($deductions) : null,
+            ]);
+
+            // ── Historique ────────────────────────────────────────────────────
+            $commentaire = "Demande modifiée par l'employé.";
+            if (!empty($deductions)) {
+                $commentaire .= ' Déduction : ' . $this->resumeDeductions($deductions);
+            }
+
+            HistoriqueConge::create([
+                'demande_conge_id' => $demande->id,
+                'action'           => 'demande_modifiee',
+                'effectue_par'     => $user->id,
+                'commentaire'      => $commentaire,
+            ]);
+
+            // ── PDF + Mail ────────────────────────────────────────────────────
+            $superieur = User::findOrFail($request->superieur_hierarchique_id);
+            $pdf       = Pdf::loadView('pdfs.leave_request', ['leave' => $demande, 'superieur' => $superieur]);
+            $pdfPath   = storage_path("app/temp/demande_{$demande->id}.pdf");
+
+            if (!is_dir(dirname($pdfPath))) {
+                mkdir(dirname($pdfPath), 0755, true);
+            }
+
+            $pdf->save($pdfPath);
+            Mail::to($superieur->email)->send(new LeaveRequestMail($demande, $superieur, $pdfPath));
+
+            DB::commit();
+
+            Alert::success('Succès', 'La demande de congé a été modifiée avec succès.');
+            return redirect()->route('conges.index');
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            return back()->withErrors($e->validator)->withInput();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur modification congé: ' . $e->getMessage());
+            Alert::error('Erreur', 'Une erreur inattendue est survenue : ' . $e->getMessage());
+            return back()->withInput();
+        }
+    }
+
+    // =========================================================================
+    //  ANNULER
+    // =========================================================================
+
+    public function annuler(Request $request, DemandeConge $demande)
+    {
+        DB::beginTransaction();
+
+        try {
+            $user = Auth::user();
+
+            if (!$user->hasRole('admin') && $demande->user_id !== $user->id) {
+                abort(403, 'Accès non autorisé');
+            }
+
+            if ($demande->statut !== 'en_attente') {
+                Alert::warning('Information', 'Seules les demandes en attente peuvent être annulées.');
+                return back();
+            }
+
+            // Restituer les jours si c'était un congé annuel
+            $typeConge = TypeConge::find($demande->type_conge_id);
+            if ($typeConge && $typeConge->est_annuel) {
+                $deductions = json_decode($demande->meta_deductions ?? '[]', true);
+
+                if (!empty($deductions)) {
+                    $this->restituerSoldesMultiAnnees($demande->user_id, $deductions);
+                } else {
+                    // Fallback : restituer sur l'année d'origine
+                    $anneeOrigine = Carbon::parse($demande->date_debut)->year;
+                    $solde        = SoldeConge::where('user_id', $demande->user_id)
+                        ->where('annee', $anneeOrigine)
+                        ->first();
+
+                    if ($solde) {
+                        $solde->update([
+                            'jours_pris'     => max(0, $solde->jours_pris - $demande->nombre_jours),
+                            'jours_restants' => $solde->jours_restants + $demande->nombre_jours,
+                        ]);
+                    }
+                }
+            }
+
+            $demande->update(['statut' => 'annule']);
+
+            HistoriqueConge::create([
+                'demande_conge_id' => $demande->id,
+                'action'           => 'demande_annulee',
+                'effectue_par'     => $user->id,
+                'commentaire'      => $request->commentaire ?? 'Demande annulée — jours restitués.',
+            ]);
+
+            DB::commit();
+
+            Alert::success('Succès', 'La demande a été annulée et les jours ont été restitués.');
+            return redirect()->route('conges.index');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Alert::error('Erreur', "Une erreur est survenue lors de l'annulation.");
+            return back();
+        }
+    }
+
+    // =========================================================================
+    //  TRAITER (admin / manager)
+    // =========================================================================
+
+    public function traiter(Request $request, DemandeConge $demande)
+    {
+        DB::beginTransaction();
+
+        try {
+            $user = Auth::user();
+
+            if (!$user->hasRole('admin') && !$user->hasRole('manager')) {
+                abort(403, 'Accès non autorisé');
+            }
+
+            $request->validate([
+                'action'      => 'required|in:approuve,refuse',
+                'commentaire' => 'nullable|string|max:1000',
+            ]);
+
+            if ($demande->statut !== 'en_attente') {
+                Alert::warning('Information', 'Cette demande a déjà été traitée.');
+                return back();
+            }
+
+            $action    = $request->action;
+            $typeConge = $demande->typeConge;
+
+            $demande->update([
+                'statut'          => $action,
+                'valide_par'      => $user->id,
+                'date_validation' => now(),
+            ]);
+
+            // ── Si REFUSÉ : restituer les jours déjà déduits à la soumission ─
+            if ($action === 'refuse' && $typeConge && $typeConge->est_annuel) {
+                $deductions = json_decode($demande->meta_deductions ?? '[]', true);
+
+                if (!empty($deductions)) {
+                    $this->restituerSoldesMultiAnnees($demande->user_id, $deductions);
+                } else {
+                    // Fallback
+                    $anneeOrigine = Carbon::parse($demande->date_debut)->year;
+                    $solde        = SoldeConge::where('user_id', $demande->user_id)
+                        ->where('annee', $anneeOrigine)
+                        ->first();
+
+                    if ($solde) {
+                        $solde->update([
+                            'jours_pris'     => max(0, $solde->jours_pris - $demande->nombre_jours),
+                            'jours_restants' => $solde->jours_restants + $demande->nombre_jours,
+                        ]);
+                    }
+                }
+            }
+
+            // ── Si APPROUVÉ : les jours ont déjà été déduits à la soumission ─
+            // (rien à faire sur les soldes, sauf vérifier que le solde reste >= 0)
+            if ($action === 'approuve' && $typeConge && $typeConge->est_annuel) {
+                // Vérification de sécurité : aucun solde ne doit être négatif
+                $soldesNegatifs = SoldeConge::where('user_id', $demande->user_id)
+                    ->where('jours_restants', '<', 0)
+                    ->count();
+
+                if ($soldesNegatifs > 0) {
+                    throw new \Exception('Incohérence détectée : solde négatif après approbation.');
+                }
+            }
+
+            // ── Historique ────────────────────────────────────────────────────
+            $commentaireHistorique = $request->commentaire;
+            if ($action === 'refuse' && $typeConge && $typeConge->est_annuel) {
+                $deductions = json_decode($demande->meta_deductions ?? '[]', true);
+                if (!empty($deductions)) {
+                    $commentaireHistorique .= ' — Jours restitués : ' . $this->resumeDeductions($deductions);
+                }
+            }
+
+            HistoriqueConge::create([
+                'demande_conge_id' => $demande->id,
+                'action'           => $action === 'approuve' ? 'demande_approuvee' : 'demande_refusee',
+                'effectue_par'     => $user->id,
+                'commentaire'      => $commentaireHistorique,
+            ]);
+
+            DB::commit();
+
+            // ── Emails ────────────────────────────────────────────────────────
+            $demandeur = $demande->user;
+
+            if ($action === 'approuve') {
+                Mail::to($demandeur->email)->send(new LeaveApprovedMail($demande));
+            } else {
+                Mail::to($demandeur->email)->send(new LeaveRejectedMail($demande, $request->commentaire));
+            }
+
+            $message = $action === 'approuve'
+                ? 'La demande a été approuvée avec succès.'
+                : 'La demande a été refusée et les jours ont été restitués.';
+
+            Alert::success('Succès', $message);
+            return redirect()->route('conges.index');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur traitement congé: ' . $e->getMessage());
+            Alert::error('Erreur', 'Une erreur est survenue lors du traitement : ' . $e->getMessage());
+            return back();
+        }
+    }
+
+    // =========================================================================
+    //  SOLDE (vue)
+    // =========================================================================
+
+    public function solde(User $user = null)
+    {
+        $currentUser = Auth::user();
+
+        if (!$user) {
+            $user = $currentUser;
+        }
+
+        $anneeCourante = now()->year;
+        $premiereAnnee = 2022;
+        $annees        = range($premiereAnnee, $anneeCourante);
+
+        $soldesExistants = SoldeConge::where('user_id', $user->id)
+            ->whereIn('annee', $annees)
+            ->get()
+            ->keyBy('annee');
+
+        $soldeCourant = $soldesExistants->get($anneeCourante);
+
+        if (!$soldeCourant) {
+            $regles      = RegleConge::first();
+            $joursAcquis = $regles ? $regles->jours_par_mois * 12 : 24;
+
+            $soldeCourant = SoldeConge::create([
+                'user_id'        => $user->id,
+                'annee'          => $anneeCourante,
+                'jours_acquis'   => $joursAcquis,
+                'jours_pris'     => 0,
+                'jours_restants' => $joursAcquis,
+                'jours_reportes' => 0,
+            ]);
+            $soldesExistants->put($anneeCourante, $soldeCourant);
+        }
+
+        // Construire la collection complète avec années vides en fallback
+        $soldes = collect();
+        foreach ($annees as $annee) {
+            if ($soldesExistants->has($annee)) {
+                $soldes->push($soldesExistants->get($annee));
+            } else {
+                $soldeFactice                = new SoldeConge();
+                $soldeFactice->annee         = $annee;
+                $soldeFactice->jours_acquis  = 0;
+                $soldeFactice->jours_pris    = 0;
+                $soldeFactice->jours_restants = 0;
+                $soldeFactice->jours_reportes = 0;
+                $soldeFactice->user_id       = $user->id;
+                $soldes->push($soldeFactice);
+            }
+        }
+
+        $soldes = $soldes->sortByDesc('annee');
+
+        // Total disponible toutes années confondues
+        $totalJoursDisponibles = $this->getTotalJoursDisponibles($user->id);
+
+        // Détail des soldes disponibles (années avec jours restants > 0), triés FIFO
+        $soldesDisponibles = $this->getSoldesDisponibles($user->id);
+
+        $demandesCongesPayes = DemandeConge::with('typeConge')
+            ->where('user_id', $user->id)
+            ->whereHas('typeConge', fn($q) => $q->where('est_paye', true))
+            ->whereYear('created_at', $anneeCourante)
+            ->orderBy('date_debut', 'desc')
+            ->get();
+
+        return view('pages.conges.solde', compact(
+            'user', 'soldes', 'soldeCourant', 'demandesCongesPayes',
+            'totalJoursDisponibles', 'soldesDisponibles'
+        ));
+    }
+
+    // =========================================================================
+    //  API : jours fériés
+    // =========================================================================
+
     public function getFeries()
     {
-        $regles = RegleConge::first();
+        $regles      = RegleConge::first();
         $joursFeries = [];
 
         if ($regles && $regles->jours_feries) {
@@ -448,387 +794,77 @@ class CongeController extends Controller
             }
         }
 
-        return response()->json([
-            'jours_feries' => $joursFeries
-        ]);
+        return response()->json(['jours_feries' => $joursFeries]);
     }
 
     /**
-     * Afficher une demande spécifique
+     * API : retourne le total de jours disponibles (toutes années)
+     * pour l'utilisateur connecté. Utilisé par la vue create/edit.
      */
+    public function getSoldeTotal()
+    {
+        $userId = Auth::id();
+        $total  = $this->getTotalJoursDisponibles($userId);
+
+        $detail = $this->getSoldesDisponibles($userId)->map(fn($s) => [
+            'annee'          => $s->annee,
+            'jours_restants' => $s->jours_restants,
+        ]);
+
+        return response()->json([
+            'total'  => $total,
+            'detail' => $detail,
+        ]);
+    }
+
+    // =========================================================================
+    //  SHOW
+    // =========================================================================
+
     public function show(DemandeConge $demande)
     {
         $user = Auth::user();
 
-        // Vérifier les permissions
         if (!$user->hasRole('admin') && !$user->hasRole('manager') && $demande->user_id !== $user->id) {
             abort(403, 'Accès non autorisé');
         }
 
-        // Charger TOUTES les relations manquantes avec fallback
         $demande->loadMissing(['user', 'typeConge', 'validePar', 'historiques.effectuePar']);
 
-        // S'assurer que typeConge existe (avec fallback si nécessaire)
         if (!$demande->typeConge) {
-            $demande->typeConge = \App\Models\TypeConge::find($demande->type_conge_id);
-
-            // Si le type de congé n'existe pas, créer un objet factice
-            if (!$demande->typeConge) {
-                $demande->typeConge = new \App\Models\TypeConge();
-                $demande->typeConge->libelle = 'Type inconnu';
-                $demande->typeConge->est_paye = false;
-                $demande->typeConge->nombre_jours_max = null;
-                $demande->typeConge->exists = false;
-            }
+            $demande->typeConge = TypeConge::find($demande->type_conge_id) ?? tap(new TypeConge(), function ($t) {
+                $t->libelle           = 'Type inconnu';
+                $t->est_paye          = false;
+                $t->nombre_jours_max  = null;
+                $t->exists            = false;
+            });
         }
 
-        // S'assurer que l'utilisateur existe (avec fallback si nécessaire)
         if (!$demande->user) {
-            $demande->user = \App\Models\User::find($demande->user_id);
-
-            if (!$demande->user) {
-                $demande->user = new \App\Models\User();
-                $demande->user->id = $demande->user_id;
-                $demande->user->prenom = 'Utilisateur';
-                $demande->user->nom = 'Supprimé';
-                $demande->user->email = 'non.disponible@example.com';
-                $demande->user->photo = null;
-                $demande->user->exists = false;
-            }
+            $demande->user = User::find($demande->user_id) ?? tap(new User(), function ($u) use ($demande) {
+                $u->id     = $demande->user_id;
+                $u->prenom = 'Utilisateur';
+                $u->nom    = 'Supprimé';
+                $u->email  = 'non.disponible@example.com';
+                $u->exists = false;
+            });
         }
 
-        // Déterminer la couleur selon le statut
         $statutColor = match ($demande->statut) {
             'en_attente' => 'warning',
-            'approuve' => 'success',
-            'refuse' => 'danger',
-            'annule' => 'secondary',
-            default => 'info',
+            'approuve'   => 'success',
+            'refuse'     => 'danger',
+            'annule'     => 'secondary',
+            default      => 'info',
         };
 
         return view('pages.conges.show', compact('demande', 'statutColor'));
     }
 
-    /**
-     * Afficher le formulaire de modification
-     */
-    public function edit(DemandeConge $demande)
-    {
-        $user = Auth::user();
+    // =========================================================================
+    //  DASHBOARD
+    // =========================================================================
 
-        // Sécurité
-        //if ($demande->user_id !== $user->id) {
-        //abort(403, 'Accès non autorisé');
-        //}
-
-        // Empêcher la modification si la demande n'est plus en attente
-        if ($demande->statut !== 'en_attente') {
-            Alert::warning('Information', 'Vous ne pouvez pas modifier une demande déjà traitée.');
-            return redirect()->route('conges.show', $demande);
-        }
-
-        $typesConges = TypeConge::where('actif', true)->get();
-
-        // Récupérer tous les utilisateurs
-        $users = User::select('id', 'nom', 'prenom', 'email')
-            ->orderBy('nom')
-            ->orderBy('prenom')
-            ->get();
-
-        return view('pages.conges.edit', compact('demande', 'typesConges', 'users'));
-    }
-
-    /**
-     * Mettre à jour une demande
-     */
-
-    // Modifiez la méthode update()
-    // MODIFIEZ aussi la méthode update() de la même façon
-    public function update(Request $request, DemandeConge $demande)
-    {
-        DB::beginTransaction();
-
-        try {
-            $user = Auth::user();
-            $anneeCourante = now()->year;
-
-            // Sécurité
-            if ($demande->user_id !== $user->id) {
-                abort(403, 'Accès non autorisé');
-            }
-
-            // Empêcher la modification si la demande n'est plus en attente
-            if ($demande->statut !== 'en_attente') {
-                Alert::warning('Information', 'Vous ne pouvez pas modifier une demande déjà traitée.');
-                return redirect()->route('conges.show', $demande);
-            }
-
-            // Validation
-            $validated = $request->validate([
-                'type_conge_id' => 'required|exists:types_conges,id',
-                'date_debut' => 'required|date|after_or_equal:today',
-                'date_fin' => 'required|date|after_or_equal:date_debut',
-                'motif' => 'required|string|max:1000',
-                'superieur_hierarchique_id' => 'required|exists:users,id',
-                'nombre_jours' => 'required|numeric|min:0.5' // AJOUTEZ cette validation
-            ]);
-
-            $dateDebut = Carbon::parse($request->date_debut);
-            $dateFin = Carbon::parse($request->date_fin);
-            // Utiliser le nombre de jours envoyé depuis le formulaire
-            $nombreJours = $request->nombre_jours;
-
-            // Récupérer le type de congé
-            $typeConge = TypeConge::findOrFail($request->type_conge_id);
-
-            // Vérifier les limites du type de congé
-            if ($typeConge->nombre_jours_max && $nombreJours > $typeConge->nombre_jours_max) {
-                Alert::error('Erreur', "Ce type de congé ne peut pas dépasser {$typeConge->nombre_jours_max} jours.");
-                return back()->withInput();
-            }
-
-            // VÉRIFICATION IMPORTANTE : Solde pour les congés annuels seulement
-            if ($typeConge->est_annuel) {
-                $solde = SoldeConge::where('user_id', $user->id)
-                    ->where('annee', $anneeCourante)
-                    ->first();
-
-                if (!$solde) {
-                    Alert::error('Erreur', 'Aucun solde de congé trouvé pour cette année.');
-                    return back()->withInput();
-                }
-
-                // IMPORTANT : Calculer la différence de jours par rapport à l'ancienne demande
-                // Si l'ancienne demande était aussi annuelle, on calcule la différence
-                $ancienTypeConge = TypeConge::find($demande->type_conge_id);
-                $differenceJours = $nombreJours - $demande->nombre_jours;
-
-                // Deux cas possibles :
-                // 1. L'ancienne demande était annuelle => vérifier seulement la différence
-                // 2. L'ancienne demande n'était pas annuelle => vérifier toute la durée
-                if ($ancienTypeConge && $ancienTypeConge->est_annuel) {
-                    // Cas 1: Ancienne demande annuelle - vérifier seulement l'augmentation
-                    if ($differenceJours > 0 && $solde->jours_restants < $differenceJours) {
-                        Alert::error('Erreur', "Solde insuffisant pour augmenter la durée. Il vous reste {$solde->jours_restants} jours sur {$solde->jours_acquis} acquis.");
-                        return back()->withInput();
-                    }
-                } else {
-                    // Cas 2: Ancienne demande non annuelle - vérifier toute la durée
-                    if ($solde->jours_restants < $nombreJours) {
-                        Alert::error('Erreur', "Solde insuffisant. Il vous reste {$solde->jours_restants} jours sur {$solde->jours_acquis} acquis.");
-                        return back()->withInput();
-                    }
-                }
-            }
-
-            // Mettre à jour la demande
-            $demande->update([
-                'superieur_hierarchique_id' => $request->superieur_hierarchique_id,
-                'type_conge_id' => $request->type_conge_id,
-                'date_debut' => $request->date_debut,
-                'date_fin' => $request->date_fin,
-                'nombre_jours' => $nombreJours,
-                'motif' => $request->motif,
-            ]);
-
-            // Historique
-            HistoriqueConge::create([
-                'demande_conge_id' => $demande->id,
-                'action' => 'demande_modifiee',
-                'effectue_par' => $user->id,
-                'commentaire' => 'Demande modifiée par l\'employé',
-            ]);
-
-            $superieur = User::findOrFail($request->superieur_hierarchique_id); //Le supeieur hierachique manager
-            // -----------------------------
-            // 5. Génération du PDF
-            // -----------------------------
-            $pdf = Pdf::loadView('pdfs.leave_request', [
-                'leave' => $demande,
-                'superieur' => $superieur,
-            ]);
-
-            $pdfPath = storage_path("app/temp/demande_{$demande->id}.pdf");
-
-            if (!is_dir(dirname($pdfPath))) {
-                mkdir(dirname($pdfPath), 0755, true);
-            }
-
-            $pdf->save($pdfPath);
-
-            // -----------------------------
-            // 6. Envoi du mail
-            // -----------------------------
-
-            Mail::to($superieur->email)->send(new LeaveRequestMail($demande, $superieur, $pdfPath));
-
-            DB::commit();
-
-            Alert::success('Succès', 'La demande de congé a été modifiée avec succès.');
-            return redirect()->route('conges.index');
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            DB::rollBack();
-            return back()->withErrors($e->validator)->withInput();
-        } catch (\Illuminate\Database\QueryException $e) {
-            DB::rollBack();
-            Log::error('Erreur de base de données lors de la modification de congé: ' . $e->getMessage());
-            Alert::error('Erreur', 'Une erreur de base de données est survenue.');
-            return back()->withInput();
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Erreur lors de la modification de congé: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
-            Alert::error('Erreur', 'Une erreur inattendue est survenue : ' . $e->getMessage());
-            return back()->withInput();
-        }
-    }
-    /**
-     * Annuler une demande
-     */
-    public function annuler(Request $request, DemandeConge $demande)
-    {
-        DB::beginTransaction();
-
-        try {
-            $user = Auth::user();
-
-            // Sécurité
-            if (!$user->hasRole('admin') && $demande->user_id !== $user->id) {
-                abort(403, 'Accès non autorisé');
-            }
-
-            // Vérifier que la demande peut être annulée
-            if ($demande->statut !== 'en_attente') {
-                Alert::warning('Information', 'Seules les demandes en attente peuvent être annulées.');
-                return back();
-            }
-
-            // Mettre à jour le statut
-            $demande->update([
-                'statut' => 'annule'
-            ]);
-
-            // Historique
-            HistoriqueConge::create([
-                'demande_conge_id' => $demande->id,
-                'action' => 'demande_annulee',
-                'effectue_par' => $user->id,
-                'commentaire' => $request->commentaire ?? 'Demande annulée',
-            ]);
-
-            DB::commit();
-
-            Alert::success('Succès', 'La demande a été annulée avec succès.');
-            return redirect()->route('conges.index');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Alert::error('Erreur', 'Une erreur est survenue lors de l\'annulation.');
-            return back();
-        }
-    }
-
-    /**
-     * Traitement des demandes (pour admin/manager)
-     */
-    public function traiter(Request $request, DemandeConge $demande)
-    {
-        DB::beginTransaction();
-
-        try {
-            $user = Auth::user();
-
-            // Vérifier les permissions
-            if (!$user->hasRole('admin') && !$user->hasRole('manager')) {
-                abort(403, 'Accès non autorisé');
-            }
-
-            $validated = $request->validate([
-                'action' => 'required|in:approuve,refuse',
-                'commentaire' => 'nullable|string|max:1000',
-            ]);
-
-            $action = $request->action;
-
-            // Vérifier si la demande est encore en attente
-            if ($demande->statut !== 'en_attente') {
-                Alert::warning('Information', 'Cette demande a déjà été traitée.');
-                return back();
-            }
-
-            // Mettre à jour la demande
-            $demande->update([
-                'statut' => $action,
-                'valide_par' => $user->id,
-                'date_validation' => now(),
-            ]);
-
-            // Si approuvé et congé payé, mettre à jour le solde
-            // Si approuvé et congé payé, mettre à jour le solde
-            if ($action === 'approuve' && $demande->typeConge->est_paye) {
-
-                $solde = SoldeConge::where('user_id', $demande->user_id)
-                    ->where('annee', now()->year)
-                    ->firstOrFail();
-
-                $solde->update([
-                    'jours_pris' => $solde->jours_pris + $demande->nombre_jours,
-                    'jours_restants' => $solde->jours_acquis - ($solde->jours_pris + $demande->nombre_jours),
-                ]);
-
-                if ($solde->jours_restants < 0) {
-                    throw new \Exception('Le solde ne peut pas être négatif');
-                }
-            }
-
-            // Historique
-            HistoriqueConge::create([
-                'demande_conge_id' => $demande->id,
-                'action' => $action === 'approuve'
-                    ? 'demande_approuvee'
-                    : 'demande_refusee',
-                'effectue_par' => $user->id,
-                'commentaire' => $request->commentaire,
-            ]);
-
-            DB::commit();
-
-            /*
-            |----------------------------------------------------
-            | 📧 Envoi des emails
-            |----------------------------------------------------
-            */
-
-            $demandeur = $demande->user; // l’employé qui a demandé le congé
-
-            if ($action === 'approuve') {
-
-                Mail::to($demandeur->email)
-                    ->send(new LeaveApprovedMail($demande));
-            } else {
-
-                Mail::to($demandeur->email)
-                    ->send(new LeaveRejectedMail(
-                        $demande,
-                        $request->commentaire
-                    ));
-            }
-
-            $message = $action === 'approuve'
-                ? 'La demande a été approuvée avec succès.'
-                : 'La demande a été refusée avec succès.';
-
-            Alert::success('Succès', $message);
-            return redirect()->route('conges.index');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Alert::error('Erreur', 'Une erreur est survenue lors du traitement.');
-            return back();
-        }
-    }
-
-    /**
-     * Afficher le tableau de bord des congés (admin)
-     */
     public function dashboard()
     {
         $user = Auth::user();
@@ -837,139 +873,54 @@ class CongeController extends Controller
             abort(403, 'Accès non autorisé');
         }
 
-        // Statistiques globales
         $stats = [
             'total_demandes' => DemandeConge::count(),
-            'en_attente' => DemandeConge::where('statut', 'en_attente')->count(),
-            'approuvees' => DemandeConge::where('statut', 'approuve')->count(),
-            'refusees' => DemandeConge::where('statut', 'refuse')->count(),
-            'annulees' => DemandeConge::where('statut', 'annule')->count(),
+            'en_attente'     => DemandeConge::where('statut', 'en_attente')->count(),
+            'approuvees'     => DemandeConge::where('statut', 'approuve')->count(),
+            'refusees'       => DemandeConge::where('statut', 'refuse')->count(),
+            'annulees'       => DemandeConge::where('statut', 'annule')->count(),
         ];
 
-        // Demandes urgentes (en attente depuis plus de 3 jours)
         $demandesUrgentes = DemandeConge::with(['user', 'typeConge'])
             ->where('statut', 'en_attente')
             ->where('created_at', '<=', now()->subDays(3))
-            ->orderBy('created_at', 'asc')
-            ->limit(10)
-            ->get();
+            ->orderBy('created_at', 'asc')->limit(10)->get();
 
-        // Congés en cours (approuvés et dates actuelles)
         $congesEnCours = DemandeConge::with(['user', 'typeConge'])
             ->where('statut', 'approuve')
             ->where('date_debut', '<=', now())
             ->where('date_fin', '>=', now())
-            ->orderBy('date_fin', 'asc')
-            ->get();
+            ->orderBy('date_fin', 'asc')->get();
 
-        // Prochains congés (dans les 15 prochains jours)
         $prochainsConges = DemandeConge::with(['user', 'typeConge'])
             ->where('statut', 'approuve')
             ->where('date_debut', '>', now())
             ->where('date_debut', '<=', now()->addDays(15))
-            ->orderBy('date_debut', 'asc')
-            ->limit(10)
-            ->get();
+            ->orderBy('date_debut', 'asc')->limit(10)->get();
 
-        // Soldes critiques (moins de 10 jours restants)
         $soldesCritiques = SoldeConge::with('user')
             ->where('annee', now()->year)
             ->where('jours_restants', '<', 10)
-            ->orderBy('jours_restants', 'asc')
-            ->limit(10)
-            ->get();
+            ->orderBy('jours_restants', 'asc')->limit(10)->get();
 
-        // Données pour les graphiques
-        $anneeCourante = now()->year;
-
-        // Statistiques par mois pour l'année en cours
-        $chartData = $this->getChartData($anneeCourante);
-
-        // Répartition par type
-        $typeData = $this->getTypeData();
+        $chartData = $this->getChartData(now()->year);
+        $typeData  = $this->getTypeData();
 
         return view('pages.conges.dashboard', compact(
-            'stats',
-            'demandesUrgentes',
-            'congesEnCours',
-            'prochainsConges',
-            'soldesCritiques',
-            'chartData',
-            'typeData'
+            'stats', 'demandesUrgentes', 'congesEnCours',
+            'prochainsConges', 'soldesCritiques', 'chartData', 'typeData'
         ));
     }
 
-    private function getChartData($annee)
-    {
-        $data = [
-            'months' => [],
-            'en_attente' => [],
-            'approuvees' => [],
-            'refusees' => []
-        ];
+    // =========================================================================
+    //  EXPORTS
+    // =========================================================================
 
-        for ($i = 1; $i <= 12; $i++) {
-            $startOfMonth = \Carbon\Carbon::create($annee, $i, 1)->startOfMonth();
-            $endOfMonth = \Carbon\Carbon::create($annee, $i, 1)->endOfMonth();
-
-            $data['months'][] = $startOfMonth->locale('fr')->monthName;
-            $data['en_attente'][] = DemandeConge::where('statut', 'en_attente')
-                ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
-                ->count();
-            $data['approuvees'][] = DemandeConge::where('statut', 'approuve')
-                ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
-                ->count();
-            $data['refusees'][] = DemandeConge::where('statut', 'refuse')
-                ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
-                ->count();
-        }
-
-        return $data;
-    }
-
-    private function getTypeData()
-    {
-        $types = TypeConge::where('actif', true)->get();
-
-        $data = [
-            'labels' => [],
-            'data' => [],
-            'colors' => []
-        ];
-
-        foreach ($types as $type) {
-            $count = DemandeConge::where('type_conge_id', $type->id)
-                ->where('statut', 'approuve')
-                ->whereYear('created_at', now()->year)
-                ->count();
-
-            if ($count > 0) {
-                $data['labels'][] = $type->libelle;
-                $data['data'][] = $count;
-                $data['colors'][] = $type->couleur ?? $this->getDefaultColor($type->id);
-            }
-        }
-
-        return $data;
-    }
-
-    private function getDefaultColor($typeId)
-    {
-        $colors = [
-            1 => '#3B82F6', // Congés payés
-            2 => '#6B7280', // Sans solde
-            3 => '#EF4444', // Maladie
-            4 => '#8B5CF6', // Maternité
-            5 => '#10B981', // Paternité
-        ];
-
-        return $colors[$typeId] ?? '#6B7280';
-    }
     public function exportExcel(Request $request)
     {
-        $annee = $request->get('annee', now()->year);
+        $annee  = $request->get('annee', now()->year);
         $userId = $request->get('user_id');
-        $type = $request->get('type', 'all'); // 'all', 'user', 'period'
+        $type   = $request->get('type', 'all');
 
         $query = DemandeConge::with(['user', 'typeConge', 'validePar', 'historiques.effectuePar'])
             ->whereYear('created_at', $annee);
@@ -980,41 +931,37 @@ class CongeController extends Controller
         }
 
         if ($request->has('start_date') && $request->has('end_date')) {
-            $query->whereBetween('date_debut', [
-                $request->start_date,
-                $request->end_date
-            ]);
+            $query->whereBetween('date_debut', [$request->start_date, $request->end_date]);
             $type = 'period';
         }
 
-        $conges = $query->orderBy('date_debut', 'desc')->get();
+        $conges   = $query->orderBy('date_debut', 'desc')->get();
+        $fileName = 'conges_';
 
-        $fileName = "conges_";
         switch ($type) {
             case 'user':
-                $fileName .= strtolower(str_replace(' ', '_', $conges->first()->user->nom)) . "_";
+                $fileName .= strtolower(str_replace(' ', '_', $conges->first()->user->nom)) . '_';
                 break;
             case 'period':
-                $fileName .= $request->start_date . "_" . $request->end_date . "_";
+                $fileName .= $request->start_date . '_' . $request->end_date . '_';
                 break;
             default:
                 $fileName .= "{$annee}_";
         }
-        $fileName .= now()->format('Ymd_His') . ".xlsx";
+
+        $fileName .= now()->format('Ymd_His') . '.xlsx';
 
         return Excel::download(new CongesExport($conges, $annee, $type), $fileName);
     }
 
     public function exportPdf(Request $request)
     {
-        $annee = $request->get('annee', now()->year);
-
+        $annee  = $request->get('annee', now()->year);
         $conges = DemandeConge::with(['user', 'typeConge'])
             ->whereYear('created_at', $annee)
-            ->orderBy('date_debut', 'desc')
-            ->get();
+            ->orderBy('date_debut', 'desc')->get();
 
-        $pdf = PDF::loadView('exports.conges-pdf', compact('conges', 'annee'))
+        $pdf = Pdf::loadView('exports.conges-pdf', compact('conges', 'annee'))
             ->setPaper('A4', 'landscape');
 
         return $pdf->download("conges_{$annee}.pdf");
@@ -1022,158 +969,139 @@ class CongeController extends Controller
 
     public function exportCsv(Request $request)
     {
-        $annee = $request->get('annee', now()->year);
-
+        $annee  = $request->get('annee', now()->year);
         $conges = DemandeConge::with(['user', 'typeConge'])
             ->whereYear('created_at', $annee)
-            ->orderBy('date_debut', 'desc')
-            ->get();
+            ->orderBy('date_debut', 'desc')->get();
 
-        return Excel::download(new CongesExport($conges, $annee), "conges_{$annee}.csv", \Maatwebsite\Excel\Excel::CSV);
+        return Excel::download(
+            new CongesExport($conges, $annee),
+            "conges_{$annee}.csv",
+            \Maatwebsite\Excel\Excel::CSV
+        );
     }
 
-    // Pour l'export d'un utilisateur spécifique
     public function exportUserConges(User $user, Request $request)
     {
-        $annee = $request->get('annee', now()->year);
-
+        $annee  = $request->get('annee', now()->year);
         $conges = DemandeConge::with(['user', 'typeConge', 'validePar', 'historiques.effectuePar'])
             ->where('user_id', $user->id)
             ->whereYear('created_at', $annee)
-            ->orderBy('date_debut', 'desc')
-            ->get();
+            ->orderBy('date_debut', 'desc')->get();
 
-        $fileName = "conges_" . strtolower(str_replace(' ', '_', $user->nom)) . "_{$annee}_" . now()->format('Ymd_His') . ".xlsx";
+        $fileName = 'conges_' . strtolower(str_replace(' ', '_', $user->nom)) . "_{$annee}_" . now()->format('Ymd_His') . '.xlsx';
 
         return Excel::download(new CongesExport($conges, $annee, 'user'), $fileName);
     }
-    /**
-     * Afficher le solde de congés d'un utilisateur
-     */
-    public function solde(User $user = null)
-    {
-        $currentUser = Auth::user();
 
-        // Si pas de user spécifié, prendre l'utilisateur connecté
-        if (!$user) {
-            $user = $currentUser;
-        }
+    // =========================================================================
+    //  CALENDRIER
+    // =========================================================================
 
-        // Vérifier les permissions
-        if ($user->id !== $currentUser->id && !$currentUser->hasRole('admin')) {
-            abort(403, 'Accès non autorisé');
-        }
-
-        $anneeCourante = now()->year;
-
-        // Récupérer les soldes des 3 dernières années
-        $soldes = SoldeConge::where('user_id', $user->id)
-            ->whereIn('annee', [$anneeCourante - 2, $anneeCourante - 1, $anneeCourante])
-            ->orderBy('annee', 'desc')
-            ->get();
-
-        // Solde courant
-        $soldeCourant = $soldes->firstWhere('annee', $anneeCourante);
-
-        // Si pas de solde pour l'année courante, en créer un
-        if (!$soldeCourant) {
-            $regles = RegleConge::first();
-            $joursAcquis = $regles ? $regles->jours_par_mois * 12 : 24;
-
-            $soldeCourant = SoldeConge::create([
-                'user_id' => $user->id,
-                'annee' => $anneeCourante,
-                'jours_acquis' => $joursAcquis,
-                'jours_pris' => 0,
-                'jours_restants' => $joursAcquis,
-            ]);
-
-            $soldes->push($soldeCourant);
-        }
-
-        // Récupérer les demandes de congés payés de l'utilisateur
-        $demandesCongesPayes = DemandeConge::with(['typeConge'])
-            ->where('user_id', $user->id)
-            ->whereHas('typeConge', function ($query) {
-                $query->where('est_paye', true);
-            })
-            ->whereYear('created_at', $anneeCourante)
-            ->orderBy('date_debut', 'desc')
-            ->get();
-
-        return view('pages.conges.solde', compact(
-            'user',
-            'soldes',
-            'soldeCourant',
-            'demandesCongesPayes'
-        ));
-    }
-
-    /**
-     * Calculer les jours calendaires (inclut weekends)
-     */
-    private function calculerJoursCalendaires(Carbon $dateDebut, Carbon $dateFin): float
-    {
-        return $dateDebut->diffInDays($dateFin) + 1; // +1 pour inclure le jour de début
-    }
-
-    /**
-     * Créer un solde initial pour un utilisateur
-     */
-    private function creerSoldeInitial(int $userId, int $annee): SoldeConge
-    {
-        $regles = RegleConge::first();
-        $joursAcquis = $regles ? $regles->jours_par_mois * 12 : 24;
-
-        return SoldeConge::create([
-            'user_id' => $userId,
-            'annee' => $annee,
-            'jours_acquis' => $joursAcquis,
-            'jours_pris' => 0,
-            'jours_restants' => $joursAcquis,
-        ]);
-    }
-
-    /**
-     * Afficher le calendrier des congés
-     */
     public function calendrier()
     {
-        $user = Auth::user();
-
-        // Récupérer tous les congés approuvés (et éventuellement en attente)
+        $user  = Auth::user();
         $query = DemandeConge::with(['user', 'typeConge'])
             ->whereIn('statut', ['approuve', 'en_attente'])
             ->whereNotNull('date_debut')
             ->whereNotNull('date_fin');
 
-        // Si l'utilisateur n'est pas admin, ne voir que ses congés
         if (!$user->hasRole('admin') && !$user->hasRole('manager')) {
             $query->where('user_id', $user->id);
         }
 
-        $conges = $query->get(['id', 'user_id', 'type_conge_id', 'date_debut', 'date_fin', 'statut', 'nombre_jours', 'motif']);
-
-        // Récupérer les types de congés pour les filtres et légendes
+        $conges      = $query->get(['id', 'user_id', 'type_conge_id', 'date_debut', 'date_fin', 'statut', 'nombre_jours', 'motif']);
         $typesConges = TypeConge::where('actif', true)->get(['id', 'libelle', 'couleur', 'est_paye']);
 
         return view('pages.conges.calendrier', compact('conges', 'typesConges'));
     }
 
+    // =========================================================================
+    //  DESTROY
+    // =========================================================================
+
     public function destroy(DemandeConge $conge)
     {
-        // Sécurité
-        if (
-            !auth()->user()->hasRole('admin') &&
-            auth()->id() !== $conge->user_id
-        ) {
+        if (!auth()->user()->hasRole('admin') && auth()->id() !== $conge->user_id) {
             abort(403);
         }
 
         $conge->delete();
 
-        return redirect()
-            ->route('conges.index')
-            ->with('success', 'Demande supprimée avec succès');
+        return redirect()->route('conges.index')->with('success', 'Demande supprimée avec succès');
+    }
+
+    // =========================================================================
+    //  PRIVÉS : graphiques & helpers
+    // =========================================================================
+
+    private function getChartData(int $annee): array
+    {
+        $data = ['months' => [], 'en_attente' => [], 'approuvees' => [], 'refusees' => []];
+
+        for ($i = 1; $i <= 12; $i++) {
+            $start = Carbon::create($annee, $i, 1)->startOfMonth();
+            $end   = Carbon::create($annee, $i, 1)->endOfMonth();
+
+            $data['months'][]     = $start->locale('fr')->monthName;
+            $data['en_attente'][] = DemandeConge::where('statut', 'en_attente')->whereBetween('created_at', [$start, $end])->count();
+            $data['approuvees'][] = DemandeConge::where('statut', 'approuve')->whereBetween('created_at', [$start, $end])->count();
+            $data['refusees'][]   = DemandeConge::where('statut', 'refuse')->whereBetween('created_at', [$start, $end])->count();
+        }
+
+        return $data;
+    }
+
+    private function getTypeData(): array
+    {
+        $types = TypeConge::where('actif', true)->get();
+        $data  = ['labels' => [], 'data' => [], 'colors' => []];
+
+        foreach ($types as $type) {
+            $count = DemandeConge::where('type_conge_id', $type->id)
+                ->where('statut', 'approuve')
+                ->whereYear('created_at', now()->year)
+                ->count();
+
+            if ($count > 0) {
+                $data['labels'][] = $type->libelle;
+                $data['data'][]   = $count;
+                $data['colors'][] = $type->couleur ?? $this->getDefaultColor($type->id);
+            }
+        }
+
+        return $data;
+    }
+
+    private function getDefaultColor(int $typeId): string
+    {
+        $colors = [
+            1 => '#3B82F6',
+            2 => '#6B7280',
+            3 => '#EF4444',
+            4 => '#8B5CF6',
+            5 => '#10B981',
+        ];
+
+        return $colors[$typeId] ?? '#6B7280';
+    }
+
+    private function creerSoldeInitial(int $userId, int $annee): SoldeConge
+    {
+        $regles      = RegleConge::first();
+        $joursAcquis = $regles ? $regles->jours_par_mois * 12 : 24;
+
+        return SoldeConge::create([
+            'user_id'        => $userId,
+            'annee'          => $annee,
+            'jours_acquis'   => $joursAcquis,
+            'jours_pris'     => 0,
+            'jours_restants' => $joursAcquis,
+        ]);
+    }
+
+    private function calculerJoursCalendaires(Carbon $dateDebut, Carbon $dateFin): float
+    {
+        return $dateDebut->diffInDays($dateFin) + 1;
     }
 }

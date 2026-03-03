@@ -380,112 +380,122 @@
                                     </div>
                                 </div>
 
-                                <!-- Carte de solde -->
+                    <!-- Carte de solde -->
+                    @php
+                        $solde = \App\Models\SoldeConge::where('user_id', $demande->user_id)
+                            ->where('annee', now()->year)
+                            ->first();
+                    @endphp
+                    @if($solde)
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h4><i class="fas fa-wallet"></i> Solde de congés {{ now()->year }}</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="text-center mb-3">
                                 @php
-                                    $solde = \App\Models\SoldeConge::where('user_id', $demande->user_id)
-                                        ->where('annee', now()->year)
-                                        ->first();
+                                    $totalDisponible = $solde->jours_acquis + ($solde->jours_reportes ?? 0);
+                                    $pourcentage = $totalDisponible > 0 ? min(100, ($solde->jours_restants / $totalDisponible) * 100) : 0;
                                 @endphp
-                                @if($solde)
-                                <div class="card mt-3">
-                                    <div class="card-header">
-                                        <h4><i class="fas fa-wallet"></i> Solde de congés</h4>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="text-center mb-3">
-                                            <div class="progress-circle-wrapper">
-                                                <div class="circular-progress" data-percent="{{ $solde->jours_acquis > 0 ? min(100, ($solde->jours_restants / $solde->jours_acquis) * 100) : 0 }}">
-                                                    <span class="progress-value">{{ $solde->jours_restants }}</span>
-                                                </div>
-                                            </div>
-                                            <div class="mt-2">
-                                                <small class="text-muted">jours restants sur {{ $solde->jours_acquis }}</small>
-                                            </div>
-                                        </div>
-                                        <ul class="list-group list-group-flush">
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <span>Jours acquis</span>
-                                                <span class="badge badge-success">{{ $solde->jours_acquis }}</span>
-                                            </li>
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <span>Jours pris</span>
-                                                <span class="badge badge-danger">{{ $solde->jours_pris }}</span>
-                                            </li>
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <span>Jours restants</span>
-                                                <span class="badge badge-primary">{{ $solde->jours_restants }}</span>
-                                            </li>
-                                        </ul>
+                                <div class="progress-circle-wrapper">
+                                    <div class="circular-progress" data-percent="{{ $pourcentage }}">
+                                        <span class="progress-value">{{ $solde->jours_restants }}</span>
                                     </div>
                                 </div>
-                                @endif
-                            </div>
-                        </div>
-
-                        <!-- Historique -->
-                        @if($demande->historiques && $demande->historiques->isNotEmpty())
-                        <div class="row mt-4">
-                            <div class="col-md-12">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h4><i class="fas fa-history"></i> Historique des actions</h4>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="activities">
-                                            @foreach($demande->historiques->sortByDesc('date_action') as $historique)
-                                            <div class="activity">
-                                                <div class="activity-icon bg-{{ $historique->action_class ?? 'primary' }}">
-                                                    @switch($historique->action)
-                                                        @case('demande_soumise')
-                                                            <i class="fas fa-paper-plane"></i>
-                                                            @break
-                                                        @case('demande_modifiee')
-                                                            <i class="fas fa-edit"></i>
-                                                            @break
-                                                        @case('demande_approuvee')
-                                                            <i class="fas fa-check"></i>
-                                                            @break
-                                                        @case('demande_refusee')
-                                                            <i class="fas fa-times"></i>
-                                                            @break
-                                                        @case('demande_annulee')
-                                                            <i class="fas fa-ban"></i>
-                                                            @break
-                                                        @default
-                                                            <i class="fas fa-history"></i>
-                                                    @endswitch
-                                                </div>
-                                                <div class="activity-detail">
-                                                    <div class="mb-2">
-                                                        <span class="text-job text-muted">
-                                                            {{ $historique->date_action->format('d/m/Y à H:i') }}
-                                                            ({{ $historique->date_action->diffForHumans() }})
-                                                        </span>
-                                                        <span class="bullet"></span>
-                                                        <span class="badge badge-{{ $historique->action_class ?? 'primary' }}">
-                                                            {{ $historique->action_label ?? ucfirst(str_replace('_', ' ', $historique->action)) }}
-                                                        </span>
-                                                    </div>
-                                                    <p>
-                                                        @if($historique->effectuePar)
-                                                            <strong>{{ $historique->effectuePar->name ?? $historique->effectuePar->prenom . ' ' . $historique->effectuePar->nom }}</strong>
-                                                        @else
-                                                            <strong>Système</strong>
-                                                        @endif
-                                                        @if($historique->commentaire)
-                                                            : {{ $historique->commentaire }}
-                                                        @endif
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            @endforeach
-                                        </div>
-                                    </div>
+                                <div class="mt-2">
+                                    <small class="text-muted">jours restants sur {{ $totalDisponible }} disponibles</small>
                                 </div>
                             </div>
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>Jours acquis ({{ now()->year }})</span>
+                                    <span class="badge badge-success">{{ $solde->jours_acquis }}</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>Jours reportés (années antérieures)</span>
+                                    <span class="badge badge-info">{{ $solde->jours_reportes ?? 0 }}</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>Total disponible</span>
+                                    <span class="badge badge-primary">{{ $totalDisponible }}</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>Jours déjà pris</span>
+                                    <span class="badge badge-danger">{{ $solde->jours_pris }}</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span><strong>Solde restant</strong></span>
+                                    <span class="badge badge-success" style="font-size: 1.1em;">{{ $solde->jours_restants }}</span>
+                                </li>
+                            </ul>
                         </div>
-                        @endif
                     </div>
+                    @endif
+
+                                            <!-- Historique -->
+                                                @if($demande->historiques && $demande->historiques->isNotEmpty())
+                                                <div class="row mt-4">
+                                                    <div class="col-md-12">
+                                                        <div class="card">
+                                                            <div class="card-header">
+                                                                <h4><i class="fas fa-history"></i> Historique des actions</h4>
+                                                            </div>
+                                                            <div class="card-body">
+                                                                <div class="activities">
+                                                                    @foreach($demande->historiques->sortByDesc('date_action') as $historique)
+                                                                    <div class="activity">
+                                                                        <div class="activity-icon bg-{{ $historique->action_class ?? 'primary' }}">
+                                                                            @switch($historique->action)
+                                                                                @case('demande_soumise')
+                                                                                    <i class="fas fa-paper-plane"></i>
+                                                                                    @break
+                                                                                @case('demande_modifiee')
+                                                                                    <i class="fas fa-edit"></i>
+                                                                                    @break
+                                                                                @case('demande_approuvee')
+                                                                                    <i class="fas fa-check"></i>
+                                                                                    @break
+                                                                                @case('demande_refusee')
+                                                                                    <i class="fas fa-times"></i>
+                                                                                    @break
+                                                                                @case('demande_annulee')
+                                                                                    <i class="fas fa-ban"></i>
+                                                                                    @break
+                                                                                @default
+                                                                                    <i class="fas fa-history"></i>
+                                                                            @endswitch
+                                                                        </div>
+                                                                        <div class="activity-detail">
+                                                                            <div class="mb-2">
+                                                                                <span class="text-job text-muted">
+                                                                                    {{ $historique->date_action->format('d/m/Y à H:i') }}
+                                                                                    ({{ $historique->date_action->diffForHumans() }})
+                                                                                </span>
+                                                                                <span class="bullet"></span>
+                                                                                <span class="badge badge-{{ $historique->action_class ?? 'primary' }}">
+                                                                                    {{ $historique->action_label ?? ucfirst(str_replace('_', ' ', $historique->action)) }}
+                                                                                </span>
+                                                                            </div>
+                                                                            <p>
+                                                                                @if($historique->effectuePar)
+                                                                                    <strong>{{ $historique->effectuePar->name ?? $historique->effectuePar->prenom . ' ' . $historique->effectuePar->nom }}</strong>
+                                                                                @else
+                                                                                    <strong>Système</strong>
+                                                                                @endif
+                                                                                @if($historique->commentaire)
+                                                                                    : {{ $historique->commentaire }}
+                                                                                @endif
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                    @endforeach
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                @endif
+                                            </div>
 
                     <div class="card-footer text-right">
                         <a href="{{ route('conges.index') }}" class="btn btn-secondary">

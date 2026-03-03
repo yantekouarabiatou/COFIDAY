@@ -22,6 +22,8 @@ return new class extends Migration {
             $table->decimal('nombre_jours', 5, 2);
 
             $table->text('motif');
+            $table->json('meta_deductions')->nullable()
+                  ->comment('Détail JSON des déductions multi-années effectuées à la soumission');
 
             $table->enum('statut', [
                 'en_attente',
@@ -37,12 +39,16 @@ return new class extends Migration {
                   ->nullOnDelete();
 
             $table->timestamp('date_validation')->nullable();
+
             $table->timestamps();
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('demandes_conges');
+        // Schema::dropIfExists('demandes_conges');
+        Schema::table('demandes_conges', function (Blueprint $table) {
+            $table->dropColumn('meta_deductions');
+        });
     }
 };

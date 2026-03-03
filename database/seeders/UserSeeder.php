@@ -37,14 +37,7 @@ class UserSeeder extends Seeder
                 'poste' => 'DIRECTEUR GENERALE',
                 'role' => 'AGENT SUPER GESTIONNAIRE',
             ],
-            [
-                'username_raw' => 'Belvik',
-                'nom' => 'IROKO',
-                'prenom' => 'Belvik',
-                'email' => 'adisiroko@gmail.com',
-                'poste' => 'INFORMATICIEN',
-                'role' => 'SUPER ADMINISTRATEUR',
-            ],
+
             [
                 'username_raw' => 'Térence',
                 'nom' => 'GANDJI',
@@ -220,6 +213,30 @@ class UserSeeder extends Seeder
                 'email' => 'rdeslanlo@cofima.cc',
                 'poste' => 'AUDITEUR',
                 'role' => 'AGENT GESTIONNAIRE',
+            ],
+            [
+                'username_raw' => 'biroko',
+                'nom' => 'IROKO',
+                'prenom' => 'Belvik',
+                'email' => 'biroko@cofima.cc',
+                'poste' => 'INFORMATICIEN',
+                'role' => 'SUPER ADMINISTRATEUR',
+            ],
+            [
+                'username_raw' => 'pierreguida',
+                'nom' => 'GUIDAN',
+                'prenom' => 'K. A. PIERRE',
+                'email' => 'kouessiahouangnimonpierreguida@gmail.com',
+                'poste' => 'CONDUCTEUR',
+                'role' => 'AGENT',
+            ],
+            [
+                'username_raw' => 'jegbessoua',
+                'nom' => 'GBESSOUA MEDESSI',
+                'prenom' => 'JEAN-EUDES',
+                'email' => 'jegbessoua@cofimabenin.cc',
+                'poste' => 'AUDITEUR',
+                'role' => 'COLABORATEUR',
             ],
         ];
 
