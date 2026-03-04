@@ -602,7 +602,7 @@ class CongeController extends Controller
             }
 
             $request->validate([
-                'action'      => 'required|in:approuve,refuse',
+                'action'      => 'required|in:pre_approuve,refuse', // ✅ pre_approuve au lieu de approuve
                 'commentaire' => 'nullable|string|max:1000',
             ]);
 
@@ -615,7 +615,7 @@ class CongeController extends Controller
             $typeConge = $demande->typeConge;
 
             $demande->update([
-                'statut'          => $action,
+                'statut'          => $action, // sera 'pre_approuve' ou 'refuse'
                 'valide_par'      => $user->id,
                 'date_validation' => now(),
             ]);
@@ -627,7 +627,6 @@ class CongeController extends Controller
                 if (!empty($deductions)) {
                     $this->restituerSoldesMultiAnnees($demande->user_id, $deductions);
                 } else {
-                    // Fallback
                     $anneeOrigine = Carbon::parse($demande->date_debut)->year;
                     $solde        = SoldeConge::where('user_id', $demande->user_id)
                         ->where('annee', $anneeOrigine)
@@ -642,16 +641,14 @@ class CongeController extends Controller
                 }
             }
 
-            // ── Si APPROUVÉ : les jours ont déjà été déduits à la soumission ─
-            // (rien à faire sur les soldes, sauf vérifier que le solde reste >= 0)
-            if ($action === 'approuve' && $typeConge && $typeConge->est_annuel) {
-                // Vérification de sécurité : aucun solde ne doit être négatif
+            // ── Si PRÉ-APPROUVÉ : les jours restent déduits, on vérifie juste la cohérence ─
+            if ($action === 'pre_approuve' && $typeConge && $typeConge->est_annuel) {
                 $soldesNegatifs = SoldeConge::where('user_id', $demande->user_id)
                     ->where('jours_restants', '<', 0)
                     ->count();
 
                 if ($soldesNegatifs > 0) {
-                    throw new \Exception('Incohérence détectée : solde négatif après approbation.');
+                    throw new \Exception('Incohérence détectée : solde négatif après pré-approbation.');
                 }
             }
 
@@ -666,7 +663,7 @@ class CongeController extends Controller
 
             HistoriqueConge::create([
                 'demande_conge_id' => $demande->id,
-                'action'           => $action === 'approuve' ? 'demande_approuvee' : 'demande_refusee',
+                'action'           => $action === 'pre_approuve' ? 'demande_pre_approuvee' : 'demande_refusee',
                 'effectue_par'     => $user->id,
                 'commentaire'      => $commentaireHistorique,
             ]);
@@ -676,18 +673,19 @@ class CongeController extends Controller
             // ── Emails ────────────────────────────────────────────────────────
             $demandeur = $demande->user;
 
-            if ($action === 'approuve') {
-                Mail::to($demandeur->email)->send(new LeaveApprovedMail($demande));
+            if ($action === 'pre_approuve') {
+                Mail::to($demandeur->email)->send(new LeaveApprovedMail($demande)); // ou un mail spécifique "pré-approuvé"
             } else {
                 Mail::to($demandeur->email)->send(new LeaveRejectedMail($demande, $request->commentaire));
             }
 
-            $message = $action === 'approuve'
-                ? 'La demande a été approuvée avec succès.'
+            $message = $action === 'pre_approuve'
+                ? 'La demande a été pré-approuvée. En attente de validation finale.'
                 : 'La demande a été refusée et les jours ont été restitués.';
 
             Alert::success('Succès', $message);
             return redirect()->route('conges.index');
+
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erreur traitement congé: ' . $e->getMessage());

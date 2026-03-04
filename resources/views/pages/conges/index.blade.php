@@ -281,7 +281,7 @@
                                                             <form action="{{ route('conges.traiter', $demande) }}"
                                                                 method="POST" class="d-inline approve-form">
                                                                 @csrf
-                                                                <input type="hidden" name="action" value="approuve">
+                                                                <input type="hidden" name="action" value="pre_approuve">
                                                                 <button type="button"
                                                                         class="btn btn-success btn-sm approve-btn"
                                                                         title="Pré-approuver">

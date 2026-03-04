@@ -26,7 +26,7 @@
         --radius-sm: 8px;
     }
 
-    body { font-family: 'Sora', sans-serif; background: var(--surface); }
+    body {  background: var(--surface); }
 
     /* ── Header ── */
     .page-header {

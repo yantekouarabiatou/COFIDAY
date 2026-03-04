@@ -45,9 +45,9 @@
                                             <form action="{{ route('conges.traiter', $demande) }}" method="POST"
                                                   class="d-inline approve-form">
                                                 @csrf
-                                                <input type="hidden" name="action" value="approuver">
+                                                <input type="hidden" name="action" value="pre_approuve">
                                                 <button type="button" class="dropdown-item approve-btn">
-                                                    <i class="fas fa-check text-success"></i> Approuver
+                                                    <i class="fas fa-check text-success"></i> Pre-approuver
                                                 </button>
                                             </form>
                                             <div class="dropdown-divider"></div>
@@ -730,8 +730,8 @@ $(document).ready(function() {
         const form = $(this).closest('form');
 
         Swal.fire({
-            title: 'Confirmer l\'approbation',
-            text: 'Êtes-vous sûr de vouloir approuver cette demande de congé ?',
+            title: 'Confirmer la pré-approbation',
+            text: 'La demande sera transmise au Directeur Général / RH pour validation finale.',
             icon: 'question',
             input: 'textarea',
             inputLabel: 'Commentaire (optionnel)',
@@ -742,7 +742,7 @@ $(document).ready(function() {
             showCancelButton: true,
             confirmButtonColor: '#28a745',
             cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Oui, approuver',
+            confirmButtonText: 'Oui, pré-approuver',
             cancelButtonText: 'Annuler'
         }).then((result) => {
             if (result.isConfirmed) {
