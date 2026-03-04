@@ -279,7 +279,8 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
 
         // Affiche le formulaire d'édition
         Route::get('/edit', [CompanySettingController::class, 'edit'])->name('settings.edit');
-
+        Route::get('guide/visualiser', [CompanySettingController::class, 'viewGuide'])->name('settings.guide.view');
+        Route::get('guide/telecharger', [CompanySettingController::class, 'downloadGuide'])->name('settings.guide.download');
         // Traite la mise à jour (nécessite l'ID ou une logique de singleton)
         // Ici, on passe l'ID 1 qui sera géré par la méthode update
         Route::put('/{setting}', [CompanySettingController::class, 'update'])->name('settings.update');

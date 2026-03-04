@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('site_web')->nullable();
             $table->string('ville')->nullable();
             $table->string('pays')->nullable();
+            $table->string('guide')->nullable(); // fichier PDF ou DOC
             $table->timestamps();
         });
     }
