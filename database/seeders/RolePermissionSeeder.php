@@ -54,6 +54,7 @@ class RolePermissionSeeder extends Seeder
             ['name' => 'modifier des demandes de congés', 'group' => 'conges'],
             ['name' => 'supprimer des demandes de congés', 'group' => 'conges'],
             ['name' => 'approuver les demandes de congés', 'group' => 'conges'],
+            ['name' => 'valider les demandes de congés', 'group' => 'conges'],
             ['name' => 'refuser les demandes de congés', 'group' => 'conges'],
 
             // ================= CONGÉS - SOLDES =================

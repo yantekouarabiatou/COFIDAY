@@ -485,7 +485,13 @@
                             </a>
                         </li>
                     @endcan
-
+                    @can('valider les demandes de congés')
+                     <li class="{{ request()->routeIs('conges.validation-finale.index') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('conges.validation-finale.index') }}">
+                                <i class="fas fa-check-double"></i> Validation finale
+                            </a>
+                        </li>
+                    @endcan
                     @can('voir le calendrier des congés')
                         <li class="{{ request()->routeIs('conges.calendrier') ? 'active' : '' }}">
                             <a class="nav-link" href="{{ route('conges.calendrier') }}">
@@ -518,11 +524,7 @@
                             </a>
                         </li>
                     @endcan
-                        <li class="{{ request()->routeIs('conges.validation-finale.index') ? 'active' : '' }}">
-                            <a class="nav-link" href="{{ route('conges.validation-finale.index') }}">
-                                <i class="fas fa-check-double"></i> Validation finale
-                            </a>
-                        </li>
+
                 </ul>
             </li>
         @endcan

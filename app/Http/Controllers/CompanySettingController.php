@@ -42,32 +42,83 @@ class CompanySettingController extends Controller
     {
         $request->validate([
             'company_name' => 'required|string|max:255',
-            'slogan' => 'nullable|string|max:255',
-            'email' => 'required|email|max:255',
-            'telephone' => 'nullable|string|max:50',
-            'adresse' => 'nullable|string|max:255',
-            'ville' => 'nullable|string|max:100',
-            'pays' => 'nullable|string|max:100',
-            'site_web' => 'nullable|url|max:255',
-            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048', // 2MB max
+            'slogan'       => 'nullable|string|max:255',
+            'email'        => 'required|email|max:255',
+            'telephone'    => 'nullable|string|max:50',
+            'adresse'      => 'nullable|string|max:255',
+            'ville'        => 'nullable|string|max:100',
+            'pays'         => 'nullable|string|max:100',
+            'site_web'     => 'nullable|url|max:255',
+            'logo'         => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'guide'        => 'nullable|file|mimes:pdf,doc,docx|max:10240', // 10MB max
         ]);
 
-        $data = $request->except('logo');
+        $data = $request->except(['logo', 'guide']);
 
+        // Gestion du logo
         if ($request->hasFile('logo')) {
-            // Supprimer l'ancien logo si un nouveau est téléchargé
             if ($setting->logo && Storage::disk('public')->exists($setting->logo)) {
                 Storage::disk('public')->delete($setting->logo);
             }
-
-            // Stocker le nouveau logo
-            $data['logo'] = $request->file('logo')->store('company', 'public');
+            $data['logo'] = $request->file('logo')->store('company/logos', 'public');
         }
 
-        // Met à jour l'unique ligne (ou la crée si elle n'existe pas)
+        // Gestion du guide
+        if ($request->hasFile('guide')) {
+            if ($setting->guide && Storage::disk('public')->exists($setting->guide)) {
+                Storage::disk('public')->delete($setting->guide);
+            }
+            $data['guide'] = $request->file('guide')->store('company/guides', 'public');
+        }
+
         $setting->update($data);
 
         return redirect()->route('settings.show')
-                         ->with('success', 'Les paramètres de l\'entreprise ont été mis à jour avec succès.');
+            ->with('success', 'Les paramètres de l\'entreprise ont été mis à jour avec succès.');
     }
+/**
+ * Visualiser le guide d'utilisation dans le navigateur.
+ */
+public function viewGuide()
+{
+    $setting = CompanySetting::firstOrFail();
+
+    if (!$setting->guide || !Storage::disk('public')->exists($setting->guide)) {
+        abort(404, 'Guide introuvable.');
+    }
+
+    $extension = strtolower(pathinfo($setting->guide, PATHINFO_EXTENSION));
+    $path      = Storage::disk('public')->path($setting->guide);
+    $fileName  = basename($setting->guide);
+
+    // Les .doc/.docx ne peuvent pas s'ouvrir dans le navigateur
+    // On les télécharge directement
+    if (in_array($extension, ['doc', 'docx'])) {
+        return response()->download($path, $fileName);
+    }
+
+    // Pour les PDF : ouverture dans le navigateur
+    return response()->file($path, [
+        'Content-Type'        => 'application/pdf',
+        'Content-Disposition' => 'inline; filename="' . $fileName . '"',
+    ]);
+}
+
+/**
+ * Télécharger le guide d'utilisation.
+ */
+public function downloadGuide()
+{
+    $setting = CompanySetting::firstOrFail();
+
+    if (!$setting->guide || !Storage::disk('public')->exists($setting->guide)) {
+        abort(404, 'Guide introuvable.');
+    }
+
+    $extension = strtolower(pathinfo($setting->guide, PATHINFO_EXTENSION));
+    $path      = Storage::disk('public')->path($setting->guide);
+    $fileName  = 'Guide_Utilisation_' . now()->format('Ymd') . '.' . $extension;
+
+    return response()->download($path, $fileName);
+}
 }

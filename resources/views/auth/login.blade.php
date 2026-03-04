@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Connexion - COFIMA</title>
-    
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" />
@@ -17,7 +17,7 @@
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-    
+
     <style>
         :root {
             --primary-color: #1A237E; /*244584*/
@@ -376,12 +376,12 @@
             <div class="logo-container">
                 <img src="assets/img/logo_cofima_bon.jpg" alt="Logo COFIMA">
             </div>
-            
+
             <div class="welcome-text">
                 <h1>Bienvenue !</h1>
-                <p>Connectez-vous à votre espace sécurisé pour accéder à tous vos services COFIMA</p>
+                <p>Connectez-vous à votre espace sécurisé pour accéder à tous vos services Coftime</p>
             </div>
-            
+
             <div class="illustration">
                 <i class="fas fa-shield-alt"></i>
             </div>
@@ -406,12 +406,12 @@
                     <label for="email">Adresse Email</label>
                     <div class="input-group-custom">
                         <!-- <i class="fas fa-envelope"></i> -->
-                        <input 
-                            type="email" 
-                            class="form-control @error('email') is-invalid @enderror" 
-                            id="email" 
+                        <input
+                            type="email"
+                            class="form-control @error('email') is-invalid @enderror"
+                            id="email"
                             name="email"
-                            value="{{ old('email') }}" 
+                            value="{{ old('email') }}"
                             placeholder="Entrez votre addresse mail"
                             required autofocus autocomplete="username"
                         >
@@ -426,11 +426,11 @@
                     <label for="password">Mot de Passe</label>
                     <div class="input-group-custom">
                         <!-- <i class="fas fa-lock"></i> -->
-                        <input 
-                            type="password" 
-                            class="form-control @error('password') is-invalid @enderror" 
-                            id="password" 
-                            name="password" 
+                        <input
+                            type="password"
+                            class="form-control @error('password') is-invalid @enderror"
+                            id="password"
+                            name="password"
                             placeholder="Entrez le mot de passe"
                             required autocomplete="current-password"
                         >
@@ -474,13 +474,13 @@
         // Gestion du formulaire
         document.getElementById('loginForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            
+
             // Simulation de validation
             const alertContainer = document.getElementById('alert-container');
-            
+
             if (email && password) {
                 alertContainer.innerHTML = `
                     <div class="alert alert-success">
@@ -488,7 +488,7 @@
                         Connexion réussie ! Redirection en cours...
                     </div>
                 `;
-                
+
                 // Ici vous intégreriez votre logique Laravel
                 // window.location.href = '/dashboard';
             } else {
