@@ -50,7 +50,8 @@ class CompanySettingController extends Controller
             'pays'         => 'nullable|string|max:100',
             'site_web'     => 'nullable|url|max:255',
             'logo'         => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-            'guide' => 'nullable|file|mimes:pdf,doc,docx|mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document|max:10240',        ]);
+            'guide' => 'nullable|file|mimes:pdf,doc,docx|max:10240',
+         ]);
 
         $data = $request->except(['logo', 'guide']);
 
