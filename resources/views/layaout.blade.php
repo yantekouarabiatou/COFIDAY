@@ -294,6 +294,20 @@
                                                 <small class="text-muted d-block" style="line-height: 1;">Historique
                                                     récent</small>
                                             </div>
+                                            {{-- Bouton téléchargement guide --}}
+                                    @php $setting = app(\App\Models\CompanySetting::class)::first(); @endphp
+                                    @if($setting && $setting->guide)
+                                        <a href="{{ route('settings.guide.download') }}" class="dropdown-item has-icon d-flex align-items-center py-2">
+                                            <div class="icon-wrapper mr-3 d-flex align-items-center justify-content-center"
+                                                    style="width: 32px; height: 32px; background: #f0fff4; border-radius: 8px;">
+                                                <i class="fas fa-book-open text-success" style="font-size: 14px;"></i>
+                                            </div>
+                                            <div>
+                                                <div style="font-weight: 600; color: #2d3748;">Guide d'utilisation</div>
+                                                <small class="text-muted d-block" style="line-height: 1;">Télécharger le guide</small>
+                                            </div>
+                                        </a>
+                                    @endif
                                     @endcan
                                     </a>
 
