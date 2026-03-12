@@ -39,6 +39,10 @@ class AppServiceProvider extends ServiceProvider
 
         // Log de démarrage
         Log::info('AppServiceProvider booté', ['time' => now()]);
+
+        //Date en francais
+        setlocale(LC_TIME, 'fr_FR.UTF-8');
+        \Carbon\Carbon::setLocale('fr');
     }
 
     private function configureSweetAlert()

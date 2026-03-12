@@ -8,28 +8,22 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Mail\Mailables\Attachment;
-use App\Models\DemandeConge as LeaveRequest;
-use App\Models\User;
-use Illuminate\Support\Facades\Storage;
+use App\Models\DemandeConge;
 
-class LeaveRequestMail extends Mailable
+class LeavePreApprovedMail extends Mailable
 {
     use Queueable, SerializesModels;
-
-    public LeaveRequest $leave;
-    public User $superieur;
-    public string $pdfPath;
 
     /**
      * Create a new message instance.
      */
-    public function __construct(LeaveRequest $leave, User $superieur, string $pdfPath)
+    public DemandeConge $demande;
+
+    public ?string $commentaire;
+    public function __construct(DemandeConge $demande, ?string $commentaire = null)
     {
-        //
-        $this->leave = $leave;
-        $this->superieur = $superieur;
-        $this->pdfPath = $pdfPath;
+        $this->demande = $demande;
+        $this->commentaire = $commentaire;
     }
 
     /**
@@ -38,7 +32,7 @@ class LeaveRequestMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Nouvelle demande de congé'
+            subject: 'Votre demande de congé a été Pré-approuvée'
         );
     }
 
@@ -48,10 +42,10 @@ class LeaveRequestMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'emails.leave_request',
+            view: 'emails.leave_pre_approved',
             with: [
-                'leave' => $this->leave,
-                'superieur' => $this->superieur,
+                'demande' => $this->demande,
+                'commentaire' => $this->commentaire,
             ]
         );
     }
@@ -63,10 +57,6 @@ class LeaveRequestMail extends Mailable
      */
     public function attachments(): array
     {
-        return [
-            Attachment::fromPath($this->pdfPath)
-                ->as('Demande_conge_' . $this->leave->id . '.pdf')
-                ->withMime('application/pdf'),
-        ];
+        return [];
     }
 }

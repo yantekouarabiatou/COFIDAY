@@ -21,7 +21,8 @@ use Illuminate\Support\Facades\Mail;
 use App\Mail\LeaveRequestMail;
 use App\Mail\LeaveApprovedMail;
 use App\Mail\LeaveRejectedMail;
-
+use App\Mail\LeavePreApprovedMail;
+use App\Mail\RequestFinalValidationMail;
 
 class CongeController extends Controller
 {
@@ -602,7 +603,7 @@ class CongeController extends Controller
             }
 
             $request->validate([
-                'action'      => 'required|in:pre_approuve,refuse', // ✅ pre_approuve au lieu de approuve
+                'action'      => 'required|in:pre_approuve,refuse',
                 'commentaire' => 'nullable|string|max:1000',
             ]);
 
@@ -611,61 +612,20 @@ class CongeController extends Controller
                 return back();
             }
 
-            $action    = $request->action;
-            $typeConge = $demande->typeConge;
+            $action = $request->action;
 
             $demande->update([
-                'statut'          => $action, // sera 'pre_approuve' ou 'refuse'
+                'statut'          => $action,
                 'valide_par'      => $user->id,
                 'date_validation' => now(),
             ]);
 
-            // ── Si REFUSÉ : restituer les jours déjà déduits à la soumission ─
-            if ($action === 'refuse' && $typeConge && $typeConge->est_annuel) {
-                $deductions = json_decode($demande->meta_deductions ?? '[]', true);
-
-                if (!empty($deductions)) {
-                    $this->restituerSoldesMultiAnnees($demande->user_id, $deductions);
-                } else {
-                    $anneeOrigine = Carbon::parse($demande->date_debut)->year;
-                    $solde        = SoldeConge::where('user_id', $demande->user_id)
-                        ->where('annee', $anneeOrigine)
-                        ->first();
-
-                    if ($solde) {
-                        $solde->update([
-                            'jours_pris'     => max(0, $solde->jours_pris - $demande->nombre_jours),
-                            'jours_restants' => $solde->jours_restants + $demande->nombre_jours,
-                        ]);
-                    }
-                }
-            }
-
-            // ── Si PRÉ-APPROUVÉ : les jours restent déduits, on vérifie juste la cohérence ─
-            if ($action === 'pre_approuve' && $typeConge && $typeConge->est_annuel) {
-                $soldesNegatifs = SoldeConge::where('user_id', $demande->user_id)
-                    ->where('jours_restants', '<', 0)
-                    ->count();
-
-                if ($soldesNegatifs > 0) {
-                    throw new \Exception('Incohérence détectée : solde négatif après pré-approbation.');
-                }
-            }
-
             // ── Historique ────────────────────────────────────────────────────
-            $commentaireHistorique = $request->commentaire;
-            if ($action === 'refuse' && $typeConge && $typeConge->est_annuel) {
-                $deductions = json_decode($demande->meta_deductions ?? '[]', true);
-                if (!empty($deductions)) {
-                    $commentaireHistorique .= ' — Jours restitués : ' . $this->resumeDeductions($deductions);
-                }
-            }
-
             HistoriqueConge::create([
                 'demande_conge_id' => $demande->id,
                 'action'           => $action === 'pre_approuve' ? 'demande_pre_approuvee' : 'demande_refusee',
                 'effectue_par'     => $user->id,
-                'commentaire'      => $commentaireHistorique,
+                'commentaire'      => $request->commentaire,
             ]);
 
             DB::commit();
@@ -674,14 +634,23 @@ class CongeController extends Controller
             $demandeur = $demande->user;
 
             if ($action === 'pre_approuve') {
-                Mail::to($demandeur->email)->send(new LeaveApprovedMail($demande)); // ou un mail spécifique "pré-approuvé"
+
+                // Mail au demandeur
+                // Mail::to($demandeur->email)->send(new LeavePreApprovedMail($demande));
+
+                // Mail au grand supérieur (patron)
+                $grandSuperieur = User::where('email', 'biroko@cofima.cc')->firstOrFail();
+
+                Mail::to($grandSuperieur->email)
+                    ->send(new RequestFinalValidationMail($demande, $user, $grandSuperieur, $request->commentaire));
+
             } else {
                 Mail::to($demandeur->email)->send(new LeaveRejectedMail($demande, $request->commentaire));
             }
 
             $message = $action === 'pre_approuve'
                 ? 'La demande a été pré-approuvée. En attente de validation finale.'
-                : 'La demande a été refusée et les jours ont été restitués.';
+                : 'La demande a été refusée.';
 
             Alert::success('Succès', $message);
             return redirect()->route('conges.index');
@@ -689,7 +658,7 @@ class CongeController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erreur traitement congé: ' . $e->getMessage());
-            Alert::error('Erreur', 'Une erreur est survenue lors du traitement : ' . $e->getMessage());
+            Alert::error('Erreur', 'Une erreur est survenue : ' . $e->getMessage());
             return back();
         }
     }
@@ -1161,7 +1130,38 @@ class CongeController extends Controller
 
             // Notifier l'employé
             if ($action === 'approuve') {
-                Mail::to($demande->user->email)->send(new LeaveApprovedMail($demande));
+
+                // ── Années prélevées ──────────────────────────────────────────────
+                $deductions      = json_decode($demande->meta_deductions ?? '[]', true);
+                $anneesPrelevees = !empty($deductions)
+                    ? collect($deductions)->pluck('annee')->unique()->toArray()
+                    : [Carbon::parse($demande->date_debut)->year];
+
+                // ── Soldes filtrés : jours_restants > 0 OU année prélevée ────────
+                $soldes = SoldeConge::where('user_id', $demande->user_id)
+                    ->orderBy('annee')
+                    ->get()
+                    ->filter(fn($s) => $s->jours_restants > 0 || in_array($s->annee, $anneesPrelevees))
+                    ->values();
+
+                // ── Date de reprise en français ───────────────────────────────────
+                $dateReprise     = Carbon::parse($demande->date_fin)->addWeekday();
+                $dateRepriseFormatee = $dateReprise->isoFormat('dddd D MMMM YYYY'); // nécessite locale fr
+
+                // ── Numéro de note ────────────────────────────────────────────────
+                $numeroNote = str_pad($demande->id, 3, '0', STR_PAD_LEFT)
+                            . '/COFIMA/SA/JCA/GAT/'
+                            . now()->year;
+
+                Mail::to($demande->user->email)
+                    ->send(new LeaveApprovedMail(
+                        $demande,
+                        $soldes,
+                        $anneesPrelevees,
+                        $dateRepriseFormatee,
+                        $numeroNote,
+                        $request->commentaire
+                    ));
             } else {
                 Mail::to($demande->user->email)->send(new LeaveRejectedMail($demande, $request->commentaire));
             }

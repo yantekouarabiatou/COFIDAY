@@ -362,7 +362,7 @@
                                             </tr>
                                             <tr>
                                                 <td><i class="fas fa-plane-departure text-danger mr-2"></i>Jours pris</td>
-                                                <td class="text-right"><span class="badge badge-danger badge-pill px-3 py-2">- {{ $s->jours_pris }} j</span></td>
+                                                <td class="text-right"><span class="badge badge-danger badge-pill px-3 py-2">{{ $s->jours_pris }} j</span></td>
                                             </tr>
                                             <tr class="tr-result">
                                                 <td><i class="fas fa-coins text-{{ $cp }} mr-2"></i><strong>Solde restant</strong></td>

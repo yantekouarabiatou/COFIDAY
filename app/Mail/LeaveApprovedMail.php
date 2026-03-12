@@ -9,6 +9,11 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 use App\Models\DemandeConge;
+use App\Models\SoldeConge;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Mail\Mailables\Attachment;
+
+use Illuminate\Support\Collection;
 
 class LeaveApprovedMail extends Mailable
 {
@@ -18,11 +23,18 @@ class LeaveApprovedMail extends Mailable
      * Create a new message instance.
      */
     public DemandeConge $demande;
-
-    public ?string $commentaire;
-    public function __construct(DemandeConge $demande, ?string $commentaire = null)
+    public Collection   $soldes;
+    public array        $anneesPrelevees;
+    public string       $dateRepriseFormatee;
+    public string       $numeroNote;
+    public ?string      $commentaire;
+    public function __construct(DemandeConge $demande, Collection $soldes, array $anneesPrelevees, string $dateRepriseFormatee, string $numeroNote, ?string $commentaire = null)
     {
         $this->demande = $demande;
+        $this->soldes = $soldes;
+        $this->anneesPrelevees = $anneesPrelevees;
+        $this->dateRepriseFormatee = $dateRepriseFormatee;
+        $this->numeroNote = $numeroNote;
         $this->commentaire = $commentaire;
     }
 
@@ -45,6 +57,7 @@ class LeaveApprovedMail extends Mailable
             view: 'emails.leave_approved',
             with: [
                 'demande' => $this->demande,
+                'commentaire' => $this->commentaire,
             ]
         );
     }
@@ -56,6 +69,30 @@ class LeaveApprovedMail extends Mailable
      */
     public function attachments(): array
     {
-        return [];
+        $logoPath   = public_path('storage/photos/logo-cofima-bon.jpg');
+        $logoBase64 = file_exists($logoPath)
+            ? 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoPath))
+            : null;
+
+        $pdf = Pdf::loadView('pdfs.recapitulatif_approbation', [
+            'demande'             => $this->demande,
+            'soldes'              => $this->soldes,
+            'anneesPrelevees'     => $this->anneesPrelevees,
+            'dateRepriseFormatee' => $this->dateRepriseFormatee,
+            'numeroNote'          => $this->numeroNote,
+            'logoBase64'          => $logoBase64,
+        ]);
+
+        $nomFichier = 'approbation_conge_'
+            . ($this->demande->user->nom ?? $this->demande->user->name)
+            . '_' . now()->format('Y')
+            . '.pdf';
+
+        return [
+            Attachment::fromData(
+                fn () => $pdf->output(),
+                $nomFichier
+            )->withMime('application/pdf'),
+        ];
     }
 }

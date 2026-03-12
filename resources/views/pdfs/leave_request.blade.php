@@ -2,7 +2,14 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Demande de congé</title>
+
+    @php
+        $isPermission = str_contains(strtolower($leave->typeConge->libelle ?? ''), 'permission');
+        $motLabel     = $isPermission ? 'permission' : 'congé';
+        $motLabelCap  = $isPermission ? 'Permission' : 'Congé';
+    @endphp
+
+    <title>Demande de {{ $motLabel }}</title>
 
     <style>
         body {
@@ -22,13 +29,13 @@
             max-width: 140px;
             height: auto;
         }
-        
-        .header, .recipient {
+
+        .header {
             text-align: right;
             margin-bottom: 30px;
         }
 
-        .header p, .recipient p {
+        .header p {
             margin: 0;
         }
 
@@ -37,6 +44,15 @@
         }
 
         .sender p {
+            margin: 0;
+        }
+
+        .recipient {
+            text-align: right;
+            margin-bottom: 30px;
+        }
+
+        .recipient p {
             margin: 0;
         }
 
@@ -57,6 +73,8 @@
 
         .signature {
             margin-top: 50px;
+            text-align: right;
+            justify-content: center;
         }
 
         .signature p {
@@ -71,73 +89,116 @@
 
 <body>
 
-        <!-- LOGO -->
+        {{-- LOGO --}}
+    @php
+        $logoPath = public_path('storage/photos/logo-cofima.jpg'); // ← chemin local du logo
+        $logoBase64 = file_exists($logoPath)
+            ? 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoPath))
+            : null;
+    @endphp
+    @if($logoBase64)
     <div class="logo-container">
-        <img src="https://cofima.cc/wp-content/uploads/2020/09/logo-cofima-bon.jpg"
-             alt="Logo COFIMA"
-             class="logo">
+        <img src="{{ $logoBase64 }}" alt="Logo COFIMA" class="logo">
     </div>
+    @endif
 
-    <!-- EN-TÊTE (Lieu et date) -->
+    {{-- EN-TÊTE --}}
     <div class="header">
         <p>{{ $lieu ?? 'Cotonou' }}, le {{ $date ?? date('d/m/Y') }}</p>
     </div>
 
-    <!-- EXPÉDITEUR -->
+    {{-- EXPÉDITEUR --}}
     <div class="sender">
         <p>
             <strong>{{ $leave->user->nom }} {{ $leave->user->prenom }}</strong><br>
             {{ $leave->user->poste->intitule ?? '—' }}<br>
-            {{ $leave->user->email ?? '' }}
+            {{ $leave->user->email ?? '' }}<br>
+            {{ $leave->user->telephone ?? '' }}
         </p>
     </div>
 
-    <!-- DESTINATAIRE -->
+    {{-- DESTINATAIRE --}}
     <div class="recipient">
         <p>
-            À l’attention de<br>
-            <strong>{{ $superieur->nom }} {{ $superieur->prenom ?? 'Madame / Monsieur' }},</strong><br>
-            {{ $superieur->poste->intitule ?? '—' }}<br>
+            À<br>
+            Monsieur <strong>{{ $superieur->nom }} {{ $superieur->prenom ?? '' }}</strong>,<br>
+            l'associé gérant de COFIMA
         </p>
     </div>
 
-    <!-- OBJET -->
+    {{-- OBJET --}}
     <div class="object">
-        Objet : Demande de congé
+        Objet : Demande de {{ $motLabel }}
     </div>
 
-    <!-- CORPS DE LA LETTRE -->
+    {{-- CORPS --}}
     <div class="content">
-        <p>
-            Monsieur / Madame,
-        </p>
 
-        <p>
-            J’ai l’honneur de solliciter, par la présente, l’autorisation de bénéficier
-            d’un congé de type <span class="highlight">{{ $leave->typeConge->libelle ?? '—' }}</span>
-            du <span class="highlight">{{ $leave->date_debut_formatted}}</span> au
-            <span class="highlight">{{ $leave->date_fin_formatted}}</span>,
-            soit <span class="highlight">{{ $leave->nombre_jours }}</span> jour(s).
-        </p>
+        <p>Monsieur l'associé gérant,</p>
 
-        @if(!empty($leave->motif ?? $leave->reason))
+        @if($isPermission)
+
+            {{-- ── CAS PERMISSION ── --}}
             <p>
-                Cette demande est formulée pour : {{ $leave->motif ?? $leave->reason }}.
+                J'ai l'honneur de solliciter, par la présente, votre autorisation
+                pour bénéficier d'une <span class="highlight">permission</span>
+                de type <span class="highlight">{{ $leave->typeConge->libelle ?? '—' }}</span>
+                du <span class="highlight">{{ $leave->date_debut_formatted }}</span>
+                au <span class="highlight">{{ $leave->date_fin_formatted }}</span>,
+                soit <span class="highlight">{{ $leave->nombre_jours }}</span> jour(s) ouvrable(s).
             </p>
+
+            @if(!empty($leave->motif ?? $leave->reason))
+                <p>
+                    Cette permission est sollicitée pour le motif suivant :
+                    <span class="highlight">{{ $leave->motif ?? $leave->reason }}</span>.
+                </p>
+            @endif
+
+            <p>
+                Je m'engage à assurer, dans la mesure du possible, la continuité
+                des tâches qui me sont confiées avant mon absence.
+            </p>
+
+            <p>
+                Dans l'attente d'une décision favorable, je vous prie d'agréer,
+                Monsieur l'associé gérant, l'expression de ma considération distinguée.
+            </p>
+
+        @else
+
+            {{-- ── CAS CONGÉ ── --}}
+            <p>
+                J'ai l'honneur de solliciter, par la présente, l'autorisation
+                de bénéficier d'un <span class="highlight">congé</span>
+                de type <span class="highlight">{{ $leave->typeConge->libelle ?? '—' }}</span>
+                du <span class="highlight">{{ $leave->date_debut_formatted }}</span>
+                au <span class="highlight">{{ $leave->date_fin_formatted }}</span>,
+                soit <span class="highlight">{{ $leave->nombre_jours }}</span> jour(s).
+            </p>
+
+            @if(!empty($leave->motif ?? $leave->reason))
+                <p>
+                    Cette demande est formulée pour :
+                    <span class="highlight">{{ $leave->motif ?? $leave->reason }}</span>.
+                </p>
+            @endif
+
+            <p>
+                Je m'engage à prendre toutes les dispositions utiles afin d'assurer
+                la continuité du service durant mon absence.
+            </p>
+
+            <p>
+                Dans l'attente d'une suite favorable, je vous prie d'agréer,
+                Monsieur / Madame, l'expression de ma considération distinguée.
+            </p>
+
         @endif
 
-        <p>
-            Je m’engage à prendre toutes les dispositions utiles afin d’assurer
-            la continuité du service durant mon absence.
-        </p>
-
-        <p>
-            Dans l’attente d’une suite favorable, je vous prie d’agréer,
-            Monsieur / Madame, l’expression de ma considération distinguée.
-        </p>
     </div>
 
-    <!-- SIGNATURE -->
+    {{-- SIGNATURE --}}
     <div class="signature">
         <p>
             {{ $leave->user->prenom }} {{ $leave->user->nom }}<br>
