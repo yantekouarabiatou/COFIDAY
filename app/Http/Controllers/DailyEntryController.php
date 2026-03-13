@@ -23,58 +23,59 @@ class DailyEntryController extends Controller
     /**
      * Afficher la liste des feuilles de temps
      */
-    public function index(Request $request)
+        public function index(Request $request)
     {
-        $user = auth()->user();
+        $user  = auth()->user();
         $query = DailyEntry::with(['user', 'timeEntries.dossier.client']);
-
-        // Si l'utilisateur n'est pas admin, filtrer uniquement ses enregistrements
+ 
+        // Restriction de base : non-admin ne voit que ses propres entrées
         if (!$user->hasRole('admin')) {
             $query->where('user_id', $user->id);
         }
-
-        // Filtres supplémentaires
-        if ($request->has('statut')) {
+ 
+        // ── Filtres server-side ──────────────────────────────────────────────
+ 
+        if ($request->filled('statut')) {
             $query->where('statut', $request->statut);
         }
-
-        if ($request->has('user') && $user->hasRole('admin')) {
-            // Seuls les admins peuvent filtrer par utilisateur
+ 
+        if ($request->filled('user') && $user->hasRole(['admin', 'responsable', 'directeur-general'])) {
             $query->where('user_id', $request->user);
         }
-
-        if ($request->has('date')) {
+ 
+        if ($request->filled('date')) {
             $query->whereDate('jour', $request->date);
         }
-
-        // Pour les responsables : feuilles à valider
-        if ($request->has('pending') && $user->hasRole('directeur-general')) {
+ 
+        if ($request->filled('pending') && $user->hasRole('directeur-general')) {
             $query->where('statut', 'soumis')
-                ->where('user_id', '!=', $user->id);
+                  ->where('user_id', '!=', $user->id);
         }
-
-        $dailyEntries = $query->latest()->paginate(20);
-
-        // Calcul des statistiques globales avec les mêmes restrictions de rôle
-        if ($user->hasRole('admin')) {
-            $totalHours = DailyEntry::sum('heures_reelles');
-            $submittedCount = DailyEntry::where('statut', 'soumis')->count();
-            $validatedCount = DailyEntry::where('statut', 'validé')->count();
-            $rejectedCount = DailyEntry::where('statut', 'refusé')->count();
-        } else {
-            // Statistiques uniquement pour l'utilisateur connecté
-            $totalHours = DailyEntry::where('user_id', $user->id)->sum('heures_reelles');
-            $submittedCount = DailyEntry::where('user_id', $user->id)->where('statut', 'soumis')->count();
-            $validatedCount = DailyEntry::where('user_id', $user->id)->where('statut', 'validé')->count();
-            $rejectedCount = DailyEntry::where('user_id', $user->id)->where('statut', 'refusé')->count();
+ 
+        // ── Statistiques calculées sur la même query filtrée ────────────────
+        $statsQuery     = clone $query;
+        $totalHours     = (clone $statsQuery)->sum('heures_reelles');
+        $submittedCount = (clone $statsQuery)->where('statut', 'soumis')->count();
+        $validatedCount = (clone $statsQuery)->where('statut', 'validé')->count();
+        $rejectedCount  = (clone $statsQuery)->where('statut', 'refusé')->count();
+ 
+        $dailyEntries = $query->latest()->paginate(20)->withQueryString();
+ 
+        // Liste des collaborateurs pour le select (rôles autorisés uniquement)
+        $users = collect();
+        if ($user->hasRole(['admin', 'manager', 'directeur-general'])) {
+            $users = User::where('is_active', 1)
+                ->orderBy('prenom')
+                ->get(['id', 'prenom', 'nom']);
         }
-
+ 
         return view('pages.daily-entries.index', compact(
             'dailyEntries',
             'totalHours',
             'submittedCount',
             'validatedCount',
-            'rejectedCount'
+            'rejectedCount',
+            'users'
         ));
     }
 

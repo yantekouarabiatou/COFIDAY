@@ -396,13 +396,13 @@
                 @can('voir les dossiers')
                     <li class="dropdown {{ request()->routeIs('dossiers.*') || request()->routeIs('missions.*') ? 'active' : '' }}">
                         <a href="#" class="menu-toggle nav-link has-dropdown {{ request()->routeIs('dossiers.*') || request()->routeIs('missions.*') ? 'active' : '' }}">
-                            <i class="fas fa-folder-open"></i><span>Dossiers</span>
+                            <i class="fas fa-folder-open"></i><span>Activités</span>
                         </a>
                         <ul class="dropdown-menu" style="{{ request()->routeIs('dossiers.*') || request()->routeIs('missions.*') ? 'display: block;' : '' }}">
                             @can('voir les dossiers')
                                 <li class="{{ request()->routeIs('dossiers.index') ? 'active' : '' }}">
                                     <a class="nav-link" href="{{ route('dossiers.index') }}">
-                                        <i class="fas fa-list"></i> Liste des dossiers
+                                        <i class="fas fa-list"></i> Liste des activités
                                     </a>
                                 </li>
                             @endcan
@@ -410,7 +410,7 @@
                             @can('créer des dossiers')
                                 <li class="{{ request()->routeIs('dossiers.create') ? 'active' : '' }}">
                                     <a class="nav-link" href="{{ route('dossiers.create') }}">
-                                        <i class="fas fa-plus-circle"></i> Nouveau dossier
+                                        <i class="fas fa-plus-circle"></i> Nouvelle activité
                                     </a>
                                 </li>
                             @endcan

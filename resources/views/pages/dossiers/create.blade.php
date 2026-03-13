@@ -5,10 +5,10 @@
 @section('content')
 <section class="section">
     <div class="section-header">
-        <h1><i class="fas fa-plus-circle"></i> Nouveau Dossier</h1>
+        <h1><i class="fas fa-plus-circle"></i> Nouvelle Activité</h1>
         <div class="section-header-breadcrumb">
-            <div class="breadcrumb-item"><a href="{{ route('dossiers.index') }}">Dossiers</a></div>
-            <div class="breadcrumb-item active">Nouveau Dossier</div>
+            <div class="breadcrumb-item"><a href="{{ route('dossiers.index') }}">Activités</a></div>
+            <div class="breadcrumb-item active">Nouvelle Activité</div>
         </div>
     </div>
 
@@ -17,7 +17,7 @@
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
-                        <h4>Créer un Nouveau Dossier</h4>
+                        <h4>Créer une Nouvelle Activité</h4>
                         <div class="card-header-action">
                             <a href="{{ route('dossiers.index') }}" class="btn btn-icon icon-left btn-danger">
                                 <i class="fas fa-times"></i> Annuler
@@ -48,7 +48,7 @@
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-group">
-                                        <label>Nom du Dossier <span class="text-danger">*</span></label>
+                                        <label>Nom de l'activité <span class="text-danger">*</span></label>
                                         <input type="text" name="nom" class="form-control @error('nom') is-invalid @enderror"
                                                value="{{ old('nom') }}" required placeholder="Ex: Audit financier 2024">
                                         @error('nom')
@@ -76,7 +76,7 @@
                                                 </option>
                                             @endforeach
                                         </select>
-                                        <small class="text-muted">Sélectionnez les collaborateurs qui auront accès à ce dossier</small>
+                                        <small class="text-muted">Sélectionnez les collaborateurs qui auront accès à cette activité</small>
                                         @error('collaborateurs')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
@@ -98,7 +98,7 @@
                                 </div>
                                 <div class="col-md-4">
                                     <div class="form-group">
-                                        <label>Type de Dossier <span class="text-danger">*</span></label>
+                                        <label>Type de Activité <span class="text-danger">*</span></label>
                                         <select name="type_dossier" class="form-control select2 @error('type_dossier') is-invalid @enderror" required>
                                             <option value="">Sélectionner un type</option>
                                             <option value="audit" {{ old('type_dossier') == 'audit' ? 'selected' : '' }}>Audit</option>
@@ -208,7 +208,7 @@
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-group">
-                                        <label>Frais de dossier (€)</label>
+                                        <label>Frais d'activité (€)</label>
                                         <div class="input-group">
                                             <input type="number" name="frais_dossier" step="0.01" min="0"
                                                    class="form-control @error('frais_dossier') is-invalid @enderror"
@@ -258,7 +258,7 @@
 
                             <div class="text-right">
                                 <button type="submit" class="btn btn-primary btn-lg">
-                                    <i class="fas fa-save"></i> Créer le Dossier
+                                    <i class="fas fa-save"></i> Créer l'activité
                                 </button>
                             </div>
                         </form>

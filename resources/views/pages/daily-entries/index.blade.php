@@ -2,7 +2,7 @@
     use App\Helpers\UserHelper;
 @endphp
 
-@extends('layaout')  
+@extends('layaout')
 
 @section('title', 'Feuilles de Temps')
 
@@ -50,29 +50,81 @@
                     </div>
 
                     <div class="card-body">
-                        <!-- Filtres rapides -->
-                        <div class="row mb-4 align-items-end">
-                            <div class="col-md-4">
-                                <form action="{{ route('daily-entries.index') }}" method="GET" class="form-inline">
-                                    <div class="input-group">
-                                        <input type="date" name="date" class="form-control" value="{{ request('date') }}" placeholder="Filtrer par date">
-                                        <div class="input-group-append">
-                                            <button class="btn btn-primary" type="submit">
-                                                <i class="fas fa-search"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </form>
-                            </div>
 
-                            <div class="col-md-8 text-right">
-                                <button type="button" class="btn btn-outline-secondary" onclick="window.print()">
-                                    <i class="fas fa-print"></i> Imprimer
-                                </button>
-                                <button type="button" class="btn btn-outline-success ml-2" data-toggle="modal" data-target="#exportModal">
-                                    <i class="fas fa-file-export"></i> Exporter
-                                </button>
+                        {{-- ─── Barre de filtres ────────────────────────────────────────────── --}}
+                        <form action="{{ route('daily-entries.index') }}" method="GET" id="filterForm">
+                            <div class="row align-items-end mb-4 g-2">
+
+                                {{-- Filtre date --}}
+                                <div class="col-md-3">
+                                    <label class="form-label small font-weight-bold text-muted mb-1">
+                                        <i class="fas fa-calendar-alt mr-1"></i>Date
+                                    </label>
+                                    <input type="date"
+                                           name="date"
+                                           class="form-control"
+                                           value="{{ request('date') }}">
+                                </div>
+
+                                {{-- Filtre utilisateur (select avec recherche) — uniquement pour les rôles autorisés --}}
+                                @if(auth()->user()->hasRole(['admin', 'manager', 'directeur-general']) && $users->isNotEmpty())
+                                <div class="col-md-4">
+                                    <label class="form-label small font-weight-bold text-muted mb-1">
+                                        <i class="fas fa-user mr-1"></i>Collaborateur
+                                    </label>
+                                    <select name="user"
+                                            id="userFilter"
+                                            class="form-control select2-user">
+                                        <option value="">— Tous les collaborateurs —</option>
+                                        @foreach($users as $u)
+                                            <option value="{{ $u->id }}"
+                                                {{ request('user') == $u->id ? 'selected' : '' }}>
+                                                {{ $u->prenom }} {{ $u->nom }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                @endif
+
+                                {{-- Statut --}}
+                                <div class="col-md-2">
+                                    <label class="form-label small font-weight-bold text-muted mb-1">
+                                        <i class="fas fa-tag mr-1"></i>Statut
+                                    </label>
+                                    <select name="statut" class="form-control">
+                                        <option value="">— Tous —</option>
+                                        <option value="soumis"  {{ request('statut') === 'soumis'  ? 'selected' : '' }}>Soumis</option>
+                                        <option value="validé"  {{ request('statut') === 'validé'  ? 'selected' : '' }}>Validé</option>
+                                        <option value="refusé"  {{ request('statut') === 'refusé'  ? 'selected' : '' }}>Refusé</option>
+                                    </select>
+                                </div>
+
+                                {{-- Boutons --}}
+                                <div class="col-md-3 d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-search"></i> Rechercher
+                                    </button>
+                                    @if(request()->hasAny(['date', 'user', 'statut', 'pending']))
+                                        <a href="{{ route('daily-entries.index') }}"
+                                           class="btn btn-outline-secondary ml-2"
+                                           title="Réinitialiser les filtres">
+                                            <i class="fas fa-times"></i> Réinitialiser
+                                        </a>
+                                    @endif
+                                </div>
+
                             </div>
+                        </form>
+
+                        {{-- ─── Actions rapides (impression / export) ───────────────────────── --}}
+                        <div class="d-flex justify-content-end mb-3">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+                                <i class="fas fa-print"></i> Imprimer
+                            </button>
+                            <button type="button" class="btn btn-outline-success btn-sm ml-2"
+                                    data-toggle="modal" data-target="#exportModal">
+                                <i class="fas fa-file-export"></i> Exporter
+                            </button>
                         </div>
 
                         @if($dailyEntries->isEmpty())
@@ -115,7 +167,7 @@
                                                 <td>
                                                     <div class="d-flex align-items-center">
                                                         <div class="avatar avatar-sm mr-3 bg-gradient-primary text-white d-flex align-items-center justify-content-center"
-                                                             style="width:45px; height:45px; border-radius:50%; font-weight:bold;">
+                                                             style="width:45px;height:45px;border-radius:50%;font-weight:bold;">
                                                             {{ strtoupper(substr($entry->user->prenom ?? 'U', 0, 1)) }}
                                                         </div>
                                                         <div>
@@ -136,8 +188,8 @@
                                                             : 0;
                                                         $bgColor = $percentage >= 100 ? 'bg-success' : ($percentage >= 80 ? 'bg-warning' : 'bg-danger');
                                                     @endphp
-                                                    <div class="progress" style="height:20px; width:140px; margin:0 auto;">
-                                                        <div class="progress-bar {{ $bgColor }}" style="width: {{ min($percentage, 100) }}%"></div>
+                                                    <div class="progress" style="height:20px;width:140px;margin:0 auto;">
+                                                        <div class="progress-bar {{ $bgColor }}" style="width:{{ min($percentage, 100) }}%"></div>
                                                     </div>
                                                     <small class="d-block mt-1 text-muted">
                                                         {{ UserHelper::hoursToHoursMinutes($entry->heures_reelles) }} /
@@ -183,15 +235,13 @@
                                                 <td class="text-center">
                                                     <div class="btn-group btn-group-sm" role="group">
                                                         <a href="{{ route('daily-entries.show', $entry) }}"
-                                                           class="btn btn-info"
-                                                           title="Voir">
+                                                           class="btn btn-info" title="Voir">
                                                             <i class="fas fa-eye"></i>
                                                         </a>
 
                                                         @if($entry->user_id == auth()->id() && $entry->statut == 'soumis')
                                                             <a href="{{ route('daily-entries.edit', $entry) }}"
-                                                               class="btn btn-warning"
-                                                               title="Modifier">
+                                                               class="btn btn-warning" title="Modifier">
                                                                 <i class="fas fa-edit"></i>
                                                             </a>
                                                         @endif
@@ -231,13 +281,11 @@
                                 </table>
                             </div>
 
-                            <!-- Infos pagination + nombre d'éléments -->
                             <div class="d-flex justify-content-between align-items-center mt-4">
                                 <div class="text-muted">
                                     Affichage de {{ $dailyEntries->firstItem() }} à {{ $dailyEntries->lastItem() }}
                                     sur {{ $dailyEntries->total() }} entrée{{ $dailyEntries->total() > 1 ? 's' : '' }}
                                 </div>
-
                                 <div class="d-flex justify-content-center">
                                     {{ $dailyEntries->appends(request()->query())->links('pagination::bootstrap-5') }}
                                 </div>
@@ -248,49 +296,38 @@
             </div>
         </div>
 
-        <!-- Cartes statistiques -->
+        {{-- Cartes statistiques --}}
         <div class="row mt-5">
             <div class="col-lg-3 col-md-6 col-12">
                 <div class="card card-statistic-1">
-                    <div class="card-icon bg-primary">
-                        <i class="fas fa-clock"></i>
-                    </div>
+                    <div class="card-icon bg-primary"><i class="fas fa-clock"></i></div>
                     <div class="card-wrap">
                         <div class="card-header"><h4>Total Heures</h4></div>
                         <div class="card-body">{{ UserHelper::hoursToHoursMinutes($totalHours) }}</div>
                     </div>
                 </div>
             </div>
-
             <div class="col-lg-3 col-md-6 col-12">
                 <div class="card card-statistic-1">
-                    <div class="card-icon bg-info">
-                        <i class="fas fa-hourglass-half"></i>
-                    </div>
+                    <div class="card-icon bg-info"><i class="fas fa-hourglass-half"></i></div>
                     <div class="card-wrap">
                         <div class="card-header"><h4>Soumises</h4></div>
                         <div class="card-body">{{ $submittedCount }}</div>
                     </div>
                 </div>
             </div>
-
             <div class="col-lg-3 col-md-6 col-12">
                 <div class="card card-statistic-1">
-                    <div class="card-icon bg-success">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
+                    <div class="card-icon bg-success"><i class="fas fa-check-circle"></i></div>
                     <div class="card-wrap">
                         <div class="card-header"><h4>Validées</h4></div>
                         <div class="card-body">{{ $validatedCount }}</div>
                     </div>
                 </div>
             </div>
-
             <div class="col-lg-3 col-md-6 col-12">
                 <div class="card card-statistic-1">
-                    <div class="card-icon bg-danger">
-                        <i class="fas fa-times-circle"></i>
-                    </div>
+                    <div class="card-icon bg-danger"><i class="fas fa-times-circle"></i></div>
                     <div class="card-wrap">
                         <div class="card-header"><h4>Refusées</h4></div>
                         <div class="card-body">{{ $rejectedCount }}</div>
@@ -301,7 +338,7 @@
     </div>
 </section>
 
-<!-- Modal Export -->
+{{-- Modal Export --}}
 <div class="modal fade" id="exportModal" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">
@@ -346,11 +383,49 @@
 @endsection
 
 @push('scripts')
+{{-- Select2 (CDN) --}}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+    /* Aligne Select2 sur la même hauteur que les autres contrôles Bootstrap */
+    .select2-container .select2-selection--single {
+        height: calc(1.5em + .75rem + 2px) !important;
+        border: 1px solid #ced4da;
+        border-radius: .25rem;
+        padding: .375rem .75rem;
+        font-size: 1rem;
+        line-height: 1.5;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 1.5;
+        padding-left: 0;
+        color: #495057;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 100%;
+    }
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background-color: #4e73df;
+    }
+</style>
 
 <script>
 $(document).ready(function () {
-    // Validation / actions AJAX
+
+    // ── Select2 sur le filtre collaborateur ──────────────────────────
+    $('#userFilter').select2({
+        placeholder: '— Tous les collaborateurs —',
+        allowClear: true,
+        width: '100%',
+        language: {
+            noResults: function () { return 'Aucun résultat'; },
+            searching: function () { return 'Recherche…'; },
+        }
+    });
+
+    // ── Validation ───────────────────────────────────────────────────
     $('.validate-btn').on('click', function () {
         const id   = $(this).data('id');
         const name = $(this).data('name');
@@ -366,27 +441,22 @@ $(document).ready(function () {
             confirmButtonColor: '#28a745'
         }).then((result) => {
             if (result.isConfirmed) {
-                $.post(`/daily-entries/${id}/validate`, {
-                    _token: '{{ csrf_token() }}'
-                })
-                .done(() => {
-                    Swal.fire('Validée !', '', 'success').then(() => location.reload());
-                })
-                .fail(() => Swal.fire('Erreur', 'Impossible de valider', 'error'));
+                $.post(`/daily-entries/${id}/validate`, { _token: '{{ csrf_token() }}' })
+                    .done(() => Swal.fire('Validée !', '', 'success').then(() => location.reload()))
+                    .fail(() => Swal.fire('Erreur', 'Impossible de valider', 'error'));
             }
         });
     });
 
+    // ── Refus ────────────────────────────────────────────────────────
     $('.reject-btn').on('click', function () {
         const id   = $(this).data('id');
-        const name = $(this).data('name');
-        const date = $(this).data('date');
 
         Swal.fire({
             title: 'Refuser la feuille',
             input: 'textarea',
             inputLabel: 'Motif du refus (obligatoire)',
-            inputPlaceholder: 'Expliquez pourquoi...',
+            inputPlaceholder: 'Expliquez pourquoi…',
             showCancelButton: true,
             confirmButtonText: 'Refuser',
             cancelButtonText: 'Annuler',
@@ -397,14 +467,13 @@ $(document).ready(function () {
                     _token: '{{ csrf_token() }}',
                     motif_refus: result.value
                 })
-                .done(() => {
-                    Swal.fire('Refusée', '', 'success').then(() => location.reload());
-                })
-                .fail(() => Swal.fire('Erreur', 'Impossible de refuser', 'error'));
+                    .done(() => Swal.fire('Refusée', '', 'success').then(() => location.reload()))
+                    .fail(() => Swal.fire('Erreur', 'Impossible de refuser', 'error'));
             }
         });
     });
 
+    // ── Suppression ──────────────────────────────────────────────────
     $('.delete-btn').on('click', function () {
         const id   = $(this).data('id');
         const name = $(this).data('name');
@@ -420,15 +489,9 @@ $(document).ready(function () {
             cancelButtonText: 'Annuler'
         }).then((result) => {
             if (result.isConfirmed) {
-                $.ajax({
-                    url: `/daily-entries/${id}`,
-                    type: 'DELETE',
-                    data: { _token: '{{ csrf_token() }}' }
-                })
-                .done(() => {
-                    Swal.fire('Supprimée', '', 'success').then(() => location.reload());
-                })
-                .fail(() => Swal.fire('Erreur', 'Impossible de supprimer', 'error'));
+                $.ajax({ url: `/daily-entries/${id}`, type: 'DELETE', data: { _token: '{{ csrf_token() }}' } })
+                    .done(() => Swal.fire('Supprimée', '', 'success').then(() => location.reload()))
+                    .fail(() => Swal.fire('Erreur', 'Impossible de supprimer', 'error'));
             }
         });
     });

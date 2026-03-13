@@ -42,7 +42,7 @@ class AuthenticatedSessionController extends Controller
             // Générer un OTP
             $otp = rand(100000, 999999);
             $user->otp_code = $otp;
-            $user->otp_expires_at = now()->addMinutes(5);
+            $user->otp_expires_at = now()->addMinutes(2);
             $user->save();
 
             // après authenticate()
@@ -127,7 +127,7 @@ class AuthenticatedSessionController extends Controller
             $otp = rand(100000, 999999);
 
             $user->otp_code = $otp;
-            $user->otp_expires_at = now()->addMinutes(5);
+            $user->otp_expires_at = now()->addMinutes(2);
             $user->save();
 
             // Envoyer l'email
@@ -135,7 +135,7 @@ class AuthenticatedSessionController extends Controller
 
             return response()->json([
                 'message' => 'OTP renvoyé',
-                'remainingSeconds' => 300 // 5 minutes
+                'remainingSeconds' => 120 // 2 minutes
             ]);
         }
 

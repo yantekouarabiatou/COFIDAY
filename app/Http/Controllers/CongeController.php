@@ -205,25 +205,75 @@ class CongeController extends Controller
     //  INDEX
     // =========================================================================
 
-    public function index()
+    public function index(Request $request)
     {
         $user  = Auth::user();
+        $isAdmin = $user->hasRole('admin') || $user->hasRole('manager');
+ 
         $query = DemandeConge::with(['user', 'typeConge', 'validePar']);
-
-        if (!$user->hasRole('admin') && !$user->hasRole('manager')) {
+ 
+        // Restriction de base : non-admin ne voit que ses propres demandes
+        if (!$isAdmin) {
             $query->where('user_id', $user->id);
         }
-
+ 
+        // ── Filtres server-side ──────────────────────────────────────────────
+ 
+        // Type de congé
+        if ($request->filled('type_conge_id')) {
+            $query->where('type_conge_id', $request->type_conge_id);
+        }
+ 
+        // Statut
+        if ($request->filled('statut')) {
+            $query->where('statut', $request->statut);
+        }
+ 
+        // Collaborateur (admin / manager uniquement)
+        if ($request->filled('user_id') && $isAdmin) {
+            $query->where('user_id', $request->user_id);
+        }
+ 
+        // Recherche texte libre (motif)
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('motif', 'like', "%{$search}%")
+                  ->orWhereHas('user', function ($q2) use ($search) {
+                      $q2->where('prenom', 'like', "%{$search}%")
+                         ->orWhere('nom',   'like', "%{$search}%");
+                  });
+            });
+        }
+ 
+        // Date début (à partir de)
+        if ($request->filled('date_debut')) {
+            $query->whereDate('date_debut', '>=', $request->date_debut);
+        }
+ 
+        // Date fin (jusqu'à)
+        if ($request->filled('date_fin')) {
+            $query->whereDate('date_fin', '<=', $request->date_fin);
+        }
+ 
+        // ── Statistiques (sur la même base sans pagination) ──────────────────
+        $statsQuery    = clone $query;
+        $totalDemandes = (clone $statsQuery)->count();
+        $enAttente     = (clone $statsQuery)->where('statut', 'en_attente')->count();
+        $approuves     = (clone $statsQuery)->where('statut', 'approuve')->count();
+        $refuses       = (clone $statsQuery)->where('statut', 'refuse')->count();
+ 
+        $demandes    = $query->latest()->paginate(20)->withQueryString();
         $typesConges = TypeConge::where('actif', true)->get();
-        $isAdmin     = $user->hasRole('admin') || $user->hasRole('manager');
-
-        $demandes      = $query->latest()->paginate(20);
-        $totalDemandes = $query->count();
-        $enAttente     = (clone $query)->where('statut', 'en_attente')->count();
-        $approuves     = (clone $query)->where('statut', 'approuve')->count();
-        $refuses       = (clone $query)->where('statut', 'refuse')->count();
-        $usePagination = $isAdmin;
-
+ 
+        // Liste des collaborateurs pour le select (admin / manager uniquement)
+        $users = collect();
+        if ($isAdmin) {
+            $users = User::where('is_active', 1)
+                ->orderBy('prenom')
+                ->get(['id', 'prenom', 'nom']);
+        }
+ 
         return view('pages.conges.index', compact(
             'demandes',
             'typesConges',
@@ -231,7 +281,8 @@ class CongeController extends Controller
             'enAttente',
             'approuves',
             'refuses',
-            'usePagination'
+            'users',
+            'isAdmin'
         ));
     }
 
