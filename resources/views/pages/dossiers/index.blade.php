@@ -17,6 +17,13 @@
                 <div class="card">
                     <div class="card-header">
                         <h4>Tous les Dossiers</h4>
+                        {{-- Bouton de synchronisation --}}
+                        <form action="{{ route('admin.missions.import') }}" method="POST" id="syncForm">
+                            @csrf
+                            <button type="submit" class="btn btn-primary" id="syncBtn">
+                                <i class="fas fa-sync-alt me-2"></i>Synchroniser depuis Cofplan
+                            </button>
+                        </form>
                         <div class="card-header-action">
                             <a href="{{ route('dossiers.create') }}" class="btn btn-icon icon-left btn-primary">
                                 <i class="fas fa-plus"></i> Nouveau Dossier
@@ -28,6 +35,21 @@
                             </a>
                         </div>
                     </div>
+
+                    {{-- Affichage des messages flash --}}
+                    @if(session('success'))
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    @endif
+
+                    @if(session('error'))
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    @endif
 
                     <div class="card-body">
                         <!-- Barre de recherche et filtres -->
@@ -268,5 +290,13 @@ $(document).on('click', '.delete-dossier-btn', function() {
         }
     });
 });
+</script>
+
+<script>
+    document.getElementById('syncForm').addEventListener('submit', function () {
+        const btn = document.getElementById('syncBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Synchronisation en cours...';
+    });
 </script>
 @endpush

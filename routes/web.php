@@ -1,9 +1,6 @@
 <?php
 
 use App\Http\Controllers\RolePermissionController;
-use App\Http\Controllers\CadeauInvitationController;
-use App\Http\Controllers\ClientAuditController;
-use App\Http\Controllers\IndependanceController;
 use App\Http\Controllers\ProfileController;
 use App\Mail\LeaveRejectedMail;
 use Illuminate\Support\Facades\Route;
@@ -19,24 +16,18 @@ use App\Http\Controllers\CompanySettingController;
 use App\Http\Controllers\DailyEntryController;
 use App\Http\Controllers\DossierController;
 use App\Http\Controllers\CongeController;
-use App\Http\Controllers\InteretController;
 use App\Http\Controllers\MissionAnalyseController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\RapportController;
 use App\Http\Controllers\RegleCongeController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SoldeCongeController;
-use App\Http\Controllers\Statistics\CadeauInvitationReportController;
-use App\Http\Controllers\Statistics\ClientAuditReportController;
-use App\Http\Controllers\Statistics\IndependanceReportController;
 use App\Http\Controllers\StatisticsController;
 use Illuminate\Support\Facades\Log;
-use App\Http\Controllers\Statistics\PlaintesStatsController;
-use App\Http\Controllers\Statistics\InteretsStatsController;
 use App\Http\Controllers\UserProfileController;
-use App\Mail\LeaveApprovedMail;
 use App\Models\User;
 use Illuminate\Http\Request;
+use App\Http\Controllers\MissionImportController;
 
 Route::get('/', function () {
     return view('auth.login');
@@ -336,6 +327,10 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
 
         Route::get('api/regles-conges/jours-acquis', [RegleCongeController::class, 'getJoursAcquis'])
             ->name('regles-conges.jours-acquis');
+
+        // Route d'import des missions depuis Cofplan
+        Route::post('/missions/import', [MissionImportController::class, 'import'])
+         ->name('missions.import');
     });
 
     Route::middleware(['auth', 'otp.verified'])->group(function () {

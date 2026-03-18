@@ -221,6 +221,20 @@ class ClientSeeder extends Seeder
                 'notes' => 'Client industriel - Contrôle qualité',
                 'statut' => 'actif',
             ],
+            [
+                'nom' => 'Cofplan',
+                'email' => 'cofplan@cofima.cc',
+                'siege_social' => 'Cotonou, Bénin',
+                'adresse' => 'Cotonou, Bénin',
+                'telephone' => null,
+                'contact_principal' => null,
+                'secteur_activite' => 'Audit & Conseil',
+                'numero_siret' => '9988776655443', // valeur unique fictive
+                'code_naf' => '6920Z',
+                'site_web' => null,
+                'notes' => 'Client interne - Missions importées depuis Cofplan',
+                'statut' => 'actif',
+            ],
         ];
 
         foreach ($clients as $clientData) {

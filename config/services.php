@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'cofplan' => [
+        'url' => env('COFPLAN_API_URL'),
+        'key' => env('COFPLAN_API_KEY'),
+    ],
+
 ];
