@@ -54,7 +54,7 @@ class DossierController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'client_id' => 'required|exists:clients,id',
+            'client_id' => 'nullable|exists:clients,id',
             'nom' => 'required|string|max:255',
             'reference' => 'nullable|string|max:50|unique:dossiers,reference',
             'type_dossier' => 'required|in:audit,conseil,formation,expertise,autre',
@@ -72,6 +72,16 @@ class DossierController extends Controller
             'collaborateurs' => 'nullable|array',
             'collaborateurs.*' => 'exists:users,id',
         ]);
+
+        if (empty($validated['client_id'])) {
+            $clientDefaut = Client::where('nom', 'Coftime')->first();
+
+            if (!$clientDefaut) {
+                return back()->withInput()->with('error', 'Client Coftime introuvable en base.');
+            }
+
+            $validated['client_id'] = $clientDefaut->id;
+        }
 
         DB::beginTransaction();
 

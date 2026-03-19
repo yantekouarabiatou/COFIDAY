@@ -235,6 +235,20 @@ class ClientSeeder extends Seeder
                 'notes' => 'Client interne - Missions importées depuis Cofplan',
                 'statut' => 'actif',
             ],
+            [
+                'nom' => 'Coftime',
+                'email' => 'coftime@cofima.cc',
+                'siege_social' => 'Cotonou, Bénin',
+                'adresse' => 'Cotonou, Bénin',
+                'telephone' => null,
+                'contact_principal' => null,
+                'secteur_activite' => 'Gestion de temps',
+                'numero_siret' => '9988776655441', // valeur unique fictive
+                'code_naf' => '6920Y',
+                'site_web' => null,
+                'notes' => 'Client interne - Pour gérer les dossirs internes de Cofima',
+                'statut' => 'actif',
+            ],
         ];
 
         foreach ($clients as $clientData) {

@@ -32,9 +32,9 @@
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="form-group">
-                                        <label>Client <span class="text-danger">*</span></label>
-                                        <select name="client_id" class="form-control select2 @error('client_id') is-invalid @enderror" required>
-                                            <option value="">Sélectionner un client</option>
+                                        <label>Client </label>
+                                        <select name="client_id" class="form-control select2 @error('client_id') is-invalid @enderror">
+                                            <option value="">Sélectionner un client (optionnel)</option>
                                             @foreach($clients as $client)
                                                 <option value="{{ $client->id }}" {{ old('client_id') == $client->id ? 'selected' : '' }}>
                                                     {{ $client->nom }} ({{ $client->statut }})
@@ -289,12 +289,11 @@ $(document).ready(function() {
     // Validation du formulaire
     $('#dossier-form').on('submit', function(e) {
         var nom = $('input[name="nom"]').val().trim();
-        var client = $('select[name="client_id"]').val();
         var type = $('select[name="type_dossier"]').val();
         var statut = $('select[name="statut"]').val();
         var dateOuverture = $('input[name="date_ouverture"]').val();
 
-        if (!nom || !client || !type || !statut || !dateOuverture) {
+        if (!nom || !type || !statut || !dateOuverture) {
             e.preventDefault();
             Swal.fire({
                 icon: 'error',
