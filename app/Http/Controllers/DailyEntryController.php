@@ -22,45 +22,64 @@ class DailyEntryController extends Controller
 {
     /**
      * Afficher la liste des feuilles de temps
-     */
-        public function index(Request $request)
+     */ public function index(Request $request)
     {
         $user  = auth()->user();
         $query = DailyEntry::with(['user', 'timeEntries.dossier.client']);
- 
-        // Restriction de base : non-admin ne voit que ses propres entrées
+
+        // Filtre mois en cours par défaut
+        $mois = $request->filled('mois')
+            ? Carbon::parse($request->mois . '-01')
+            : Carbon::now()->startOfMonth();
+
+        $query->whereBetween('jour', [
+            $mois->copy()->startOfMonth(),
+            $mois->copy()->endOfMonth()
+        ]);
+
         if (!$user->hasRole('admin')) {
-            $query->where('user_id', $user->id);
+            // L'utilisateur voit ses propres entrées
+            // + celles des collaborateurs du même poste
+            $memePosteIds = User::where('poste_id', $user->poste_id)
+                ->where('id', '!=', $user->id)
+                ->where('is_active', 1)
+                ->pluck('id');
+
+            $query->where(function ($q) use ($user, $memePosteIds) {
+                $q->where('user_id', $user->id)
+                    ->orWhereIn('user_id', $memePosteIds);
+            });
         }
- 
+
+
         // ── Filtres server-side ──────────────────────────────────────────────
- 
+
         if ($request->filled('statut')) {
             $query->where('statut', $request->statut);
         }
- 
+
         if ($request->filled('user') && $user->hasRole(['admin', 'responsable', 'directeur-general'])) {
             $query->where('user_id', $request->user);
         }
- 
+
         if ($request->filled('date')) {
             $query->whereDate('jour', $request->date);
         }
- 
+
         if ($request->filled('pending') && $user->hasRole('directeur-general')) {
             $query->where('statut', 'soumis')
-                  ->where('user_id', '!=', $user->id);
+                ->where('user_id', '!=', $user->id);
         }
- 
+
         // ── Statistiques calculées sur la même query filtrée ────────────────
         $statsQuery     = clone $query;
         $totalHours     = (clone $statsQuery)->sum('heures_reelles');
         $submittedCount = (clone $statsQuery)->where('statut', 'soumis')->count();
         $validatedCount = (clone $statsQuery)->where('statut', 'validé')->count();
         $rejectedCount  = (clone $statsQuery)->where('statut', 'refusé')->count();
- 
+
         $dailyEntries = $query->latest()->paginate(20)->withQueryString();
- 
+
         // Liste des collaborateurs pour le select (rôles autorisés uniquement)
         $users = collect();
         if ($user->hasRole(['admin', 'manager', 'directeur-general'])) {
@@ -68,7 +87,7 @@ class DailyEntryController extends Controller
                 ->orderBy('prenom')
                 ->get(['id', 'prenom', 'nom']);
         }
- 
+
         return view('pages.daily-entries.index', compact(
             'dailyEntries',
             'totalHours',
@@ -471,14 +490,23 @@ class DailyEntryController extends Controller
      */
     public function rejectEntry(DailyEntry $dailyEntry, Request $request)
     {
+        // Autoriser le refus même si déjà refusé (pour changer le motif)
+        // ou bloquer si déjà validé
+        if ($dailyEntry->statut === 'validé') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible de refuser une feuille déjà validée.'
+            ], 422);
+        }
+
         $request->validate([
             'motif_refus' => 'required|string|max:500',
         ]);
 
         $dailyEntry->update([
-            'statut' => 'refusé',
-            'valide_par' => Auth::id(),
-            'valide_le' => now(),
+            'statut'      => 'refusé',
+            'valide_par'  => Auth::id(),
+            'valide_le'   => now(),
             'motif_refus' => $request->motif_refus,
         ]);
 
@@ -487,7 +515,6 @@ class DailyEntryController extends Controller
             'message' => 'Feuille de temps refusée avec succès.'
         ]);
     }
-
 
     /**
      * AJAX: Créer un dossier rapidement
@@ -593,4 +620,44 @@ class DailyEntryController extends Controller
 
         return $pdf->stream($filename);
     }
+    public function bulkValidate(Request $request)
+{
+    $request->validate(['ids' => 'required|array', 'ids.*' => 'exists:daily_entries,id']);
+
+    $count = DailyEntry::whereIn('id', $request->ids)
+        ->where('user_id', '!=', auth()->id())
+        ->whereIn('statut', ['soumis'])
+        ->update(['statut' => 'validé', 'valide_par' => auth()->id(), 'valide_le' => now()]);
+
+    return response()->json(['success' => true, 'message' => "{$count} feuille(s) validée(s)."]);
+}
+
+public function bulkReject(Request $request)
+{
+    $request->validate([
+        'ids'         => 'required|array',
+        'ids.*'       => 'exists:daily_entries,id',
+        'motif_refus' => 'required|string|max:500',
+    ]);
+
+    $count = DailyEntry::whereIn('id', $request->ids)
+        ->where('user_id', '!=', auth()->id())
+        ->whereIn('statut', ['soumis', 'refusé'])
+        ->update(['statut' => 'refusé', 'valide_par' => auth()->id(), 'valide_le' => now(), 'motif_refus' => $request->motif_refus]);
+
+    return response()->json(['success' => true, 'message' => "{$count} feuille(s) refusée(s)."]);
+}
+
+public function validateAll(Request $request)
+{
+    $request->validate(['mois' => 'required|date_format:Y-m']);
+
+    $mois  = Carbon::parse($request->mois . '-01');
+    $count = DailyEntry::where('statut', 'soumis')
+        ->where('user_id', '!=', auth()->id())
+        ->whereBetween('jour', [$mois->copy()->startOfMonth(), $mois->copy()->endOfMonth()])
+        ->update(['statut' => 'validé', 'valide_par' => auth()->id(), 'valide_le' => now()]);
+
+    return response()->json(['success' => true, 'message' => "{$count} feuille(s) validée(s) pour {$request->mois}."]);
+}
 }

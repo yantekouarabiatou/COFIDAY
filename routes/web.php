@@ -182,22 +182,29 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
         Route::get('daily-entries/month/{year}/{month}', [DailyEntryController::class, 'month'])
             ->name('daily-entries.month');
     });
-    // Routes pour les feuilles de temps
     Route::prefix('daily-entries')->name('daily-entries.')->group(function () {
-        Route::get('/', [DailyEntryController::class, 'index'])->name('index');
-        Route::get('/create', [DailyEntryController::class, 'create'])->name('create');
-        Route::post('/', [DailyEntryController::class, 'store'])->name('store');
-        Route::get('/{dailyEntry}', [DailyEntryController::class, 'show'])->name('show');
-        Route::get('/{dailyEntry}/edit', [DailyEntryController::class, 'edit'])->name('edit');
-        Route::put('/{dailyEntry}', [DailyEntryController::class, 'update'])->name('update');
-        Route::delete('/{dailyEntry}', [DailyEntryController::class, 'destroy'])->name('destroy');
 
-        // Routes pour validation
-        Route::post('/{dailyEntry}/validate', [DailyEntryController::class, 'validateEntry'])->name('validate');
-        Route::post('/{dailyEntry}/reject', [DailyEntryController::class, 'rejectEntry'])->name('reject');
+        // ── CRUD ────────────────────────────────────────────────────────
+        Route::get('/',                [DailyEntryController::class, 'index'])->name('index');
+        Route::get('/create',          [DailyEntryController::class, 'create'])->name('create');
+        Route::post('/',               [DailyEntryController::class, 'store'])->name('store');
 
-        // Route AJAX pour création rapide de dossier
+        // ── Routes statiques AVANT le paramètre dynamique ───────────────
         Route::post('/create-dossier-quick', [DailyEntryController::class, 'createDossierQuick'])->name('create-dossier-quick');
+        Route::get('/month/{year}/{month}',  [DailyEntryController::class, 'month'])->name('month');
+        Route::post('/bulk-validate', [DailyEntryController::class, 'bulkValidate'])->name('bulk-validate');
+        Route::post('/bulk-reject',   [DailyEntryController::class, 'bulkReject'])->name('bulk-reject');
+        Route::post('/validate-all',  [DailyEntryController::class, 'validateAll'])->name('validate-all');
+        // ── Routes avec paramètre dynamique ─────────────────────────────
+        Route::get('/{dailyEntry}',          [DailyEntryController::class, 'show'])->name('show');
+        Route::get('/{dailyEntry}/edit',     [DailyEntryController::class, 'edit'])->name('edit');
+        Route::put('/{dailyEntry}',          [DailyEntryController::class, 'update'])->name('update');
+        Route::patch('/{dailyEntry}',        [DailyEntryController::class, 'update']);
+        Route::delete('/{dailyEntry}',       [DailyEntryController::class, 'destroy'])->name('destroy');
+
+        // ── Validation / Refus ───────────────────────────────────────────
+        Route::post('/{dailyEntry}/validate', [DailyEntryController::class, 'validateEntry'])->name('validate');
+        Route::post('/{dailyEntry}/reject',   [DailyEntryController::class, 'rejectEntry'])->name('reject');
     });
 
 
@@ -205,7 +212,7 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
     Route::post('/dossiers/{dossier}/collaborateurs/gestion', [DossierController::class, 'gestionCollaborateurs'])
         ->name('dossiers.collaborateurs.gestion');
     Route::post('dossiers/{dossier}/collaborateurs', [DossierController::class, 'gestionCollaborateurs'])
-    ->name('dossiers.collaborateurs.gestion');
+        ->name('dossiers.collaborateurs.gestion');
     // OU si vous voulez regrouper :
     Route::prefix('dossiers')->name('dossiers.')->group(function () {
         Route::resource('/', DossierController::class)->names([
@@ -330,7 +337,7 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
 
         // Route d'import des missions depuis Cofplan
         Route::post('/missions/import', [MissionImportController::class, 'import'])
-         ->name('missions.import');
+            ->name('missions.import');
     });
 
     Route::middleware(['auth', 'otp.verified'])->group(function () {
