@@ -21,14 +21,14 @@ class UserSeeder extends Seeder
                 'poste' => 'DIRECTEUR INFORMATIQUE',
                 'role' => 'SUPER ADMINISTRATEUR',
             ],
-            [
-                'username_raw' => 'Magloire.Lanha@cofima.cc',
-                'nom' => 'LANHA',
-                'prenom' => 'Magloire',
-                'email' => 'maglanha@gmail.com',
-                'poste' => 'CONSULTANTS',
-                'role' => 'SUPER ADMINISTRATEUR',
-            ],
+            // [
+            //     'username_raw' => 'Magloire.Lanha@cofima.cc',
+            //     'nom' => 'LANHA',
+            //     'prenom' => 'Magloire',
+            //     'email' => 'maglanha@gmail.com',
+            //     'poste' => 'CONSULTANTS',
+            //     'role' => 'SUPER ADMINISTRATEUR',
+            // ],
             [
                 'username_raw' => 'jmavande',
                 'nom' => 'AVANDE',
