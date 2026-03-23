@@ -23,7 +23,8 @@ class Client extends Model
         'logo',
         'site_web',
         'notes',
-        'statut'
+        'statut',
+        'source_id'
     ];
 
     protected $casts = [

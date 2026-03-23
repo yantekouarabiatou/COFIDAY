@@ -39,5 +39,9 @@ return [
         'url' => env('COFPLAN_API_URL'),
         'key' => env('COFPLAN_API_KEY'),
     ],
+        'cofigistre' => [
+         'url' => env('COFIGISTRE_URL'),
+         'key' => env('COFIGISTRE_KEY'),
+    ],
 
 ];
