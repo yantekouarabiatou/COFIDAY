@@ -12,8 +12,36 @@
     <title>Demande de {{ $motLabel }}</title>
 
     <style>
+        @font-face {
+            font-family: 'Helvetica';
+            font-style: normal;
+            font-weight: normal;
+            src: url("{{ storage_path('fonts/Helvetica.ttf') }}") format('truetype');
+        }
+
+        @font-face {
+            font-family: 'Helvetica';
+            font-style: normal;
+            font-weight: bold;
+            src: url("{{ storage_path('fonts/Helvetica-Bold.ttf') }}") format('truetype');
+        }
+
+        @font-face {
+            font-family: 'Helvetica';
+            font-style: italic;
+            font-weight: normal;
+            src: url("{{ storage_path('fonts/Helvetica-Oblique.ttf') }}") format('truetype');
+        }
+
+        @font-face {
+            font-family: 'Helvetica';
+            font-style: italic;
+            font-weight: bold;
+            src: url("{{ storage_path('fonts/Helvetica-BoldOblique.ttf') }}") format('truetype');
+        }
+
         body {
-            font-family: "DejaVu Sans", sans-serif;
+            font-family: 'Helvetica', sans-serif;
             font-size: 12px;
             line-height: 1.6;
             color: #000;
@@ -48,7 +76,9 @@
         }
 
         .recipient {
-            text-align: right;
+            width: 50%;
+            margin-left: 50%;
+            text-align: center;
             margin-bottom: 30px;
         }
 
@@ -73,7 +103,8 @@
 
         .signature {
             margin-top: 50px;
-            text-align: right;
+            float: right;
+            text-align: center;
             justify-content: center;
         }
 
@@ -91,7 +122,7 @@
 
         {{-- LOGO --}}
     @php
-        $logoPath = public_path('storage/photos/logo-cofima.jpg'); // ← chemin local du logo
+        $logoPath = public_path('storage/photos/logo-cofima-bon.jpg'); // ← chemin local du logo
         $logoBase64 = file_exists($logoPath)
             ? 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoPath))
             : null;

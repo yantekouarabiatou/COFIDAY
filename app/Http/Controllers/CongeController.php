@@ -1160,18 +1160,6 @@ class CongeController extends Controller
                 'commentaire_final'       => $request->commentaire,
             ]);
 
-            // Déduire du solde uniquement ici, après validation finale
-            if ($action === 'approuve' && $demande->typeConge->est_paye) {
-                $solde = SoldeConge::where('user_id', $demande->user_id)
-                    ->where('annee', now()->year)
-                    ->firstOrFail();
-
-                $solde->update([
-                    'jours_pris'      => $solde->jours_pris + $demande->nombre_jours,
-                    'jours_restants'  => $solde->jours_acquis - ($solde->jours_pris + $demande->nombre_jours),
-                ]);
-            }
-
             HistoriqueConge::create([
                 'demande_conge_id' => $demande->id,
                 'action'           => $action === 'approuve' ? 'demande_approuvee_finale' : 'demande_refusee_finale',

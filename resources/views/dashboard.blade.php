@@ -517,7 +517,6 @@ use App\Helpers\UserHelper;
 @endsection
 
 @push('scripts')
-// Remplacez tout le contenu de @push('scripts') dans dashboard.blade.php
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 <script>

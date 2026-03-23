@@ -12,12 +12,40 @@
     <title>Note de service N°{{ $numeroNote }}</title>
 
     <style>
+                @font-face {
+            font-family: 'Helvetica';
+            font-style: normal;
+            font-weight: normal;
+            src: url("{{ storage_path('fonts/Helvetica.ttf') }}") format('truetype');
+        }
+
+        @font-face {
+            font-family: 'Helvetica';
+            font-style: normal;
+            font-weight: bold;
+            src: url("{{ storage_path('fonts/Helvetica-Bold.ttf') }}") format('truetype');
+        }
+
+        @font-face {
+            font-family: 'Helvetica';
+            font-style: italic;
+            font-weight: normal;
+            src: url("{{ storage_path('fonts/Helvetica-Oblique.ttf') }}") format('truetype');
+        }
+
+        @font-face {
+            font-family: 'Helvetica';
+            font-style: italic;
+            font-weight: bold;
+            src: url("{{ storage_path('fonts/Helvetica-BoldOblique.ttf') }}") format('truetype');
+        }
+
         body {
-            font-family: "DejaVu Sans", sans-serif;
+            font-family: 'Helvetica', sans-serif;
             font-size: 12px;
-            color: #000;
-            margin: 30px 50px;
             line-height: 1.7;
+            color: #000;
+            margin: 40px 50px;
         }
 
         .entete            { display: table; width: 100%; margin-bottom: 10px; }
@@ -60,9 +88,9 @@
         }
         .table-soldes tr.annee-prelevee td { font-weight: bold; background-color: #f0f4ff; }
 
-        .signature-wrap  { display: table; width: 100%; margin-top: 40px; }
+        .signature-wrap  { display: table; width: 100%; margin-top: 40px; float: right; justify-content: center;}
         .sig-gauche      { display: table-cell; width: 50%; vertical-align: top; font-size: 12px; }
-        .sig-droite      { display: table-cell; width: 50%; vertical-align: top; text-align: right; font-size: 12px; }
+        .sig-droite      { display: table-cell; width: 50%; vertical-align: top; text-align: center; font-size: 12px; }
 
         .footer {
             margin-top: 40px; border-top: 1px solid #aaa;
@@ -75,10 +103,16 @@
     {{-- EN-TÊTE --}}
     <div class="entete">
         <div class="entete-logo">
+            @php
+                $logoPath = public_path('storage/photos/logo-cofima-bon.jpg'); // ← chemin local du logo
+                $logoBase64 = file_exists($logoPath)
+                    ? 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoPath))
+                    : null;
+            @endphp
             @if($logoBase64)
-                <img src="{{ $logoBase64 }}" alt="Logo COFIMA">
-            @else
-                <strong style="font-size:16px;">COFIMA</strong>
+            <div class="logo-container">
+                <img src="{{ $logoBase64 }}" alt="Logo COFIMA" class="logo">
+            </div>
             @endif
         </div>
         <div class="entete-texte">
