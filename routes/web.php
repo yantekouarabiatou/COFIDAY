@@ -28,6 +28,7 @@ use App\Http\Controllers\UserProfileController;
 use App\Models\User;
 use Illuminate\Http\Request;
 use App\Http\Controllers\MissionImportController;
+use App\Http\Controllers\Api\ClientImportController;
 
 Route::get('/', function () {
     return view('auth.login');
@@ -373,6 +374,9 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
         Route::resource('soldes', SoldeCongeController::class);
     });
 
+    Route::post('/clients/import', [ClientImportController::class, 'import'])
+    ->name('clients.import')
+    ->middleware('auth'); // si besoin
     Route::get('/conges/get-feries', [CongeController::class, 'getFeries'])
         ->name('conges.get-feries')
         ->middleware('auth');
