@@ -3,193 +3,202 @@
 @section('title', 'Gestion des Clients')
 
 @section('content')
-<section class="section">
-    <div class="section-header">
-        <h1><i class="fas fa-users"></i> Gestion des Clients</h1>
-        <div class="section-header-breadcrumb">
-            <div class="breadcrumb-item active"><a href="{{ route('dashboard') }}">Dashboard</a></div>
-            <div class="breadcrumb-item">Clients</div>
+    <section class="section">
+        <div class="section-header">
+            <h1><i class="fas fa-users"></i> Gestion des Clients</h1>
+            <div class="section-header-breadcrumb">
+                <div class="breadcrumb-item active"><a href="{{ route('dashboard') }}">Dashboard</a></div>
+                <div class="breadcrumb-item">Clients</div>
+            </div>
         </div>
-    </div>
 
-    <div class="section-body">
-        <div class="row">
-            <div class="col-12">
-                <div class="card card-primary">
-                    <div class="card-header">
-                        <h4>Liste des Clients</h4>
-                        <div class="card-header-action">
-                            <a href="{{ route('clients.create') }}" class="btn btn-primary btn-icon icon-left">
-                                <i class="fas fa-plus"></i> Nouveau Client
-                            </a>
-                            <a href="{{ route('clients.export.pdf') }}" class="btn btn-success btn-icon icon-left ml-2">
-                                <i class="fas fa-file-pdf"></i> Exporter PDF
-                            </a>
-                        </div>
-                    </div>
-
-                    <div class="card-body">
-                        <!-- Filtres -->
-                        <div class="row mb-4">
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label>Statut</label>
-                                    <select id="statut-filter" class="form-control select2">
-                                        <option value="">Tous les statuts</option>
-                                        <option value="actif">Actif</option>
-                                        <option value="inactif">Inactif</option>
-                                        <option value="prospect">Prospect</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label>Recherche</label>
-                                    <input type="text" id="search-input" class="form-control"
-                                           placeholder="Nom, email, téléphone, contact...">
-                                </div>
-                            </div>
-                            <div class="col-md-3 text-right" style="padding-top: 30px;">
-                                <button type="button" id="reset-filters" class="btn btn-outline-secondary btn-icon icon-left">
-                                    <i class="fas fa-redo"></i> Réinitialiser
+        <div class="section-body">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card card-primary">
+                        <div class="card-header">
+                            <h4>Liste des Clients</h4>
+                            {{-- Bouton d'import des clients --}}
+                            <form action="{{ route('clients.import') }}" method="POST" id="syncClientsForm"
+                                style="display:inline-block;">
+                                @csrf
+                                <button type="submit" class="btn btn-info" id="syncClientsBtn">
+                                    <i class="fas fa-users me-2"></i>Importer clients depuis cofigistre
                                 </button>
+                            </form>
+                            <div class="card-header-action">
+                                <a href="{{ route('clients.create') }}" class="btn btn-primary btn-icon icon-left">
+                                    <i class="fas fa-plus"></i> Nouveau Client
+                                </a>
+                                <a href="{{ route('clients.export.pdf') }}" class="btn btn-success btn-icon icon-left ml-2">
+                                    <i class="fas fa-file-pdf"></i> Exporter PDF
+                                </a>
                             </div>
                         </div>
 
-                        <!-- Tableau -->
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover" id="clients-table">
-                                <thead>
-                                    <tr>
-                                        <th>#</th>
-                                        {{-- <th>Logo</th> --}}
-                                        <th>Nom</th>
-                                        <th>Contact</th>
-                                        <th>Téléphone</th>
-                                        <th>Email</th>
-                                        <th>Dossiers</th>
-                                        <th>Statut</th>
-                                        <th class="text-center">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($clients as $client)
-                                    <tr data-statut="{{ $client->statut }}">
-                                        <td>{{ $loop->iteration }}</td>
-                                        {{-- <td>
-                                            @if($client->logo)
-                                                <div class="mr-3">
-                                                    <img src="{{ asset('storage/' . $client->logo) }}"
-                                                         alt="Logo {{ $client->nom }}"
-                                                         class="img-fluid"
-                                                         style="width: 40px; height: 40px; object-fit: cover;">
-                                                </div>
-                                            @endif
-                                        </td> --}}
-                                        <td>
-                                            <strong>{{ $client->nom }}</strong>
-                                            @if($client->siege_social)
-                                                <br><small class="text-muted">{{ $client->siege_social }}</small>
-                                            @endif
-                                        </td>
-                                        <td>{{ $client->contact_principal ?? '-' }}</td>
-                                        <td>{{ $client->telephone ?? '-' }}</td>
-                                        <td>
-                                            @if($client->email)
-                                                <a href="mailto:{{ $client->email }}">{{ $client->email }}</a>
-                                            @else
-                                                -
-                                            @endif
-                                        </td>
-                                        <td class="text-center">
-                                            <span class="badge badge-info">{{ $client->dossiers_count }}</span>
-                                        </td>
-                                        <td>{!! $client->statut_badge !!}</td>
-                                        <td class="text-center">
-                                            <div class="btn-group" role="group">
-                                                <a href="{{ route('clients.show', $client) }}"
-                                                   class="btn btn-info btn-sm" title="Voir">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                                <a href="{{ route('clients.edit', $client) }}"
-                                                   class="btn btn-primary btn-sm" title="Modifier">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                                <form action="{{ route('clients.destroy', $client) }}"
-                                                      method="POST" class="d-inline">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="button" class="btn btn-danger btn-sm delete-btn"
-                                                            title="Supprimer" data-id="{{ $client->id }}">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </form>
+                        <div class="card-body">
+                            <!-- Filtres -->
+                            <div class="row mb-4">
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label>Statut</label>
+                                        <select id="statut-filter" class="form-control select2">
+                                            <option value="">Tous les statuts</option>
+                                            <option value="actif">Actif</option>
+                                            <option value="inactif">Inactif</option>
+                                            <option value="prospect">Prospect</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Recherche</label>
+                                        <input type="text" id="search-input" class="form-control"
+                                            placeholder="Nom, email, téléphone, contact...">
+                                    </div>
+                                </div>
+                                <div class="col-md-3 text-right" style="padding-top: 30px;">
+                                    <button type="button" id="reset-filters"
+                                        class="btn btn-outline-secondary btn-icon icon-left">
+                                        <i class="fas fa-redo"></i> Réinitialiser
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Tableau -->
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover" id="clients-table">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            {{-- <th>Logo</th> --}}
+                                            <th>Nom</th>
+                                            <th>Contact</th>
+                                            <th>Téléphone</th>
+                                            <th>Email</th>
+                                            <th>Dossiers</th>
+                                            <th>Statut</th>
+                                            <th class="text-center">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($clients as $client)
+                                            <tr data-statut="{{ $client->statut }}">
+                                                <td>{{ $loop->iteration }}</td>
+                                                {{-- <td>
+                                                    @if($client->logo)
+                                                    <div class="mr-3">
+                                                        <img src="{{ asset('storage/' . $client->logo) }}"
+                                                            alt="Logo {{ $client->nom }}" class="img-fluid"
+                                                            style="width: 40px; height: 40px; object-fit: cover;">
+                                                    </div>
+                                                    @endif
+                                                </td> --}}
+                                                <td>
+                                                    <strong>{{ $client->nom }}</strong>
+                                                    @if($client->siege_social)
+                                                        <br><small class="text-muted">{{ $client->siege_social }}</small>
+                                                    @endif
+                                                </td>
+                                                <td>{{ $client->contact_principal ?? '-' }}</td>
+                                                <td>{{ $client->telephone ?? '-' }}</td>
+                                                <td>
+                                                    @if($client->email)
+                                                        <a href="mailto:{{ $client->email }}">{{ $client->email }}</a>
+                                                    @else
+                                                        -
+                                                    @endif
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="badge badge-info">{{ $client->dossiers_count }}</span>
+                                                </td>
+                                                <td>{!! $client->statut_badge !!}</td>
+                                                <td class="text-center">
+                                                    <div class="btn-group" role="group">
+                                                        <a href="{{ route('clients.show', $client) }}"
+                                                            class="btn btn-info btn-sm" title="Voir">
+                                                            <i class="fas fa-eye"></i>
+                                                        </a>
+                                                        <a href="{{ route('clients.edit', $client) }}"
+                                                            class="btn btn-primary btn-sm" title="Modifier">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                        <form action="{{ route('clients.destroy', $client) }}" method="POST"
+                                                            class="d-inline">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="button" class="btn btn-danger btn-sm delete-btn"
+                                                                title="Supprimer" data-id="{{ $client->id }}">
+                                                                <i class="fas fa-trash"></i>
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Statistiques -->
+                            <div class="row mt-4">
+                                <div class="col-md-3">
+                                    <div class="card card-statistic-1">
+                                        <div class="card-icon bg-primary">
+                                            <i class="fas fa-users"></i>
+                                        </div>
+                                        <div class="card-wrap">
+                                            <div class="card-header">
+                                                <h4>Total Clients</h4>
                                             </div>
-                                        </td>
-                                    </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <!-- Statistiques -->
-                        <div class="row mt-4">
-                            <div class="col-md-3">
-                                <div class="card card-statistic-1">
-                                    <div class="card-icon bg-primary">
-                                        <i class="fas fa-users"></i>
-                                    </div>
-                                    <div class="card-wrap">
-                                        <div class="card-header">
-                                            <h4>Total Clients</h4>
-                                        </div>
-                                        <div class="card-body">
-                                            {{ $clients->count() }}
+                                            <div class="card-body">
+                                                {{ $clients->count() }}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card card-statistic-1">
-                                    <div class="card-icon bg-success">
-                                        <i class="fas fa-user-check"></i>
-                                    </div>
-                                    <div class="card-wrap">
-                                        <div class="card-header">
-                                            <h4>Actifs</h4>
+                                <div class="col-md-3">
+                                    <div class="card card-statistic-1">
+                                        <div class="card-icon bg-success">
+                                            <i class="fas fa-user-check"></i>
                                         </div>
-                                        <div class="card-body" id="actif-count">
-                                            {{ $clients->where('statut', 'actif')->count() }}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card card-statistic-1">
-                                    <div class="card-icon bg-warning">
-                                        <i class="fas fa-user-clock"></i>
-                                    </div>
-                                    <div class="card-wrap">
-                                        <div class="card-header">
-                                            <h4>Prospects</h4>
-                                        </div>
-                                        <div class="card-body" id="prospect-count">
-                                            {{ $clients->where('statut', 'prospect')->count() }}
+                                        <div class="card-wrap">
+                                            <div class="card-header">
+                                                <h4>Actifs</h4>
+                                            </div>
+                                            <div class="card-body" id="actif-count">
+                                                {{ $clients->where('statut', 'actif')->count() }}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card card-statistic-1">
-                                    <div class="card-icon bg-danger">
-                                        <i class="fas fa-user-times"></i>
-                                    </div>
-                                    <div class="card-wrap">
-                                        <div class="card-header">
-                                            <h4>Inactifs</h4>
+                                <div class="col-md-3">
+                                    <div class="card card-statistic-1">
+                                        <div class="card-icon bg-warning">
+                                            <i class="fas fa-user-clock"></i>
                                         </div>
-                                        <div class="card-body" id="inactif-count">
-                                            {{ $clients->where('statut', 'inactif')->count() }}
+                                        <div class="card-wrap">
+                                            <div class="card-header">
+                                                <h4>Prospects</h4>
+                                            </div>
+                                            <div class="card-body" id="prospect-count">
+                                                {{ $clients->where('statut', 'prospect')->count() }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card card-statistic-1">
+                                        <div class="card-icon bg-danger">
+                                            <i class="fas fa-user-times"></i>
+                                        </div>
+                                        <div class="card-wrap">
+                                            <div class="card-header">
+                                                <h4>Inactifs</h4>
+                                            </div>
+                                            <div class="card-body" id="inactif-count">
+                                                {{ $clients->where('statut', 'inactif')->count() }}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -199,183 +208,192 @@
                 </div>
             </div>
         </div>
-    </div>
-</section>
+    </section>
 @endsection
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('assets/bundles/select2/dist/css/select2.min.css') }}">
-<link rel="stylesheet" href="{{ asset('assets/bundles/datatables/datatables.min.css') }}">
-<link rel="stylesheet" href="{{ asset('assets/bundles/datatables/DataTables-1.10.16/css/dataTables.bootstrap4.min.css') }}">
-<style>
-    .table img {
-        border: 2px solid #f0f0f0;
-    }
-    .btn-group .btn {
-        margin: 0 2px;
-    }
-    .card-statistic-1 {
-        margin-bottom: 0;
-    }
-</style>
+    <link rel="stylesheet" href="{{ asset('assets/bundles/select2/dist/css/select2.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/bundles/datatables/datatables.min.css') }}">
+    <link rel="stylesheet"
+        href="{{ asset('assets/bundles/datatables/DataTables-1.10.16/css/dataTables.bootstrap4.min.css') }}">
+    <style>
+        .table img {
+            border: 2px solid #f0f0f0;
+        }
+
+        .btn-group .btn {
+            margin: 0 2px;
+        }
+
+        .card-statistic-1 {
+            margin-bottom: 0;
+        }
+    </style>
 @endpush
 
 @push('scripts')
-<script src="{{ asset('assets/bundles/select2/dist/js/select2.full.min.js') }}"></script>
-<script src="{{ asset('assets/bundles/datatables/datatables.min.js') }}"></script>
-<script src="{{ asset('assets/bundles/datatables/DataTables-1.10.16/js/dataTables.bootstrap4.min.js') }}"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="{{ asset('assets/bundles/select2/dist/js/select2.full.min.js') }}"></script>
+    <script src="{{ asset('assets/bundles/datatables/datatables.min.js') }}"></script>
+    <script src="{{ asset('assets/bundles/datatables/DataTables-1.10.16/js/dataTables.bootstrap4.min.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-<script>
-$(document).ready(function() {
-    $('.select2').select2({
-        placeholder: "Sélectionner...",
-        allowClear: true
-    });
+    <script>
+        $(document).ready(function () {
+            $('.select2').select2({
+                placeholder: "Sélectionner...",
+                allowClear: true
+            });
 
-    var table = $('#clients-table').DataTable({
-        language: {
-            url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/fr-FR.json'
-        },
-        pageLength: 25,
-        order: [[1, 'asc']],
-        columnDefs: [
-            { orderable: false, targets: [0, 7] },
-            { searchable: false, targets: [0, 5, 6, 7] }
-        ]
-    });
+            var table = $('#clients-table').DataTable({
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/fr-FR.json'
+                },
+                pageLength: 25,
+                order: [[1, 'asc']],
+                columnDefs: [
+                    { orderable: false, targets: [0, 7] },
+                    { searchable: false, targets: [0, 5, 6, 7] }
+                ]
+            });
 
-    // Filtre personnalisé propre
-    $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+            // Filtre personnalisé propre
+            $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
 
-        var statutFilter = $('#statut-filter').val();
-        var rowNode = table.row(dataIndex).node();
-        var rowStatut = $(rowNode).data('statut');
+                var statutFilter = $('#statut-filter').val();
+                var rowNode = table.row(dataIndex).node();
+                var rowStatut = $(rowNode).data('statut');
 
-        if (statutFilter && rowStatut !== statutFilter) {
-            return false;
-        }
+                if (statutFilter && rowStatut !== statutFilter) {
+                    return false;
+                }
 
-        return true;
-    });
+                return true;
+            });
 
-    // // Appliquer les filtres
-    // function applyFilters() {
-    //     table.draw();
-    //     updateCounts();
-    // }
+            // // Appliquer les filtres
+            // function applyFilters() {
+            //     table.draw();
+            //     updateCounts();
+            // }
 
-    // Recherche personnalisée (désactive la recherche interne)
-    $('#search-input').on('keyup', function() {
-        table.search(this.value).draw();
-        updateCounts();
-    });
+            // Recherche personnalisée (désactive la recherche interne)
+            $('#search-input').on('keyup', function () {
+                table.search(this.value).draw();
+                updateCounts();
+            });
 
-    $('#statut-filter').on('change', function() {
-        table.draw();
-        updateCounts();
-    });
+            $('#statut-filter').on('change', function () {
+                table.draw();
+                updateCounts();
+            });
 
-    $('#reset-filters').on('click', function() {
-        $('#search-input').val('');
-        $('#statut-filter').val('').trigger('change');
-        table.search('').draw();
-        updateCounts();
-    });
+            $('#reset-filters').on('click', function () {
+                $('#search-input').val('');
+                $('#statut-filter').val('').trigger('change');
+                table.search('').draw();
+                updateCounts();
+            });
 
-    // Mettre à jour les compteurs
-    function updateCounts() {
-        var actif = 0, inactif = 0, prospect = 0;
+            // Mettre à jour les compteurs
+            function updateCounts() {
+                var actif = 0, inactif = 0, prospect = 0;
 
-        // Itérer sur les lignes visibles (après filtre/recherche) via les nœuds DOM
-        table.rows({ search: 'applied', page: 'all' }).nodes().each(function(node) {
-            var statut = $(node).data('statut');
-            if (statut === 'actif') actif++;
-            else if (statut === 'inactif') inactif++;
-            else if (statut === 'prospect') prospect++;
-        });
-
-        $('#actif-count').text(actif);
-        $('#inactif-count').text(inactif);
-        $('#prospect-count').text(prospect);
-    }
-
-    table.on('order.dt', function() {
-        updateCounts();
-    });
-
-    // Suppression avec SweetAlert
-    $(document).on('click', '.delete-btn', function(e) {
-        e.preventDefault();
-        var form = $(this).closest('form');
-        var clientId = $(this).data('id');
-
-        Swal.fire({
-            title: 'Êtes-vous sûr ?',
-            text: "Cette action supprimera définitivement le client !",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Oui, supprimer !',
-            cancelButtonText: 'Annuler',
-            showLoaderOnConfirm: true,
-            preConfirm: () => {
-                return fetch(form.attr('action'), {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                    },
-                    body: JSON.stringify({ _method: 'DELETE' })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.success) {
-                        Swal.showValidationMessage(data.message);
-                        return false;
-                    }
-                    return data;
-                })
-                .catch(error => {
-                    Swal.showValidationMessage('Erreur lors de la suppression.');
+                // Itérer sur les lignes visibles (après filtre/recherche) via les nœuds DOM
+                table.rows({ search: 'applied', page: 'all' }).nodes().each(function (node) {
+                    var statut = $(node).data('statut');
+                    if (statut === 'actif') actif++;
+                    else if (statut === 'inactif') inactif++;
+                    else if (statut === 'prospect') prospect++;
                 });
-            },
-            allowOutsideClick: () => !Swal.isLoading()
-        }).then((result) => {
-            if (result.isConfirmed) {
-                Swal.fire(
-                    'Supprimé !',
-                    'Le client a été supprimé avec succès.',
-                    'success'
-                ).then(() => {
-                    location.reload();
-                });
+
+                $('#actif-count').text(actif);
+                $('#inactif-count').text(inactif);
+                $('#prospect-count').text(prospect);
             }
+
+            table.on('order.dt', function () {
+                updateCounts();
+            });
+
+            // Suppression avec SweetAlert
+            $(document).on('click', '.delete-btn', function (e) {
+                e.preventDefault();
+                var form = $(this).closest('form');
+                var clientId = $(this).data('id');
+
+                Swal.fire({
+                    title: 'Êtes-vous sûr ?',
+                    text: "Cette action supprimera définitivement le client !",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Oui, supprimer !',
+                    cancelButtonText: 'Annuler',
+                    showLoaderOnConfirm: true,
+                    preConfirm: () => {
+                        return fetch(form.attr('action'), {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                            },
+                            body: JSON.stringify({ _method: 'DELETE' })
+                        })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (!data.success) {
+                                    Swal.showValidationMessage(data.message);
+                                    return false;
+                                }
+                                return data;
+                            })
+                            .catch(error => {
+                                Swal.showValidationMessage('Erreur lors de la suppression.');
+                            });
+                    },
+                    allowOutsideClick: () => !Swal.isLoading()
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.fire(
+                            'Supprimé !',
+                            'Le client a été supprimé avec succès.',
+                            'success'
+                        ).then(() => {
+                            location.reload();
+                        });
+                    }
+                });
+            });
+
+            // Messages flash SweetAlert
+            @if(session('success'))
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Succès !',
+                    text: '{{ session('success') }}',
+                    timer: 3000,
+                    showConfirmButton: false
+                });
+            @endif
+
+            @if(session('error'))
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Erreur !',
+                    text: '{{ session('error') }}'
+                });
+            @endif
+
+            // Initialiser
+            updateCounts();
         });
-    });
-
-    // Messages flash SweetAlert
-    @if(session('success'))
-    Swal.fire({
-        icon: 'success',
-        title: 'Succès !',
-        text: '{{ session('success') }}',
-        timer: 3000,
-        showConfirmButton: false
-    });
-    @endif
-
-    @if(session('error'))
-    Swal.fire({
-        icon: 'error',
-        title: 'Erreur !',
-        text: '{{ session('error') }}'
-    });
-    @endif
-
-    // Initialiser
-    updateCounts();
-});
-</script>
+    </script>
+    <script>
+        document.getElementById('syncClientsForm').addEventListener('submit', function () {
+            const btn = document.getElementById('syncClientsBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Import des clients en cours...';
+        });
+    </script>
 @endpush

@@ -24,14 +24,7 @@
                                     <i class="fas fa-sync-alt me-2"></i>Synchroniser depuis Cofplan
                                 </button>
                             </form>
-                            {{-- Bouton d'import des clients --}}
-                            <form action="{{ route('clients.import') }}" method="POST" id="syncClientsForm"
-                                style="display:inline-block;">
-                                @csrf
-                                <button type="submit" class="btn btn-info" id="syncClientsBtn">
-                                    <i class="fas fa-users me-2"></i>Importer clients depuis cofigistre
-                                </button>
-                            </form>
+                            
                             <div class="card-header-action">
                                 <a href="{{ route('dossiers.create') }}" class="btn btn-icon icon-left btn-primary">
                                     <i class="fas fa-plus"></i> Nouveau Dossier
@@ -322,11 +315,5 @@
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Synchronisation en cours...';
         });
     </script>
-    <script>
-        document.getElementById('syncClientsForm').addEventListener('submit', function () {
-            const btn = document.getElementById('syncClientsBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Import des clients en cours...';
-        });
-    </script>
+
 @endpush
