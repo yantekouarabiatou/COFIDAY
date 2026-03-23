@@ -33,8 +33,8 @@ class AuthenticatedSessionController extends Controller
     //     return redirect()->intended(route('dashboard', absolute: false));
     // }
 
-    public function store(LoginRequest $request)
-{
+        public function store(LoginRequest $request)
+        {
             $request->authenticate(); // vérifie email + mot de passe
 
             $user = Auth::user();
@@ -46,7 +46,7 @@ class AuthenticatedSessionController extends Controller
             $user->save();
 
             // après authenticate()
-            session(['otp_user_id' => $user->id, 'otp_pending' => true]);
+            session(['otp_user_id' => $user->id, 'otp_pending' => true, 'remember' => $request->filled('remember')]);
             session()->save();
 
             // Envoie l'OTP et redirige vers le formulaire OTP sans logout
@@ -82,10 +82,10 @@ class AuthenticatedSessionController extends Controller
             ]);
 
             // Auth final
-            Auth::login($user);
+            Auth::login($user, session('remember'));
 
             // Nettoyage session OTP
-            session()->forget(['otp_user_id', 'otp_pending']);
+            session()->forget(['otp_user_id', 'otp_pending', 'remember']);
 
             $request->session()->regenerate();
 
