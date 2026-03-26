@@ -30,6 +30,14 @@ class SoldeCongeController extends Controller
                         ? $solde->user->prenom . ' ' . $solde->user->nom
                         : 'N/A';
                 })
+                ->filterColumn('user_name', function ($query, $keyword) {
+                    $keyword = mb_strtolower($keyword, 'UTF-8');
+                    $query->whereHas('user', function ($q) use ($keyword) {
+                        $q->whereRaw('LOWER(prenom) LIKE ?', ["%{$keyword}%"])
+                          ->orWhereRaw('LOWER(nom) LIKE ?', ["%{$keyword}%"])
+                          ->orWhereRaw("LOWER(CONCAT(prenom, ' ', nom)) LIKE ?", ["%{$keyword}%"]);
+                    });
+                })
                 ->addColumn('total_dispo', function ($solde) {
                     // La valeur est déjà calculée via selectSub
                     return $solde->total_dispo ?? 0;
