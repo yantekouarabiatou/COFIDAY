@@ -132,6 +132,20 @@
                                             @enderror
                                         </div>
                                     </div>
+
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Sexe</label>
+                                            <select name="sexe" class="form-control select2 @error('sexe') is-invalid @enderror">
+                                                <option value="">-- Choisir le sexe --</option>
+                                                <option value="M" {{ old('sexe', $user->sexe) == 'M' ? 'selected' : '' }}>Masculin</option>
+                                                <option value="F" {{ old('sexe', $user->sexe) == 'F' ? 'selected' : '' }}>Féminin</option>
+                                            </select>
+                                            @error('sexe')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <hr class="my-4">

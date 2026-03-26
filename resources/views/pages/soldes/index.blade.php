@@ -88,7 +88,7 @@
                 },
                 columns: [
                     { data: 'annee', name: 'annee' },
-                    { data: 'user_name', name: 'user.name', orderable: false, searchable: true },
+                    { data: 'user_name', name: 'user_name', orderable: false, searchable: true },
                     { data: 'jours_acquis', name: 'jours_acquis', className: 'text-center' },
                     { data: 'jours_pris', name: 'jours_pris', className: 'text-center' },
                     { data: 'jours_reportes', name: 'jours_reportes', className: 'text-center' },

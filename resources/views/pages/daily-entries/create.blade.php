@@ -66,10 +66,10 @@
 
                         <!-- Titre + bouton global sur la même ligne -->
                         <div class="d-flex align-items-center justify-content-between mb-4">
-                            <h5 class="mb-0"><i class="fas fa-tasks"></i> Activités de la journée</h5>
+                            <h5 class="mb-0"><i class="fas fa-tasks"></i> Tâches de la journée</h5>
                             <button type="button" class="btn btn-outline-primary btn-new-dossier-global"
-                                title="Nouveau dossier">
-                                <i class="fas fa-plus"></i> Nouveau dossier
+                                title="Nouvelle tâche">
+                                <i class="fas fa-plus"></i> Nouvelle tâche
                             </button>
                         </div>
 
@@ -85,10 +85,10 @@
                                             <div class="row align-items-end mb-3">
                                                 <div class="col-lg-3 col-md-4 col-12 mb-2">
                                                     <div class="form-group mb-0">
-                                                        <label class="font-weight-bold">Dossier <span class="text-danger">*</span></label>
+                                                        <label class="font-weight-bold">Activité <span class="text-danger">*</span></label>
                                                         <select name="time_entries[0][dossier_id]"
                                                             class="form-control select2 dossier-select" required>
-                                                            <option value="">Choisir un dossier...</option>
+                                                            <option value="">Choisir une activité...</option>
                                                             @foreach($dossiers as $dossier)
                                                                 <option value="{{ $dossier->id }}"
                                                                     data-client="{{ $dossier->client->nom ?? 'Sans client' }}"
@@ -96,6 +96,7 @@
                                                                     {{ $dossier->nom }} - {{ $dossier->client->nom ?? 'Sans client' }}
                                                                 </option>
                                                             @endforeach
+                                                            <option value="autre">Autre (créer une nouvelle activité)</option>
                                                         </select>
                                                     </div>
                                                 </div>
@@ -165,7 +166,7 @@
 
                             <div class="mb-4 text-center">
                                 <button type="button" id="add-row" class="btn btn-outline-primary btn-lg">
-                                    <i class="fas fa-plus-circle"></i> Ajouter une activité
+                                    <i class="fas fa-plus-circle"></i> Ajouter une tâche
                                 </button>
                             </div>
 
@@ -470,7 +471,7 @@
         $(document).ready(function () {
             $('.select2').select2({
                 width: '100%',
-                placeholder: "Choisir un dossier..."
+                placeholder: "Choisir une activité..."
             });
 
             let rowIndex = 1;
@@ -777,6 +778,15 @@
             });
         }
 
-            });
+        // Détecter sélection "autre" sur tous les selects (présents et futurs)
+        $(document).on('change', '.dossier-select', function () {
+            if ($(this).val() === 'autre') {
+                currentDossierSelect = $(this); // Mémoriser quel select a déclenché
+                $(this).val(null).trigger('change'); // Réinitialiser le select
+                $('#newDossierModal').modal('show');
+            }
+        });
+
+    });
     </script>
 @endpush

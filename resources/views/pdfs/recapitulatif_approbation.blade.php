@@ -7,12 +7,18 @@
         $isPermission = str_contains(strtolower($demande->typeConge->libelle ?? ''), 'permission');
         $motLabel     = $isPermission ? 'permission' : 'congé';
         $motLabelCap  = $isPermission ? 'Permission' : 'Congé';
+
+        // Ajout des variables de genre
+        $sexe      = $demande->user->sexe;
+        $civilite  = $sexe === 'M' ? 'Monsieur' : ($sexe === 'F' ? 'Madame' : '');
+        $employe   = $sexe === 'M' ? 'employé' : ($sexe === 'F' ? 'employée' : 'employé(e)');
+        $pronom    = $sexe === 'M' ? 'Il' : ($sexe === 'F' ? 'Elle' : 'Il/Elle');
     @endphp
 
     <title>Note de service N°{{ $numeroNote }}</title>
 
     <style>
-                @font-face {
+        @font-face {
             font-family: 'Helvetica';
             font-style: normal;
             font-weight: normal;
@@ -88,7 +94,7 @@
         }
         .table-soldes tr.annee-prelevee td { font-weight: bold; background-color: #f0f4ff; }
 
-        .signature-wrap  { display: table; width: 100%; margin-top: 40px; float: right; justify-content: center;}
+        .signature-wrap  { display: table; width: 100%; margin-top: 40px;}
         .sig-gauche      { display: table-cell; width: 50%; vertical-align: top; font-size: 12px; }
         .sig-droite      { display: table-cell; width: 50%; vertical-align: top; text-align: center; font-size: 12px; }
 
@@ -132,9 +138,9 @@
     {{-- CORPS --}}
     <div class="corps">
         <p>
-            Monsieur / Madame
+            {{ $civilite }}
             <strong>{{ $demande->user->nom }} {{ $demande->user->prenom }}</strong>,
-            employé(e) à COFIMA, bénéficiera de
+            {{ $employe }} à COFIMA, bénéficiera de
             @if($isPermission) sa permission @else ses congés @endif
             administratifs pour la période allant du
             <strong>{{ $demande->date_debut_formatted ?? $demande->date_debut }}</strong>
@@ -144,7 +150,7 @@
         </p>
 
         <p>
-            Il / Elle reprend normalement service le
+            {{ $pronom }} reprend normalement service le
             <strong>{{ $dateRepriseFormatee }}</strong>.
         </p>
     </div>
@@ -156,7 +162,7 @@
                 <th>Nom et prénom</th>
                 <th>Début {{ $motLabel }}</th>
                 <th>Fin {{ $motLabel }}</th>
-                <th>Année</th>
+                <th>Détail</th>
             </tr>
         </thead>
         <tbody>

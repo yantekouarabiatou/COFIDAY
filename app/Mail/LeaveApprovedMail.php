@@ -74,10 +74,14 @@ class LeaveApprovedMail extends Mailable
             ? 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoPath))
             : null;
 
+        // ── Construction de $soldesParAnnee ──────────────────────────────────
+        $soldesParAnnee = $this->soldes->keyBy('annee')->map(fn($s) => $s->jours_restants)->toArray();
+
         $pdf = Pdf::loadView('pdfs.recapitulatif_approbation', [
             'demande'             => $this->demande,
             'soldes'              => $this->soldes,
             'anneesPrelevees'     => $this->anneesPrelevees,
+            'soldesParAnnee'      => $soldesParAnnee, // ← Ajout ici
             'dateRepriseFormatee' => $this->dateRepriseFormatee,
             'numeroNote'          => $this->numeroNote,
             'logoBase64'          => $logoBase64,

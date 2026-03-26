@@ -6,7 +6,20 @@
     @php
         $isPermission = str_contains(strtolower($leave->typeConge->libelle ?? ''), 'permission');
         $motLabel     = $isPermission ? 'permission' : 'congé';
-        $motLabelCap  = $isPermission ? 'Permission' : 'Congé';
+
+        // Genre de l'expéditeur
+        $sexe      = $leave->user->sexe;
+        $civiliteExp = $sexe === 'F' ? 'Madame' : 'Monsieur';
+
+        // Genre du supérieur (destinataire)
+        $sexeSup       = $superieur->sexe ?? 'M';
+        $civiliteSup   = $sexeSup === 'F' ? 'Madame' : 'Monsieur';
+
+        // Article devant le poste du supérieur (le / la / l')
+        $intitulePoste = $superieur->poste->intitule ?? '';
+        $voyelles      = ['a', 'e', 'i', 'o', 'u', 'h', 'â', 'è', 'é', 'ê', 'î', 'ô', 'û'];
+        $premiereLettre = mb_strtolower(mb_substr($intitulePoste, 0, 1));
+        $articlePoste  = in_array($premiereLettre, $voyelles) ? "l'" : ($sexeSup === 'F' ? 'la ' : 'le ');
     @endphp
 
     <title>Demande de {{ $motLabel }}</title>
@@ -14,25 +27,19 @@
     <style>
         @font-face {
             font-family: 'Helvetica';
-            font-style: normal;
             font-weight: normal;
             src: url("{{ storage_path('fonts/Helvetica.ttf') }}") format('truetype');
         }
-
         @font-face {
             font-family: 'Helvetica';
-            font-style: normal;
             font-weight: bold;
             src: url("{{ storage_path('fonts/Helvetica-Bold.ttf') }}") format('truetype');
         }
-
         @font-face {
             font-family: 'Helvetica';
             font-style: italic;
-            font-weight: normal;
             src: url("{{ storage_path('fonts/Helvetica-Oblique.ttf') }}") format('truetype');
         }
-
         @font-face {
             font-family: 'Helvetica';
             font-style: italic;
@@ -47,90 +54,50 @@
             color: #000;
             margin: 40px 50px;
         }
-
-        .logo-container {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .logo {
-            max-width: 140px;
-            height: auto;
-        }
-
-        .header {
-            text-align: right;
-            margin-bottom: 30px;
-        }
-
-        .header p {
-            margin: 0;
-        }
-
-        .sender {
-            margin-bottom: 25px;
-        }
-
-        .sender p {
-            margin: 0;
-        }
-
+        .logo-container { text-align: center; margin-bottom: 20px; }
+        .logo { max-width: 140px; height: auto; }
+        .header { text-align: right; margin-bottom: 30px; }
+        .header p { margin: 0; }
+        .sender { margin-bottom: 25px; }
+        .sender p { margin: 0; }
         .recipient {
             width: 50%;
             margin-left: 50%;
             text-align: center;
             margin-bottom: 30px;
         }
-
-        .recipient p {
-            margin: 0;
-        }
-
+        .recipient p { margin: 0; }
         .object {
             font-weight: bold;
             text-decoration: underline;
             margin: 25px 0;
             font-size: 14px;
         }
-
-        .content {
-            text-align: justify;
-        }
-
-        .content p {
-            margin-bottom: 15px;
-        }
-
+        .content { text-align: justify; }
+        .content p { margin-bottom: 15px; }
         .signature {
             margin-top: 50px;
             float: right;
             text-align: center;
-            justify-content: center;
         }
-
-        .signature p {
-            margin: 0;
-        }
-
-        .highlight {
-            font-weight: bold;
-        }
+        .signature p { margin: 0; }
+        .highlight { font-weight: bold; }
     </style>
 </head>
 
 <body>
 
-        {{-- LOGO --}}
+    {{-- LOGO --}}
     @php
-        $logoPath = public_path('storage/photos/logo-cofima-bon.jpg'); // ← chemin local du logo
+        $logoPath   = public_path('storage/photos/logo-cofima-bon.jpg');
         $logoBase64 = file_exists($logoPath)
             ? 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoPath))
             : null;
     @endphp
     @if($logoBase64)
-    <div class="logo-container">
-        <img src="{{ $logoBase64 }}" alt="Logo COFIMA" class="logo">
-    </div>
+        <div class="logo-container">
+            <img src="{{ $logoBase64 }}" alt="Logo COFIMA" class="logo">
+        </div>
     @endif
 
     {{-- EN-TÊTE --}}
@@ -141,10 +108,14 @@
     {{-- EXPÉDITEUR --}}
     <div class="sender">
         <p>
-            <strong>{{ $leave->user->nom }} {{ $leave->user->prenom }}</strong><br>
+            <strong>{{ $leave->user->prenom }} {{ $leave->user->nom }}</strong><br>
             {{ $leave->user->poste->intitule ?? '—' }}<br>
-            {{ $leave->user->email ?? '' }}<br>
-            {{ $leave->user->telephone ?? '' }}
+            @if($leave->user->email)
+                {{ $leave->user->email }}<br>
+            @endif
+            @if($leave->user->telephone)
+                {{ $leave->user->telephone }}
+            @endif
         </p>
     </div>
 
@@ -152,8 +123,9 @@
     <div class="recipient">
         <p>
             À<br>
-            Monsieur <strong>{{ $superieur->nom }} {{ $superieur->prenom ?? '' }}</strong>,<br>
-            l'associé gérant de COFIMA
+            {{ $civiliteSup }}
+            <strong>{{ $superieur->prenom ?? '' }} {{ $superieur->nom }}</strong>,<br>
+            {{ $intitulePoste }} de COFIMA
         </p>
     </div>
 
@@ -165,15 +137,13 @@
     {{-- CORPS --}}
     <div class="content">
 
-        <p>Monsieur l'associé gérant,</p>
+        <p>{{ $civiliteSup }} {{ $articlePoste }}{{ $intitulePoste }},</p>
 
         @if($isPermission)
-
-            {{-- ── CAS PERMISSION ── --}}
             <p>
                 J'ai l'honneur de solliciter, par la présente, votre autorisation
                 pour bénéficier d'une <span class="highlight">permission</span>
-                de type <span class="highlight">{{ $leave->typeConge->libelle ?? '—' }}</span>
+                de type <span class="highlight">{{ $leave->typeConge->libelle ?? '—' }}</span>,
                 du <span class="highlight">{{ $leave->date_debut_formatted }}</span>
                 au <span class="highlight">{{ $leave->date_fin_formatted }}</span>,
                 soit <span class="highlight">{{ $leave->nombre_jours }}</span> jour(s) ouvrable(s).
@@ -193,19 +163,18 @@
 
             <p>
                 Dans l'attente d'une décision favorable, je vous prie d'agréer,
-                Monsieur l'associé gérant, l'expression de ma considération distinguée.
+                {{ $civiliteSup }} {{ $articlePoste }}{{ $intitulePoste }},
+                l'expression de ma considération distinguée.
             </p>
 
         @else
-
-            {{-- ── CAS CONGÉ ── --}}
             <p>
                 J'ai l'honneur de solliciter, par la présente, l'autorisation
                 de bénéficier d'un <span class="highlight">congé</span>
-                de type <span class="highlight">{{ $leave->typeConge->libelle ?? '—' }}</span>
+                de type <span class="highlight">{{ $leave->typeConge->libelle ?? '—' }}</span>,
                 du <span class="highlight">{{ $leave->date_debut_formatted }}</span>
                 au <span class="highlight">{{ $leave->date_fin_formatted }}</span>,
-                soit <span class="highlight">{{ $leave->nombre_jours }}</span> jour(s).
+                soit <span class="highlight">{{ $leave->nombre_jours }}</span> jour(s) ouvrable(s).
             </p>
 
             @if(!empty($leave->motif ?? $leave->reason))
@@ -222,9 +191,9 @@
 
             <p>
                 Dans l'attente d'une suite favorable, je vous prie d'agréer,
-                Monsieur / Madame, l'expression de ma considération distinguée.
+                {{ $civiliteSup }} {{ $articlePoste }}{{ $intitulePoste }},
+                l'expression de ma considération distinguée.
             </p>
-
         @endif
 
     </div>
