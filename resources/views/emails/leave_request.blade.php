@@ -130,7 +130,7 @@
 
     {{-- LOGO --}}
     <div class="logo-container">
-        <img src="https://cofima.cc/wp-content/uploads/2020/09/logo-cofima-bon.jpg"
+        <img src="{{ asset('storage/photos/logo-cofima-bon.jpg') }}"
              alt="Logo COFIMA"
              class="logo">
     </div>

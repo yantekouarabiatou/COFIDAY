@@ -414,8 +414,15 @@ class CongeController extends Controller
                 mkdir(dirname($pdfPath), 0755, true);
             }
 
-            $pdf->save($pdfPath);
-            Mail::to($superieur->email)->send(new LeaveRequestMail($demande, $superieur, $pdfPath));
+            $pdfContent = $pdf->output();
+            file_put_contents($pdfPath, $pdfContent);
+
+            // Vérifier que le PDF est complet
+            if (!str_ends_with(trim($pdfContent), '%%EOF')) {
+                throw new \Exception('PDF généré incomplet, veuillez réessayer.');
+            }
+            // Mail::to($superieur->email)->send(new LeaveRequestMail($demande, $superieur, $pdfPath));
+            Mail::to("biroko@cofima.cc")->send(new LeaveRequestMail($demande, $superieur, $pdfPath));
 
             DB::commit();
 

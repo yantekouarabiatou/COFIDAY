@@ -22,28 +22,28 @@
             font-family: 'Helvetica';
             font-style: normal;
             font-weight: normal;
-            src: url("{{ storage_path('fonts/Helvetica.ttf') }}") format('truetype');
+            src: url("file://{{ str_replace('\\', '/', storage_path('fonts/Helvetica.ttf')) }}") format('truetype');
         }
 
         @font-face {
             font-family: 'Helvetica';
             font-style: normal;
             font-weight: bold;
-            src: url("{{ storage_path('fonts/Helvetica-Bold.ttf') }}") format('truetype');
+            src: url("file://{{ str_replace('\\', '/', storage_path('fonts/Helvetica-Bold.ttf')) }}") format('truetype');
         }
 
         @font-face {
             font-family: 'Helvetica';
             font-style: italic;
             font-weight: normal;
-            src: url("{{ storage_path('fonts/Helvetica-Oblique.ttf') }}") format('truetype');
+            src: url("file://{{ str_replace('\\', '/', storage_path('fonts/Helvetica-Oblique.ttf')) }}") format('truetype');
         }
 
         @font-face {
             font-family: 'Helvetica';
             font-style: italic;
             font-weight: bold;
-            src: url("{{ storage_path('fonts/Helvetica-BoldOblique.ttf') }}") format('truetype');
+            src: url("file://{{ str_replace('\\', '/', storage_path('fonts/Helvetica-BoldOblique.ttf')) }}") format('truetype');
         }
 
         body {

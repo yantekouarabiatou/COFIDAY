@@ -28,23 +28,23 @@
         @font-face {
             font-family: 'Helvetica';
             font-weight: normal;
-            src: url("{{ storage_path('fonts/Helvetica.ttf') }}") format('truetype');
+            src: url("file://{{ str_replace('\\', '/', storage_path('fonts/Helvetica.ttf')) }}") format('truetype');
         }
         @font-face {
             font-family: 'Helvetica';
             font-weight: bold;
-            src: url("{{ storage_path('fonts/Helvetica-Bold.ttf') }}") format('truetype');
+            src: url("file://{{ str_replace('\\', '/', storage_path('fonts/Helvetica-Bold.ttf')) }}") format('truetype');
         }
         @font-face {
             font-family: 'Helvetica';
             font-style: italic;
-            src: url("{{ storage_path('fonts/Helvetica-Oblique.ttf') }}") format('truetype');
+            src: url("file://{{ str_replace('\\', '/', storage_path('fonts/Helvetica-Oblique.ttf')) }}") format('truetype');
         }
         @font-face {
             font-family: 'Helvetica';
             font-style: italic;
             font-weight: bold;
-            src: url("{{ storage_path('fonts/Helvetica-BoldOblique.ttf') }}") format('truetype');
+            src: url("file://{{ str_replace('\\', '/', storage_path('fonts/Helvetica-BoldOblique.ttf')) }}") format('truetype');
         }
 
         body {
@@ -88,17 +88,10 @@
 <body>
 
     {{-- LOGO --}}
-    @php
-        $logoPath   = public_path('storage/photos/logo-cofima-bon.jpg');
-        $logoBase64 = file_exists($logoPath)
-            ? 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoPath))
-            : null;
-    @endphp
-    @if($logoBase64)
-        <div class="logo-container">
-            <img src="{{ $logoBase64 }}" alt="Logo COFIMA" class="logo">
-        </div>
-    @endif
+
+    <div class="logo-container">
+        <img src="{{ asset('storage/photos/logo-cofima-bon.jpg') }}" alt="Logo COFIMA" class="logo">
+    </div>
 
     {{-- EN-TÊTE --}}
     <div class="header">
