@@ -62,7 +62,8 @@
         .sender p { margin: 0; }
         .recipient {
             width: 50%;
-            margin-left: 50%;
+            margin-left: auto;
+            margin-right: 0;
             text-align: center;
             margin-bottom: 30px;
         }
@@ -90,7 +91,7 @@
     {{-- LOGO --}}
 
     <div class="logo-container">
-        <img src="{{ asset('storage/photos/logo-cofima-bon.jpg') }}" alt="Logo COFIMA" class="logo">
+        <img src="file://{{ public_path('storage/photos/logo-cofima-bon.jpg') }}" class="logo">
     </div>
 
     {{-- EN-TÊTE --}}
@@ -98,29 +99,33 @@
         <p>{{ $lieu ?? 'Cotonou' }}, le {{ $date ?? date('d/m/Y') }}</p>
     </div>
 
-    {{-- EXPÉDITEUR --}}
-    <div class="sender">
-        <p>
-            <strong>{{ $leave->user->prenom }} {{ $leave->user->nom }}</strong><br>
-            {{ $leave->user->poste->intitule ?? '—' }}<br>
-            @if($leave->user->email)
-                {{ $leave->user->email }}<br>
-            @endif
-            @if($leave->user->telephone)
-                {{ $leave->user->telephone }}
-            @endif
-        </p>
-    </div>
+    <table width="100%" style="margin-bottom: 30px;">
+        <tr>
+            {{-- EXPÉDITEUR --}}
+            <td width="70%" style="vertical-align: top;">
+                <p>
+                    <strong>{{ $leave->user->prenom }} {{ $leave->user->nom }}</strong><br>
+                    {{ $leave->user->poste->intitule ?? '—' }}<br>
+                    @if($leave->user->email)
+                        {{ $leave->user->email }}<br>
+                    @endif
+                    @if($leave->user->telephone)
+                        {{ $leave->user->telephone }}
+                    @endif
+                </p>
+            </td>
 
-    {{-- DESTINATAIRE --}}
-    <div class="recipient">
-        <p>
-            À<br>
-            {{ $civiliteSup }}
-            <strong>{{ $superieur->prenom ?? '' }} {{ $superieur->nom }}</strong>,<br>
-            {{ $intitulePoste }} de COFIMA
-        </p>
-    </div>
+            {{-- DESTINATAIRE --}}
+            <td width="30%" style="vertical-align: top; text-align: center;">
+                <p>
+                    À<br>
+                    {{ $civiliteSup }}
+                    <strong>{{ $superieur->prenom ?? '' }} {{ $superieur->nom }}</strong>,<br>
+                    {{ $intitulePoste }} de COFIMA
+                </p>
+            </td>
+        </tr>
+    </table>
 
     {{-- OBJET --}}
     <div class="object">

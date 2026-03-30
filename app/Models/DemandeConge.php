@@ -27,6 +27,11 @@ class DemandeConge extends Model
         'annule_par',
         'date_annulation',
         'fichier_justificatif',
+        'meta_deductions',
+        'statut_final',
+        'valide_par_final',
+        'date_validation_finale',
+        'commentaire_final',
     ];
 
     protected $casts = [
@@ -35,6 +40,11 @@ class DemandeConge extends Model
         'date_validation' => 'datetime',
         'date_annulation' => 'datetime',
         'nombre_jours' => 'integer',
+        'meta_deductions'         => 'array',   // lus besoin de json_encode/decode manuellement
+        'statut_final'            => 'string',
+        'valide_par_final'        => 'integer',
+        'date_validation_finale'  => 'datetime',
+        'commentaire_final'       => 'string',
     ];
 
     /**

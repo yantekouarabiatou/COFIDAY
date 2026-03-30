@@ -174,7 +174,7 @@
 
             <p style="margin-top:20px;">
                 Cordialement,<br>
-                <strong>Le service RH</strong>
+                <strong>COFTIME</strong>
             </p>
 
         </div>

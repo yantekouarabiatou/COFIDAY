@@ -388,7 +388,7 @@ class CongeController extends Controller
             // (utile pour annulation / rollback)
             if (!empty($deductions)) {
                 $demande->update([
-                    'meta_deductions' => json_encode($deductions),
+                    'meta_deductions' => $deductions,
                 ]);
             }
 
@@ -421,8 +421,7 @@ class CongeController extends Controller
             if (!str_ends_with(trim($pdfContent), '%%EOF')) {
                 throw new \Exception('PDF généré incomplet, veuillez réessayer.');
             }
-            // Mail::to($superieur->email)->send(new LeaveRequestMail($demande, $superieur, $pdfPath));
-            Mail::to("biroko@cofima.cc")->send(new LeaveRequestMail($demande, $superieur, $pdfPath));
+            Mail::to($superieur->email)->send(new LeaveRequestMail($demande, $superieur, $pdfPath));
 
             DB::commit();
 
@@ -495,7 +494,7 @@ class CongeController extends Controller
 
                 // 1. Restituer les jours de l'ancienne demande (si elle était annuelle)
                 if ($ancienTypeConge && $ancienTypeConge->est_annuel) {
-                    $anciennesDeductions = json_decode($demande->meta_deductions ?? '[]', true);
+                    $anciennesDeductions = $demande->meta_deductions ?? [];
 
                     if (!empty($anciennesDeductions)) {
                         $this->restituerSoldesMultiAnnees($user->id, $anciennesDeductions);
@@ -539,7 +538,7 @@ class CongeController extends Controller
                 'date_fin'                  => $request->date_fin,
                 'nombre_jours'              => $nombreJours,
                 'motif'                     => $request->motif,
-                'meta_deductions'           => !empty($deductions) ? json_encode($deductions) : null,
+                'meta_deductions'           => !empty($deductions) ? $deductions : null,
             ]);
 
             // ── Historique ────────────────────────────────────────────────────
@@ -605,7 +604,7 @@ class CongeController extends Controller
             // Restituer les jours si c'était un congé annuel
             $typeConge = TypeConge::find($demande->type_conge_id);
             if ($typeConge && $typeConge->est_annuel) {
-                $deductions = json_decode($demande->meta_deductions ?? '[]', true);
+                $deductions = $demande->meta_deductions ?? [];
 
                 if (!empty($deductions)) {
                     $this->restituerSoldesMultiAnnees($demande->user_id, $deductions);
@@ -1178,7 +1177,7 @@ class CongeController extends Controller
             if ($action === 'approuve') {
 
                 // ── Années prélevées ──────────────────────────────────────────────
-                $deductions      = json_decode($demande->meta_deductions ?? '[]', true);
+                $deductions = $demande->meta_deductions ?? [];
                 $anneesPrelevees = !empty($deductions)
                     ? collect($deductions)->pluck('annee')->unique()->toArray()
                     : [Carbon::parse($demande->date_debut)->year];

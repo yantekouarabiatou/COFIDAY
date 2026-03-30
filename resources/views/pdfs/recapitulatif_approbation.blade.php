@@ -109,17 +109,9 @@
     {{-- EN-TÊTE --}}
     <div class="entete">
         <div class="entete-logo">
-            @php
-                $logoPath = public_path('storage/photos/logo-cofima-bon.jpg'); // ← chemin local du logo
-                $logoBase64 = file_exists($logoPath)
-                    ? 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoPath))
-                    : null;
-            @endphp
-            @if($logoBase64)
             <div class="logo-container">
-                <img src="{{ $logoBase64 }}" alt="Logo COFIMA" class="logo">
+                <img src="file://{{ public_path('storage/photos/logo-cofima-bon.jpg') }}" class="logo">
             </div>
-            @endif
         </div>
         <div class="entete-texte">
             <span class="societe">COFIMA BENIN</span><br>
@@ -172,9 +164,8 @@
                 <td class="centre">{{ $demande->date_fin_formatted ?? $demande->date_fin }}</td>
                 <td>
                     @if($demande->typeConge && $demande->typeConge->est_annuel)
-                        {{ $motLabelCap }}s administratifs<br>
+                        {{ $motLabelCap }}s administratifs prélevés sur les années suivantes :<br>
                         @foreach($anneesPrelevees as $annee)
-                            l'année {{ $annee }} :<br>
                             Reste dû {{ $annee }} :
                             <strong>{{ $soldesParAnnee[$annee] ?? '—' }} jour(s)</strong><br>
                         @endforeach
@@ -208,7 +199,6 @@
                 <tr class="{{ in_array($solde->annee, $anneesPrelevees) ? 'annee-prelevee' : '' }}">
                     <td>
                         {{ $solde->annee }}
-                        @if(in_array($solde->annee, $anneesPrelevees)) ★ @endif
                     </td>
                     <td>{{ $solde->jours_acquis }}</td>
                     <td>{{ $solde->jours_pris }}</td>
@@ -219,10 +209,6 @@
                 @endforeach
             </tbody>
         </table>
-
-        <p style="font-size: 9px; color: #555; margin-top: 4px;">
-            ★ Année(s) sur laquelle ce {{ $motLabel }} a été prélevé.
-        </p>
 
     @endif
 
@@ -243,7 +229,7 @@
     <div class="footer">
         N° IFU 3200900601214 · RCCM RB/COT/07B/336 · C/2213 F Immeuble Athoueinsou Sessou Koutoumou – Cotonou<br>
         Tél : +229 21 38 04 58 · Mobile : +229 90 95 18 90 / 05 07 09 48<br>
-        Site web : www.cofimabénin.com · Email : cofima@cofimabénin.com
+        Site web : www.cofimabenin.com · Email : cofima@cofimabenin.com
     </div>
 
 </body>
