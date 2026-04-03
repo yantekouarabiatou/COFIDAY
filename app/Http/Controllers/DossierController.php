@@ -133,10 +133,33 @@ class DossierController extends Controller
 
             DB::commit();
 
+            // ── Réponse AJAX ──────────────────────────────────────────────────
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'dossier' => [
+                        'id'        => $dossier->id,
+                        'nom'       => $dossier->nom,
+                        'reference' => $dossier->reference,
+                    ],
+                    'client' => [
+                        'nom' => $dossier->client->nom ?? 'Sans client',
+                    ],
+                ]);
+            }
+
             Alert::success('Succès', 'Dossier créé avec succès.');
             return redirect()->route('dossiers.show', $dossier);
         } catch (\Exception $e) {
             DB::rollBack();
+
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Une erreur est survenue : ' . $e->getMessage(),
+                ], 500);
+            }
+
             Alert::error('Erreur', 'Une erreur est survenue lors de la création du dossier.');
             return back()->withInput();
         }

@@ -209,11 +209,13 @@
     </section>
 
     <!-- Modal pour nouveau dossier -->
-    <div class="modal fade" id="newDossierModal" tabindex="-1" role="dialog">
-        <div class="modal-dialog modal-lg" role="document">
+    <div class="modal fade mt-5" id="newDossierModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-md" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-folder-plus"></i> Nouveau Dossier</h5>
+                    <h5 class="modal-title">
+                        <i class="fas fa-folder-plus"></i> Nouvelle activité
+                    </h5>
                     <button type="button" class="close" data-dismiss="modal">
                         <span>&times;</span>
                     </button>
@@ -221,38 +223,36 @@
                 <div class="modal-body">
                     <form id="new-dossier-form">
                         @csrf
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label>Nom du dossier <span class="text-danger">*</span></label>
-                                    <input type="text" name="nom" class="form-control" required
-                                        placeholder="Ex: Audit financier 2024">
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label>Référence</label>
-                                    <input type="text" name="reference" class="form-control" placeholder="Ex: REF-2025-001">
-                                </div>
-                            </div>
+
+                        <div class="form-group">
+                            <label>Nom de l'activité <span class="text-danger">*</span></label>
+                            <input type="text" name="nom" class="form-control" required
+                                placeholder="Ex: Audit financier 2024">
+                        </div>
+
+                        {{-- Référence générée automatiquement --}}
+                        <div class="form-group">
+                            <label>Référence <small class="text-muted">(générée automatiquement)</small></label>
+                            <input type="text" name="reference" id="modal-reference" class="form-control"
+                                placeholder="Ex: DOS-AUD-260331" readonly
+                                style="background-color: #f8f9fa; cursor: not-allowed;">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Client</label>
+                            <select name="client_id" class="form-control select2-modal">
+                                <option value="">Sans client (Coftime par défaut)</option>
+                                @foreach($clients as $client)
+                                    <option value="{{ $client->id }}">{{ $client->nom }}</option>
+                                @endforeach
+                            </select>
                         </div>
 
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label>Client <span class="text-danger">*</span></label>
-                                    <select name="client_id" class="form-control select2" required>
-                                        <option value="">Choisir un client...</option>
-                                        @foreach($clients as $client)
-                                            <option value="{{ $client->id }}">{{ $client->nom }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label>Type de dossier</label>
-                                    <select name="type_dossier" class="form-control">
+                                    <label>Type <span class="text-danger">*</span></label>
+                                    <select name="type_dossier" class="form-control" required>
                                         <option value="">Sélectionner...</option>
                                         <option value="audit">Audit</option>
                                         <option value="conseil">Conseil</option>
@@ -262,79 +262,35 @@
                                     </select>
                                 </div>
                             </div>
-                        </div>
-
-                        <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label>Date d'ouverture</label>
-                                    <input type="date" name="date_ouverture" class="form-control"
-                                        value="{{ now()->format('Y-m-d') }}">
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label>Date de clôture prévue</label>
-                                    <input type="date" name="date_cloture_prevue" class="form-control">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label>Budget (€)</label>
-                                    <input type="number" step="0.01" name="budget" class="form-control" placeholder="0.00">
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label>Frais de dossier (€)</label>
-                                    <input type="number" step="0.01" name="frais_dossier" class="form-control"
-                                        placeholder="0.00">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label>Statut</label>
-                                    <select name="statut" class="form-control">
+                                    <label>Statut <span class="text-danger">*</span></label>
+                                    <select name="statut" class="form-control" required>
                                         <option value="ouvert">Ouvert</option>
                                         <option value="en_cours" selected>En cours</option>
                                         <option value="suspendu">Suspendu</option>
                                         <option value="cloture">Clôturé</option>
-                                        <option value="archive">Archivé</option>
                                     </select>
                                 </div>
                             </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label>Document (fichier)</label>
-                                    <input type="file" name="document" class="form-control">
-                                    <small class="text-muted">PDF, Word, Excel, etc.</small>
-                                </div>
-                            </div>
                         </div>
 
                         <div class="form-group">
-                            <label>Description</label>
-                            <textarea name="description" class="form-control" rows="3"
-                                placeholder="Description détaillée du dossier..."></textarea>
+                            <label>Date d'ouverture <span class="text-danger">*</span></label>
+                            <input type="date" name="date_ouverture" class="form-control"
+                                value="{{ now()->format('Y-m-d') }}" required>
                         </div>
 
-                        <div class="form-group">
-                            <label>Notes internes</label>
-                            <textarea name="notes" class="form-control" rows="2"
-                                placeholder="Notes visibles uniquement en interne..."></textarea>
-                        </div>
+                        {{-- Champs cachés avec valeurs par défaut pour satisfaire la validation --}}
+                        <input type="hidden" name="date_cloture_prevue" value="">
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        Annuler
+                    </button>
                     <button type="button" class="btn btn-primary" id="save-new-dossier">
-                        <i class="fas fa-save"></i> Créer le dossier
+                        <i class="fas fa-save"></i> Créer
                     </button>
                 </div>
             </div>
@@ -474,6 +430,57 @@
                 placeholder: "Choisir une activité..."
             });
 
+            // Select2 dans le modal (classe distincte pour éviter les conflits)
+            $('#newDossierModal').on('shown.bs.modal', function () {
+                $('.select2-modal').select2({
+                    dropdownParent: $('#newDossierModal'),
+                    width: '100%',
+                    placeholder: "Choisir un client..."
+                });
+            });
+
+            // ── Génération auto de la référence dans le modal ─────────────────
+            // ── Référence : même logique que create.blade ─────────────────────
+
+            function generateReference(nom) {
+                let prefix = nom ? nom.substring(0, 3).toUpperCase() : '';
+                let now    = new Date();
+                let date   = now.toISOString().slice(2, 10).replace(/-/g, '');   // 260331
+                let time   = now.toTimeString().slice(0, 8).replace(/:/g, '');   // 143022
+                return 'DOS-IND-' + prefix + '-' + date + time; // DOS-AUD-260331143022
+            }
+
+            // À l'ouverture du modal
+            $('#newDossierModal').on('shown.bs.modal', function () {
+                if (!$('.select2-modal').data('select2')) {
+                    $('.select2-modal').select2({
+                        dropdownParent: $('#newDossierModal'),
+                        width: '100%',
+                        placeholder: "Choisir un client..."
+                    });
+                }
+
+                // Générer une référence initiale si vide
+                if (!$('#modal-reference').val()) {
+                    $('#modal-reference').val(generateReference(''));
+                }
+            });
+
+            // Affiner quand l'utilisateur quitte le champ nom
+            $(document).on('blur', '#modal-nom', function () {
+                let nom = $(this).val().trim();
+                if (nom) {
+                    $('#modal-reference').val(generateReference(nom));
+                }
+            });
+
+            // Réinitialiser à la fermeture
+            $('#newDossierModal').on('hidden.bs.modal', function () {
+                $('#new-dossier-form')[0].reset();
+                $('#modal-reference').val('');
+                currentDossierSelect = null;
+            });
+
             let rowIndex = 1;
             let currentDossierSelect = null;
 
@@ -486,10 +493,20 @@
                 $('#newDossierModal').modal('show');
             });
 
-            // Création du dossier via AJAX
             $('#save-new-dossier').on('click', function () {
-                let form = $('#new-dossier-form');
+                let form    = $('#new-dossier-form');
                 let submitBtn = $(this);
+
+                // Validation minimale côté client avant d'envoyer
+                let nom         = form.find('input[name="nom"]').val().trim();
+                let type        = form.find('select[name="type_dossier"]').val();
+                let statut      = form.find('select[name="statut"]').val();
+                let dateOuv     = form.find('input[name="date_ouverture"]').val();
+
+                if (!nom || !type || !statut || !dateOuv) {
+                    Swal.fire('Champs manquants', 'Veuillez remplir tous les champs obligatoires (*).', 'warning');
+                    return; // ← on n'envoie rien, bouton reste actif
+                }
 
                 submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Création...');
 
@@ -501,34 +518,63 @@
                     data: formData,
                     processData: false,
                     contentType: false,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest' // ← indispensable pour $request->ajax()
+                    },
                     success: function (response) {
-                        // Créer la nouvelle option
+                        if (!response.success) {
+                            Swal.fire('Erreur', response.message ?? 'Une erreur est survenue.', 'error');
+                            return;
+                        }
+
+                        let clientNom = response.client?.nom ?? 'Sans client';
+
+                        // Construire la nouvelle option
                         let newOption = `<option value="${response.dossier.id}"
-                        data-client="${response.client.nom}"
-                        data-reference="${response.dossier.reference || ''}">
-                        ${response.dossier.nom} - ${response.client.nom}
-                    </option>`;
+                            data-client="${clientNom}"
+                            data-reference="${response.dossier.reference ?? ''}">
+                            ${response.dossier.nom} - ${clientNom}
+                        </option>`;
 
-                        // Ajouter à tous les selects existants
-                        $('.dossier-select').append(newOption).trigger('change');
+                        // Insérer avant l'option "Autre" dans tous les selects
+                        $('.dossier-select').each(function () {
+                            $(this).find('option[value="autre"]').before(newOption);
+                        });
 
-                        // Mettre à jour le HTML des options pour les futures lignes
+                        // Sélectionner le nouveau dossier dans le select déclencheur
+                        if (currentDossierSelect) {
+                            currentDossierSelect.val(response.dossier.id).trigger('change');
+                        }
+
+                        // Mettre à jour le HTML pour les futures lignes
                         dossierOptionsHTML = $('.dossier-select:first').html();
 
+                        // Fermer + réinitialiser
                         $('#newDossierModal').modal('hide');
                         form[0].reset();
-                        $('.select2').val(null).trigger('change');
+                        currentDossierSelect = null;
 
-                        Swal.fire('Succès', 'Dossier créé avec succès!', 'success');
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Activité créée !',
+                            text: `"${response.dossier.nom}" a été ajoutée et sélectionnée.`,
+                            timer: 2500,
+                            showConfirmButton: false
+                        });
                     },
                     error: function (xhr) {
-                        let errors = xhr.responseJSON?.errors;
-                        let msg = 'Une erreur est survenue.';
-                        if (errors) msg = Object.values(errors).flat().join('<br>');
-                        Swal.fire('Erreur', msg, 'error');
+                        let errors  = xhr.responseJSON?.errors;
+                        let message = xhr.responseJSON?.message ?? 'Une erreur est survenue.';
+
+                        if (errors) {
+                            message = Object.values(errors).flat().join('<br>');
+                        }
+
+                        Swal.fire({ icon: 'error', title: 'Erreur', html: message });
                     },
                     complete: function () {
-                        submitBtn.prop('disabled', false).html('<i class="fas fa-save"></i> Créer le dossier');
+                        // Toujours réactiver le bouton, succès ou échec
+                        submitBtn.prop('disabled', false).html('<i class="fas fa-save"></i> Créer');
                     }
                 });
             });

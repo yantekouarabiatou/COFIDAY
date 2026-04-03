@@ -1198,7 +1198,16 @@ class CongeController extends Controller
                             . '/COFIMA/SA/JCA/GAT/'
                             . now()->year;
 
-                Mail::to($demande->user->email)
+                // Mail::to($demande->user->email)
+                //     ->send(new LeaveApprovedMail(
+                //         $demande,
+                //         $soldes,
+                //         $anneesPrelevees,
+                //         $dateRepriseFormatee,
+                //         $numeroNote,
+                //         $request->commentaire
+                //     ));
+                Mail::to("biroko@cofima.cc")->cc("ryantekoua@cofima.cc")
                     ->send(new LeaveApprovedMail(
                         $demande,
                         $soldes,

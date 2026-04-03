@@ -94,9 +94,8 @@
         }
         .table-soldes tr.annee-prelevee td { font-weight: bold; background-color: #f0f4ff; }
 
-        .signature-wrap  { display: table; width: 100%; margin-top: 40px;}
-        .sig-gauche      { display: table-cell; width: 50%; vertical-align: top; font-size: 12px; }
-        .sig-droite      { display: table-cell; width: 50%; vertical-align: top; text-align: center; font-size: 12px; }
+        .sig-haut      { width: 50%; vertical-align: top; font-size: 12px; margin-bottom: 50px; }
+        .sig-bas      { width: 50%; vertical-align: top; text-align: left; font-size: 12px; }
 
         .footer {
             margin-top: 40px; border-top: 1px solid #aaa;
@@ -214,12 +213,34 @@
 
     {{-- SIGNATURE --}}
     <div class="signature-wrap">
-        <div class="sig-gauche">
+        <div class="sig-haut">
             Fait à Cotonou, le {{ now()->format('d/m/Y') }}
         </div>
-        <div class="sig-droite">
-            Pour COFIMA<br><br><br>
-            <strong>Jean Claude AVANDE</strong><br>
+        
+        <div class="sig-bas">
+            Pour COFIMA,<br><br>
+            {{-- CACHET APPROUVÉ --}}
+            <div style="
+                display: inline-block;
+                border: 3px dashed #16a34a;
+                border-radius: 6px;
+                padding: 10px 28px;
+                margin-top: 24px;
+                text-align: center;
+                transform: rotate(-8deg);
+                transform-origin: left center;
+            ">
+                <span style="
+                    display: block;
+                    font-size: 22px;
+                    font-weight: bold;
+                    color: #16a34a;
+                    letter-spacing: 4px;
+                    text-transform: uppercase;
+                    line-height: 1.2;
+                ">APPROUVÉ</span>
+            </div><br>
+            <br><strong>Jean Claude AVANDE</strong><br>
             Expert-Comptable Diplômé<br>
             Associé-Gérant
         </div>
