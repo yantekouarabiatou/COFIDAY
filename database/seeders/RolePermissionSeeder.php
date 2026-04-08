@@ -18,7 +18,18 @@ class RolePermissionSeeder extends Seeder
         // LISTE COMPLÈTE ET ORGANISÉE DES PERMISSIONS
         // =============================================
         $permissions = [
-
+            ['name' => 'valider les demandes d attestation'],
+            ['name' => 'créer des demandes d attestation'],
+            ['name' => 'voir les demandes d attestation'],
+            ['name' => 'voir toutes les demandes d attestation'],
+            ['name' => 'modifier des demandes d attestation'],
+            ['name' => 'supprimer des demandes d attestation'],
+            ['name' => 'approuver les demandes d attestation'],
+            ['name' => 'refuser les demandes d attestation'],
+            ['name' => 'soumettre une démission'],
+            ['name' => 'voir les démissions'],
+            ['name' => 'approuver les démissions'],
+            ['name' => 'refuser les démissions'],
             // ================= UTILISATEURS =================
             ['name' => 'voir les utilisateurs', 'group' => 'utilisateurs'],
             ['name' => 'créer des utilisateurs', 'group' => 'utilisateurs'],
@@ -192,6 +203,13 @@ class RolePermissionSeeder extends Seeder
             'voir les répartitions par dossier',
             'voir les temps par collaborateur',
 
+            //Attestations
+            'voir les demandes d attestation',
+            'approuver les demandes d attestation',
+            'refuser les demandes d attestation',
+            'créer des demandes d attestation',
+            'soumettre une démission',
+            'voir les démissions',
             // Notifications
             'voir les notifications',
             'marquer les notifications comme lues',
@@ -216,6 +234,14 @@ class RolePermissionSeeder extends Seeder
             'valider les feuilles de temps',
             'refuser les feuilles de temps',
             'voir les rapports mensuels temps',
+
+            //Attestations
+            'voir les demandes d attestation',
+            'créer des demandes d attestation',
+            'modifier des demandes d attestation',
+            'supprimer des demandes d attestation',
+            'approuver les demandes d attestation',
+            'refuser les demandes d attestation',
 
             // Rapports temps
             'voir les rapports détaillés temps',
@@ -268,6 +294,13 @@ class RolePermissionSeeder extends Seeder
             'voir les soldes de congés',
             'voir le calendrier des congés',
 
+            //Attestations
+            'créer des demandes d attestation',
+            'voir les demandes d attestation',
+            'créer des demandes d attestation',
+            'soumettre une démission',
+            'voir les démissions',
+
             // Notifications
             'voir les notifications',
             'marquer les notifications comme lues',
@@ -292,6 +325,14 @@ class RolePermissionSeeder extends Seeder
             'voir les synthèses mensuelles',
             'voir les répartitions par dossier',
             'voir les temps par collaborateur',
+
+            //Attestations et démissions
+            'voir toutes les demandes d attestation',
+            'approuver les demandes d attestation',
+            'refuser les demandes d attestation',
+            'voir les démissions',
+            'approuver les démissions',
+            'refuser les démissions',
 
             // Congés
             'voir toutes les demandes de congés',
@@ -343,6 +384,9 @@ class RolePermissionSeeder extends Seeder
             'voir les synthèses mensuelles',
             'voir les répartitions par dossier',
             'voir les temps par collaborateur',
+
+            //attestations
+            'voir les demandes d attestation',
 
             'voir les statistiques',
             'voir les statistiques générales',

@@ -29,6 +29,8 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use App\Http\Controllers\MissionImportController;
 use App\Http\Controllers\Api\ClientImportController;
+use App\Http\Controllers\AttestationController;
+use App\Http\Controllers\DemissionController;
 
 Route::get('/', function () {
     return view('auth.login');
@@ -176,7 +178,7 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
 
     Route::get('/statistics/export', [StatisticsController::class, 'export'])->name('statistics.export');
     Route::post('/stats/annual/update', [StatisticsController::class, 'updateCharts'])->name('stats.annual.update');
-    Route::middleware(['auth', 'otp.verified'])->group(function () {
+    Route::middleware(['auth'])->group(function () {
         Route::resource('daily-entries', DailyEntryController::class)->names('daily-entries');
 
         // Routes supplémentaires si besoin (ex: rapport mensuel)
@@ -341,7 +343,7 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
             ->name('missions.import');
     });
 
-    Route::middleware(['auth', 'otp.verified'])->group(function () {
+    Route::middleware(['auth'])->group(function () {
         // Routes pour les employés
         Route::get('/conges/solde', [CongeController::class, 'solde'])->name('conges.solde');
         Route::get('/conges/calendrier', [CongeController::class, 'calendrier'])->name('conges.calendrier');
@@ -369,6 +371,40 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
     Route::middleware(['auth', 'role:admin'])->group(function () {
         Route::post('/conges/solde/{user}/ajuster', [CongeController::class, 'ajusterSolde'])->name('conges.ajuster-solde');
     });
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ROUTES — à intégrer dans routes/web.php dans le groupe middleware(['auth'])
+// ══════════════════════════════════════════════════════════════════════════════
+
+
+
+// ── Attestations de travail ──────────────────────────────────────────────────
+Route::prefix('attestations')->name('attestations.')->group(function () {
+    Route::get('/',                                [AttestationController::class, 'index'])->name('index');
+    Route::get('/creer',                           [AttestationController::class, 'create'])->name('create');
+    Route::post('/',                               [AttestationController::class, 'store'])->name('store');
+    Route::get('/{attestation}',                   [AttestationController::class, 'show'])->name('show');
+    Route::delete('/{attestation}/annuler',        [AttestationController::class, 'annuler'])->name('annuler');
+
+    Route::middleware(['role:directeur-general|rh|admin'])->group(function () {
+        Route::get('/validation/liste',            [AttestationController::class, 'validationIndex'])->name('validation.index');
+        Route::post('/{attestation}/traiter',      [AttestationController::class, 'traiter'])->name('traiter');
+    });
+});
+
+// ── Démissions & Certificats de travail ─────────────────────────────────────
+Route::prefix('demissions')->name('demissions.')->group(function () {
+    Route::get('/',                                [DemissionController::class, 'index'])->name('index');
+    Route::get('/soumettre',                       [DemissionController::class, 'create'])->name('create');
+    Route::post('/',                               [DemissionController::class, 'store'])->name('store');
+    Route::get('/{demission}',                     [DemissionController::class, 'show'])->name('show');
+
+    Route::middleware(['role:directeur-general|rh|admin'])->group(function () {
+        Route::get('/validation/liste',            [DemissionController::class, 'validationIndex'])->name('validation.index');
+        Route::post('/{demission}/traiter',        [DemissionController::class, 'traiter'])->name('traiter');
+    });
+});
 
     Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
         Route::resource('soldes', SoldeCongeController::class);

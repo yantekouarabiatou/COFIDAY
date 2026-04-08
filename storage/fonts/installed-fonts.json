@@ -1,8 +1,8 @@
 {
     "helvetica": {
-        "normal": "C:\\Users\\Public\\Projet_Laravel\\Cofima\\Coftime\\storage\\fonts\/helvetica_normal_a407bfac3d4f300a3a7c20acfb6fc94b",
-        "bold": "C:\\Users\\Public\\Projet_Laravel\\Cofima\\Coftime\\storage\\fonts\/helvetica_bold_7356aa63de5a15724d984ba30fd0681f",
-        "italic": "C:\\Users\\Public\\Projet_Laravel\\Cofima\\Coftime\\storage\\fonts\/helvetica_italic_65b7d00b2a8b137e441add33e576e35e",
-        "bold_italic": "helvetica_bold_italic_f494cbb5a390ce22ab85eb483fd01ab1"
+        "normal": "C:\\wamp64\\www\\COFTIME\\storage\\fonts\/helvetica_normal_2f6256ad5d258d9607fbcc79068bef4e",
+        "bold": "C:\\wamp64\\www\\COFTIME\\storage\\fonts\/helvetica_bold_dc2bd5a395ab0e460748f7c2355144e0",
+        "italic": "C:\\wamp64\\www\\COFTIME\\storage\\fonts\/helvetica_italic_81a5b2666dc1e686cb3480514d78d49f",
+        "bold_italic": "helvetica_bold_italic_0c477767b3c0c81005f40c40b7cd33ce"
     }
 }

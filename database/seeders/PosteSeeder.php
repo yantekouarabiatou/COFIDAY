@@ -24,6 +24,8 @@ class PosteSeeder extends Seeder
             ['intitule' => 'AUDITEUR', 'description' => 'Département audit', 'created_at' => now(), 'updated_at' => now()],
             ['intitule' => 'STATISTICIEN', 'description' => 'Département Etude de Projet', 'created_at' => now(), 'updated_at' => now()],
             ['intitule' => 'CHEF SERVICES QUALITÉS ', 'description' => 'Département Qualité', 'created_at' => now(), 'updated_at' => now()],
+            ['intitule' => 'AGENT GESTIONNAIRE', 'description' => 'Service gestion', 'created_at' => now(), 'updated_at' => now()],
+            ['intitule' => 'CONDUCTEUR', 'description' => 'Service logistique', 'created_at' => now(), 'updated_at' => now()],  
 
         ];
 
