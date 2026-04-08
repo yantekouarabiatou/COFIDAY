@@ -32,6 +32,7 @@ class DemandeConge extends Model
         'valide_par_final',
         'date_validation_finale',
         'commentaire_final',
+        'demande_attestation',
     ];
 
     protected $casts = [

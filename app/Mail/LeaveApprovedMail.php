@@ -67,36 +67,86 @@ class LeaveApprovedMail extends Mailable
      *
      * @return array<int, \Illuminate\Mail\Mailables\Attachment>
      */
+    // public function attachments(): array
+    // {
+    //     $logoPath   = public_path('storage/photos/logo-cofima-bon.jpg');
+    //     $logoBase64 = file_exists($logoPath)
+    //         ? 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoPath))
+    //         : null;
+
+    //     // ── Construction de $soldesParAnnee ──────────────────────────────────
+    //     $soldesParAnnee = $this->soldes->keyBy('annee')->map(fn($s) => $s->jours_restants)->toArray();
+
+    //     $pdf = Pdf::loadView('pdfs.recapitulatif_approbation', [
+    //         'demande'             => $this->demande,
+    //         'soldes'              => $this->soldes,
+    //         'anneesPrelevees'     => $this->anneesPrelevees,
+    //         'soldesParAnnee'      => $soldesParAnnee, // ← Ajout ici
+    //         'dateRepriseFormatee' => $this->dateRepriseFormatee,
+    //         'numeroNote'          => $this->numeroNote,
+    //         'logoBase64'          => $logoBase64,
+    //     ]);
+
+    //     $nomFichier = 'approbation_conge_'
+    //         . ($this->demande->user->nom ?? $this->demande->user->name)
+    //         . '_' . now()->format('Y')
+    //         . '.pdf';
+
+    //     return [
+    //         Attachment::fromData(
+    //             fn () => $pdf->output(),
+    //             $nomFichier
+    //         )->withMime('application/pdf'),
+    //     ];
+    // }
+
     public function attachments(): array
     {
+        $attachments = [];
+
         $logoPath   = public_path('storage/photos/logo-cofima-bon.jpg');
         $logoBase64 = file_exists($logoPath)
             ? 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoPath))
             : null;
 
-        // ── Construction de $soldesParAnnee ──────────────────────────────────
-        $soldesParAnnee = $this->soldes->keyBy('annee')->map(fn($s) => $s->jours_restants)->toArray();
+        // ── Construction de $soldesParAnnee ─────────────────────────────
+        $soldesParAnnee = $this->soldes
+            ->keyBy('annee')
+            ->map(fn($s) => $s->jours_restants)
+            ->toArray();
 
-        $pdf = Pdf::loadView('pdfs.recapitulatif_approbation', [
+        // ── PDF 1 : Récapitulatif (toujours envoyé) ─────────────────────
+        $pdfRecap = Pdf::loadView('pdfs.recapitulatif_approbation', [
             'demande'             => $this->demande,
             'soldes'              => $this->soldes,
             'anneesPrelevees'     => $this->anneesPrelevees,
-            'soldesParAnnee'      => $soldesParAnnee, // ← Ajout ici
+            'soldesParAnnee'      => $soldesParAnnee,
             'dateRepriseFormatee' => $this->dateRepriseFormatee,
             'numeroNote'          => $this->numeroNote,
             'logoBase64'          => $logoBase64,
         ]);
 
-        $nomFichier = 'approbation_conge_'
-            . ($this->demande->user->nom ?? $this->demande->user->name)
-            . '_' . now()->format('Y')
-            . '.pdf';
+        $attachments[] = Attachment::fromData(
+            fn () => $pdfRecap->output(),
+            'approbation_conge_' . $this->demande->user->nom . '_' . now()->format('Y') . '.pdf'
+        )->withMime('application/pdf');
 
-        return [
-            Attachment::fromData(
-                fn () => $pdf->output(),
-                $nomFichier
-            )->withMime('application/pdf'),
-        ];
+        // ── PDF 2 : Attestation (conditionnelle) ────────────────────────
+        if (!empty($this->demande->demande_attestation) && $this->demande->demande_attestation == true) {
+
+            $pdfAttestation = Pdf::loadView('pdfs.attestation_conge', [
+                'demande' => $this->demande,
+                'cabinet' => 'COFIMA',
+                'signataireNom' => 'Jean Claude AVANDE',
+                'motif' => 'Journées Techniques DECOFI 2025-2ème année'
+            ]);
+
+            $attachments[] = Attachment::fromData(
+                fn () => $pdfAttestation->output(),
+                'attestation_conge_' . $this->demande->user->nom . '_' . now()->format('Y') . '.pdf'
+            )->withMime('application/pdf');
+        }
+
+        return $attachments;
     }
 }

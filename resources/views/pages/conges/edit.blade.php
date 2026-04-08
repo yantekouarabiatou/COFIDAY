@@ -74,7 +74,7 @@
                         </div>
 
                         @if($demande->statut === 'en_attente')
-                        <form action="{{ route('conges.update', $demande) }}" method="POST" id="demande-form">
+                        <form action="{{ route('conges.update', $demande) }}" method="POST" id="demande-form" enctype="multipart/form-data">
                             @csrf
                             @method('PUT')
 
@@ -214,6 +214,76 @@
                                 </div>
                             </div>
 
+                            {{-- ── Fichier justificatif + attestation ────────────────────────── --}}
+                            <div class="row mt-4">
+
+                                {{-- Fichier d'appui --}}
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>
+                                            <i class="fas fa-paperclip"></i>
+                                            Fichier justificatif
+                                            <small class="text-muted">(facultatif)</small>
+                                        </label>
+
+                                        {{-- Fichier existant --}}
+                                        @if($demande->fichier_justificatif)
+                                        <div class="alert alert-info py-2 mb-2">
+                                            <i class="fas fa-file me-1"></i>
+                                            Fichier actuel :
+                                            <a href="{{ Storage::url($demande->fichier_justificatif) }}"
+                                            target="_blank" class="font-weight-bold">
+                                                Voir le fichier
+                                            </a>
+                                            <div class="form-check mt-1">
+                                                <input type="checkbox" class="form-check-input"
+                                                    name="supprimer_justificatif" id="supprimer_justificatif" value="1">
+                                                <label class="form-check-label text-danger" for="supprimer_justificatif">
+                                                    Supprimer ce fichier
+                                                </label>
+                                            </div>
+                                        </div>
+                                        @endif
+
+                                        <input type="file" name="fichier_justificatif" id="fichier_justificatif"
+                                            class="form-control @error('fichier_justificatif') is-invalid @enderror"
+                                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                                        <small class="text-muted">PDF, Word, Image — Max 5 Mo.</small>
+                                        @error('fichier_justificatif')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+
+                                {{-- Attestation --}}
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>
+                                            <i class="fas fa-file-alt"></i>
+                                            Attestation de congé
+                                        </label>
+                                        <div class="card border-0 bg-light p-3">
+                                            <div class="form-check">
+                                                <input type="hidden" name="demande_attestation" value="0">
+                                                <input class="form-check-input" type="checkbox"
+                                                    name="demande_attestation" id="demande_attestation"
+                                                    value="1"
+                                                    {{ old('demande_attestation', $demande->demande_attestation) ? 'checked' : '' }}>
+                                                <label class="form-check-label" for="demande_attestation">
+                                                    Je souhaite recevoir une attestation de congé
+                                                </label>
+                                            </div>
+                                            <small class="text-muted mt-2 d-block" id="attestation-info"
+                                                style="{{ old('demande_attestation', $demande->demande_attestation) ? '' : 'display:none' }}">
+                                                <i class="fas fa-info-circle me-1"></i>
+                                                Une attestation officielle sera générée et jointe à l'approbation.
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+
                             <!-- Informations sur la période -->
                             <div id="periode-info" class="alert alert-light mt-3" style="display: none;">
                                 <i class="fas fa-info-circle text-primary"></i>
@@ -350,6 +420,11 @@ $(document).ready(function() {
             analyzePeriod();
         }, 500);
     }
+
+    // Attestation : afficher/cacher l'info
+    $('#demande_attestation').on('change', function () {
+        $('#attestation-info').toggle($(this).is(':checked'));
+    });
 });
 
 // Variables pour stocker les valeurs originales
