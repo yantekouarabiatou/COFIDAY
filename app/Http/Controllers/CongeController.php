@@ -23,6 +23,7 @@ use App\Mail\LeaveApprovedMail;
 use App\Mail\LeaveRejectedMail;
 use App\Mail\LeavePreApprovedMail;
 use App\Mail\RequestFinalValidationMail;
+use Illuminate\Support\Facades\Storage;
 
 class CongeController extends Controller
 {
@@ -343,6 +344,8 @@ class CongeController extends Controller
                 'motif'                      => 'required|string|max:1000',
                 'superieur_hierarchique_id'  => 'required|exists:users,id',
                 'nombre_jours'               => 'required|numeric|min:0.5',
+                'fichier_justificatif'       => 'nullable|file|max:5120|mimes:pdf,jpg,jpeg,png,doc,docx',
+                'demande_attestation'        => 'nullable|boolean',
             ]);
 
             $dateDebut   = Carbon::parse($request->date_debut);
@@ -372,6 +375,12 @@ class CongeController extends Controller
                 $deductions = $this->deduireSoldesMultiAnnees($user->id, $nombreJours);
             }
 
+            // ── Fichier justificatif ─────────────────────────────────────────────
+            $cheminFichier = null;
+            if ($request->hasFile('fichier_justificatif')) {
+                $cheminFichier = $request->file('fichier_justificatif')
+                    ->store('conges/justificatifs', 'public');
+            }
             // ── Créer la demande ─────────────────────────────────────────────
             $demande = DemandeConge::create([
                 'user_id'                   => $user->id,
@@ -382,6 +391,8 @@ class CongeController extends Controller
                 'nombre_jours'              => $nombreJours,
                 'motif'                     => $request->motif,
                 'statut'                    => 'en_attente',
+                'fichier_justificatif'      => $cheminFichier,
+                'demande_attestation'       => $request->boolean('demande_attestation'),
             ]);
 
             // Stocker le détail des déductions dans les métadonnées de la demande
@@ -438,6 +449,20 @@ class CongeController extends Controller
     //  EDIT
     // =========================================================================
 
+    // public function edit(DemandeConge $demande)
+    // {
+    //     if ($demande->statut !== 'en_attente') {
+    //         Alert::warning('Information', 'Vous ne pouvez pas modifier une demande déjà traitée.');
+    //         return redirect()->route('conges.show', $demande);
+    //     }
+
+    //     $typesConges = TypeConge::where('actif', true)->get();
+    //     $users       = User::select('id', 'nom', 'prenom', 'email')
+    //         ->orderBy('nom')->orderBy('prenom')->get();
+
+    //     return view('pages.conges.edit', compact('demande', 'typesConges', 'users'));
+    // }
+
     public function edit(DemandeConge $demande)
     {
         if ($demande->statut !== 'en_attente') {
@@ -449,7 +474,17 @@ class CongeController extends Controller
         $users       = User::select('id', 'nom', 'prenom', 'email')
             ->orderBy('nom')->orderBy('prenom')->get();
 
-        return view('pages.conges.edit', compact('demande', 'typesConges', 'users'));
+        // Nécessaire pour afficher le solde dans la vue
+        $totalJoursDisponibles = $this->getTotalJoursDisponibles($demande->user_id);
+        $soldesParAnnee        = $this->getSoldesDisponibles($demande->user_id);
+
+        return view('pages.conges.edit', compact(
+            'demande',
+            'typesConges',
+            'users',
+            'totalJoursDisponibles',
+            'soldesParAnnee'
+        ));
     }
 
     // =========================================================================
@@ -479,6 +514,8 @@ class CongeController extends Controller
                 'motif'                     => 'required|string|max:1000',
                 'superieur_hierarchique_id' => 'required|exists:users,id',
                 'nombre_jours'              => 'required|numeric|min:0.5',
+                'fichier_justificatif'      => 'nullable|file|max:5120|mimes:pdf,jpg,jpeg,png,doc,docx',
+                'demande_attestation'       => 'nullable|boolean',
             ]);
 
             $nombreJours     = (float) $request->nombre_jours;
@@ -530,6 +567,25 @@ class CongeController extends Controller
                 $deductions = $this->deduireSoldesMultiAnnees($user->id, $nombreJours);
             }
 
+            // ── Fichier justificatif ─────────────────────────────────────────
+            $cheminFichier = $demande->fichier_justificatif; // conserver l'existant par défaut
+
+            // Supprimer si coché
+            if ($request->boolean('supprimer_justificatif') && $demande->fichier_justificatif) {
+                Storage::disk('public')->delete($demande->fichier_justificatif);
+                $cheminFichier = null;
+            }
+
+            // Nouveau fichier uploadé
+            if ($request->hasFile('fichier_justificatif')) {
+                // Supprimer l'ancien si existant
+                if ($demande->fichier_justificatif) {
+                    Storage::disk('public')->delete($demande->fichier_justificatif);
+                }
+                $cheminFichier = $request->file('fichier_justificatif')
+                    ->store('conges/justificatifs', 'public');
+            }
+
             // ── Mise à jour de la demande ─────────────────────────────────────
             $demande->update([
                 'superieur_hierarchique_id' => $request->superieur_hierarchique_id,
@@ -539,6 +595,8 @@ class CongeController extends Controller
                 'nombre_jours'              => $nombreJours,
                 'motif'                     => $request->motif,
                 'meta_deductions'           => !empty($deductions) ? $deductions : null,
+                'fichier_justificatif'      => $cheminFichier,
+                'demande_attestation'       => $request->boolean('demande_attestation'),
             ]);
 
             // ── Historique ────────────────────────────────────────────────────

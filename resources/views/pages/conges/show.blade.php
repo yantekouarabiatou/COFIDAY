@@ -266,6 +266,60 @@
                                         </div>
                                         @endif
 
+                                        {{-- Fichier justificatif --}}
+                                        @if($demande->fichier_justificatif)
+                                        <div class="row">
+                                            <div class="col-md-12">
+                                                <div class="form-group">
+                                                    <label class="font-weight-bold">
+                                                        <i class="fas fa-paperclip text-primary mr-1"></i>
+                                                        Fichier justificatif joint
+                                                    </label>
+                                                    <div class="card bg-light">
+                                                        <div class="card-body py-2 d-flex align-items-center justify-content-between">
+                                                            <span>
+                                                                <i class="fas fa-file mr-2 text-muted"></i>
+                                                                Document d'appui fourni par l'employé
+                                                            </span>
+                                                            <a href="{{ Storage::url($demande->fichier_justificatif) }}"
+                                                            target="_blank"
+                                                            class="btn btn-sm btn-outline-primary">
+                                                                <i class="fas fa-eye mr-1"></i> Consulter
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        @endif
+
+                                        {{-- Attestation de congé --}}
+                                        <div class="row">
+                                            <div class="col-md-12">
+                                                <div class="form-group">
+                                                    <label class="font-weight-bold">
+                                                        <i class="fas fa-file-alt text-primary mr-1"></i>
+                                                        Attestation de congé
+                                                    </label>
+                                                    <div class="card bg-light">
+                                                        <div class="card-body py-2">
+                                                            @if($demande->demande_attestation)
+                                                                <span class="badge badge-success p-2">
+                                                                    <i class="fas fa-check-circle mr-1"></i>
+                                                                    Attestation demandée — sera générée à l'approbation
+                                                                </span>
+                                                            @else
+                                                                <span class="badge badge-secondary p-2">
+                                                                    <i class="fas fa-minus-circle mr-1"></i>
+                                                                    Pas d'attestation demandée
+                                                                </span>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
                                         <!-- Informations de validation -->
                                         @if($demande->statut !== 'en_attente' && $demande->statut !== 'annule')
                                         <div class="row">

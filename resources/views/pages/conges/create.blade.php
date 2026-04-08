@@ -109,7 +109,7 @@
 
                 <!-- Formulaire -->
                 <div class="form-section">
-                    <form action="{{ route('conges.store') }}" method="POST" id="demande-form">
+                    <form action="{{ route('conges.store') }}" method="POST" id="demande-form" enctype="multipart/form-data">
                         @csrf
 
                         <input type="hidden" name="nombre_jours" id="nombre_jours_hidden" value="{{ old('nombre_jours') }}">
@@ -215,6 +215,56 @@
                                     @error('motif') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                 </div>
                             </div>
+                        </div>
+
+                        {{-- ── Fichier justificatif + attestation ────────────────────────────── --}}
+                        <div class="row g-4 mt-2">
+
+                            {{-- Fichier d'appui (facultatif) --}}
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        <i class="fas fa-paperclip me-1"></i>
+                                        Fichier justificatif
+                                        <small class="text-muted">(facultatif)</small>
+                                    </label>
+                                    <input type="file" name="fichier_justificatif" id="fichier_justificatif"
+                                        class="form-control @error('fichier_justificatif') is-invalid @enderror"
+                                        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                                    <small class="form-text text-muted">
+                                        PDF, Word, Image — Max 5 Mo. Utile pour les permissions exceptionnelles.
+                                    </small>
+                                    @error('fichier_justificatif')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+
+                            {{-- Attestation de congé --}}
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        <i class="fas fa-file-alt me-1"></i>
+                                        Attestation de congé
+                                    </label>
+                                    <div class="card border-0 bg-light p-3">
+                                        <div class="form-check form-switch">
+                                            <input type="hidden" name="demande_attestation" value="0">
+                                            <input class="form-check-input" type="checkbox"
+                                                name="demande_attestation" id="demande_attestation"
+                                                value="1" {{ old('demande_attestation') ? 'checked' : '' }}>
+                                            <label class="form-check-label" for="demande_attestation">
+                                                Je souhaite recevoir une attestation de congé
+                                            </label>
+                                        </div>
+                                        <small class="text-muted mt-2 d-block" id="attestation-info" style="display:none !important">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            Une attestation officielle sera générée et jointe à l'approbation.
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
 
                         <!-- Infos période -->
@@ -484,6 +534,15 @@ $(document).ready(function () {
         html: true,
         container: 'body',
         sanitize: false
+    });
+
+    // ── Attestation : afficher/cacher l'info ──────────────────────────
+    $('#demande_attestation').on('change', function () {
+        if ($(this).is(':checked')) {
+            $('#attestation-info').show();
+        } else {
+            $('#attestation-info').hide();
+        }
     });
 });
 </script>

@@ -248,7 +248,7 @@
 
     {{-- FOOTER --}}
     <div class="footer">
-        N° IFU 3200900601214 · RCCM RB/COT/07B/336 · C/2213 F Immeuble Athoueinsou Sessou Koutoumou – Cotonou<br>
+        N° IFU 3200900601214 · RCCM RB/COT/07B/336 · C/2213 F Immeuble Athouansou Sossou Kouhou – Cotonou<br>
         Tél : +229 21 38 04 58 · Mobile : +229 90 95 18 90 / 05 07 09 48<br>
         Site web : www.cofimabenin.com · Email : cofima@cofimabenin.com
     </div>
