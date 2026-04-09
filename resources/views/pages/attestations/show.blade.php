@@ -14,7 +14,7 @@
 
     <div class="section-body">
         <div class="row justify-content-center">
-            <div class="col-lg-8">
+            <div class="col-lg-12">
                 <div class="card">
 
                     {{-- En-tête coloré selon le statut --}}

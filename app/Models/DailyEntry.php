@@ -173,4 +173,83 @@ class DailyEntry extends Model
         return $query->whereBetween('jour', [$debut, $fin]);
     }
 
+    // ── Relations ────────────────────────────────────────────────
+    public function validator()   { return $this->belongsTo(User::class, 'valide_par'); }
+    // ── Scopes ───────────────────────────────────────────────────
+    public function scopeForWeek($query, int $semaine, int $annee)
+    {
+        return $query->where('semaine', $semaine)->where('annee_semaine', $annee);
+    }
+
+    public function scopeCurrentWeek($query)
+    {
+        return $query->forWeek(now()->isoWeek(), now()->isoWeekYear());
+    }
+
+    public function scopeNotMissing($query)
+    {
+        return $query->where('est_manquant', false);
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────
+    /**
+     * Génère les entrées "manquantes" pour les jours ouvrables passés sans saisie.
+     * Appelé par le scheduler quotidien.
+     */
+    public static function generateMissingDays(User $user, Carbon $from, Carbon $to): int
+    {
+        $created = 0;
+        $current = $from->copy()->startOfDay();
+
+        while ($current <= $to) {
+            // Ne traiter que les jours ouvrables (lundi→vendredi)
+            if ($current->isWeekday()) {
+                $exists = static::where('user_id', $user->id)
+                    ->whereDate('jour', $current->toDateString())
+                    ->exists();
+
+                if (!$exists) {
+                    static::create([
+                        'user_id'          => $user->id,
+                        'jour'             => $current->toDateString(),
+                        'heures_theoriques'=> 8,
+                        'heures_reelles'   => 0,
+                        'statut'           => 'manquant',
+                        'est_manquant'     => true,
+                    ]);
+                    $created++;
+                }
+            }
+            $current->addDay();
+        }
+
+        return $created;
+    }
+
+    /**
+     * Retourne les jours ouvrables sans saisie pour un utilisateur sur une semaine.
+     */
+    public static function getMissingDaysForWeek(int $userId, int $semaine, int $annee): array
+    {
+        $start = Carbon::now()->setISODate($annee, $semaine)->startOfWeek();
+        $missing = [];
+
+        for ($i = 0; $i < 5; $i++) {
+            $day = $start->copy()->addDays($i);
+            if ($day->isFuture()) break;
+
+            $exists = static::where('user_id', $userId)
+                ->whereDate('jour', $day->toDateString())
+                ->where('est_manquant', false)
+                ->exists();
+
+            if (!$exists) {
+                $missing[] = $day->toDateString();
+            }
+        }
+
+        return $missing;
+    }
+
+
 }

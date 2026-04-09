@@ -155,15 +155,16 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-const TEMPLATE_DEMISSION = `Je soussigné(e) [Prénom NOM], [Poste] au sein du Cabinet COFIMA, ai l'honneur de vous informer par la présente de ma décision de démissionner de mes fonctions.
-
-Conformément aux dispositions de mon contrat de travail, je m'engage à effectuer mon préavis dont le terme est fixé au [date de départ souhaitée].
-
-Je tiens à vous assurer que je ferai tout mon possible pour assurer une transition en bonne et due forme, notamment en transmettant les dossiers en cours à la personne qui me sera désignée.
-
-Je vous remercie pour l'opportunité professionnelle que vous m'avez accordée et pour la confiance dont vous m'avez témoigné tout au long de ma collaboration au sein du Cabinet.
-
-Je vous prie d'agréer, Monsieur l'Associé-Gérant, l'expression de mes respectueuses salutations.`;
+@php
+    $modeleDemission = "Je soussigné(e) {$user->prenom} {$user->nom}, "
+        . ($user->poste->intitule ?? 'poste non défini')
+        . " au sein du Cabinet COFIMA, ai l'honneur de vous informer par la présente de ma décision de démissionner de mes fonctions.\n\n"
+        . "Conformément aux dispositions de mon contrat de travail, je m'engage à effectuer mon préavis dont le terme est fixé au [date de départ souhaitée].\n\n"
+        . "Je tiens à vous assurer que je ferai tout mon possible pour assurer une transition en bonne et due forme, notamment en transmettant les dossiers en cours à la personne qui me sera désignée.\n\n"
+        . "Je vous remercie pour l'opportunité professionnelle que vous m'avez accordée et pour la confiance dont vous m'avez témoigné tout au long de ma collaboration au sein du Cabinet.\n\n"
+        . "Je vous prie d'agréer, Monsieur l'Associé-Gérant, l'expression de mes respectueuses salutations.";
+@endphp
+const TEMPLATE_DEMISSION = @json($modeleDemission);
 
 function insertTemplate() {
     document.getElementById('lettre-textarea').value = TEMPLATE_DEMISSION;
@@ -198,7 +199,12 @@ document.getElementById('demission-form').addEventListener('submit', function(e)
     }).then(r => { if (r.isConfirmed) form.submit(); });
 });
 
-// Restaurer compteur si old()
-document.addEventListener('DOMContentLoaded', updateCounter);
+document.addEventListener('DOMContentLoaded', function() {
+    const textarea = document.getElementById('lettre-textarea');
+    if (!textarea.value.trim()) {
+        insertTemplate();
+    }
+    updateCounter();
+});
 </script>
 @endpush

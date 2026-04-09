@@ -64,7 +64,7 @@
             margin-bottom: 2rem;
         }
         .header-logo img {
-            max-width: 120px;
+            max-width: 160px;
             height: auto;
         }
         .sender {
@@ -132,21 +132,21 @@
 
     {{-- ── Bloc en-tête (horizontal) ─────────────────────────────────────── --}}
     <div class="header-bloc">
-        <div class="header-logo">
-            <img src="{{ storage_path('app/public/photos/logo-cofima-bon.jpg') }}" alt="Logo COFIMA" style="max-width: 120px;">
-        </div>
+            {{-- <div class="header-logo">
+                <img src="{{ storage_path('app/public/photos/logo-cofima-bon.jpg') }}" alt="Logo COFIMA" style="max-width: 120px;">
+            </div> --}}
 
         {{-- Expéditeur (gauche) --}}
         <div class="sender">
             <strong>{{ $employe->prenom }} {{ strtoupper($employe->nom) }}</strong><br>
-            @if($employe->poste?->libelle)
-                {{ $employe->poste->libelle }}<br>
+            @if($employe->poste?->intitule)
+               <strong> Poste : </strong>{{ $employe->poste->intitule }}
             @endif
             @if($employe->telephone)
-                Téléphone : {{ $employe->telephone }}<br>
+                Téléphone : {{ $employe->telephone }}
             @endif
             @if($employe->email)
-                E-mail : <span class="email-blue">{{ $employe->email }}</span>
+              <strong>E-mail : <span class="email-blue">{{ $employe->email }}</span></strong>  
             @endif
         </div>
 
@@ -166,7 +166,7 @@
 
     {{-- ── Objet ────────────────────────────────────────────────────────── --}}
     <div class="objet">
-        <strong style="text-decoration: underline">Objet :</strong> Demande d'attestation de travail
+        <strong style="text-decoration: underline;">Objet :</strong> Demande d'attestation de travail
     </div>
 
     {{-- ── Corps de la lettre ───────────────────────────────────────────── --}}

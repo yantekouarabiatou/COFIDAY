@@ -115,11 +115,12 @@ class AttestationController extends Controller
             'statut'          => 'en_attente',
         ]);
 
-        // Envoyer un email de confirmation à l'employé et à la secrétaire
+        // Envoyer un email de confirmation à l'employé, à la secrétaire et au Directeur Général
         try {
-            $emailSecretaire = config('cofima.email_secretaire', 'ryantekoua@cofima.cc');
+            ['secretaire' => $emailSecretaire, 'dg' => $emailDG] = $this->getSecretaireEtDgEmails();
+
             Mail::to($user->email)
-                ->cc($emailSecretaire)
+                ->cc(array_unique(array_filter([$emailSecretaire, $emailDG])))
                 ->send(new AttestationSoumiseMail($demandeAttestation));
         } catch (\Exception $e) {
             // Log l'erreur mais ne bloque pas la soumission
@@ -198,20 +199,31 @@ class AttestationController extends Controller
             }
 
             if ($action === 'approuve') {
-                $emailSecretaire = config('cofima.email_secretaire', 'ryantekoua@cofima.cc');
+                ['secretaire' => $emailSecretaire, 'dg' => $emailDG] = $this->getSecretaireEtDgEmails();
 
                 if ($attestation->type === 'attestation_autre') {
                     // Notification au RH pour rédaction manuelle
-                    $emailRH = config('cofima.email_rh', 'ryantekoua@cofima.cc');
-                    Mail::to($emailRH)->send(new AttestationAutreNotifRHMail($attestation));
+                    $emailRH = $this->getRhEmail();
+                    if ($emailRH) {
+                        if (! in_array($emailRH, [$emailSecretaire, $emailDG], true)) {
+                            Mail::to($emailRH)->send(new AttestationAutreNotifRHMail($attestation));
+                        } else {
+                            Log::warning('L\'email RH est identique à la secrétaire ou au DG ; vérifiez la configuration ou la base de données.', [
+                                'emailRH' => $emailRH,
+                                'emailSecretaire' => $emailSecretaire,
+                                'emailDG' => $emailDG,
+                            ]);
+                        }
+                    }
 
-                    // Avertir l’employé que le RH le contactera
+                    // Avertir l’employé et la secrétaire que le RH le contactera
                     Mail::to($attestation->user->email)
+                        ->cc(array_unique(array_filter([$emailSecretaire, $emailDG])))
                         ->send(new AttestationApprouvéeMail($attestation, true));
                 } else {
                     // Génération automatique + copie secrétaire
                     Mail::to($attestation->user->email)
-                        ->cc($emailSecretaire)
+                        ->cc(array_unique(array_filter([$emailSecretaire, $emailDG])))
                         ->send(new AttestationApprouvéeMail($attestation, false));
                 }
             } else { // refus
@@ -256,6 +268,45 @@ class AttestationController extends Controller
         $attestation->delete();
         Alert::success('Succès', 'Votre demande a été annulée.');
         return redirect()->route('attestations.index');
+    }
+
+    private function getSecretaireEtDgEmails(): array
+    {
+        $contacts = User::whereHas('poste', function ($query) {
+            $query->whereIn('intitule', ['SECRETAIRE', 'DIRECTEUR GENERALE']);
+        })->with('poste')->get();
+
+        $emailSecretaire = $contacts
+            ->firstWhere('poste.intitule', 'SECRETAIRE')?->email
+            ?? config('cofima.email_secretaire');
+
+        $emailDG = $contacts
+            ->firstWhere('poste.intitule', 'DIRECTEUR GENERALE')?->email
+            ?? User::role('directeur-general')->value('email')
+            ?? config('cofima.email_dg');
+
+        return [
+            'secretaire' => $emailSecretaire,
+            'dg' => $emailDG,
+        ];
+    }
+
+    private function getRhEmail(): ?string
+    {
+        $emailRh = User::role('rh')->value('email');
+
+        if (! $emailRh) {
+            $emailRh = User::whereHas('poste', function ($query) {
+                $query->whereIn('intitule', [
+                    'RH',
+                    'Ressources Humaines',
+                    'Responsable RH',
+                    'Responsable Ressources Humaines',
+                ]);
+            })->value('email');
+        }
+
+        return $emailRh ?: config('cofima.email_rh');
     }
 
     // ── Helper d’autorisation ────────────────────────────────────────────────

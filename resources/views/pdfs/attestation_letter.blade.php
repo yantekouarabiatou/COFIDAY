@@ -10,8 +10,8 @@
         $poste        = $demande->poste ?? 'Collaborateur';
         $titreDoc   = match ($demande->type) {
             'attestation_simple' => 'Attestation de travail',
-            'attestation_banque' => 'Attestation de travail (usage bancaire)',
-            'attestation_ambassade' => 'Attestation de travail (usage consulaire)',
+            'attestation_banque' => 'Attestation de travail',
+            'attestation_ambassade' => 'Attestation de travail',
             default => 'Attestation de travail',
         };
     @endphp
@@ -149,8 +149,8 @@
             <strong>{{ $civilite }} {{ strtoupper($employe->nom) }} {{ $employe->prenom }}</strong>
             {{ strtolower($sexe) === 'f' ? 'est employée' : 'est employé' }} au sein du Cabinet COFIMA depuis le
             <strong>{{ $dateEmbauche }}</strong>
-            à ce jour en qualité de <strong>{{ $poste }}</strong>{{ $demande->inclure_salaire && $demande->salaire_net ? ', avec une rémunération nette mensuelle de <strong>' . number_format($demande->salaire_net, 0, ',', ' ') . ' FCFA</strong>' : '' }}.
-        </p>
+            à ce jour en qualité de <strong>{{ $poste }}{{ $demande->inclure_salaire && $demande->salaire_net ? ', avec une rémunération nette mensuelle de' . number_format($demande->salaire_net, 0, ',', ' ') . ' FCFA' : '' }}.
+         </strong></p>
 
         @if($demande->type === 'attestation_banque')
             <p>
@@ -183,7 +183,7 @@
     {{-- ── Signature à gauche ───────────────────────────────────────────────── --}}
     <div class="signature">
         <p>
-            Pour COFIMA,<br><br>
+            Pour COFIMA,<br><br><br>    
             <strong>Jean-Claude AVANDE</strong><br>
             Expert-Comptable Diplômé<br>
             Associé-Gérant<br>
@@ -194,9 +194,9 @@
 
     {{-- ── Pied de page fixe ───────────────────────────────────────────────── --}}
     <div class="footer">
-        N° IFU 3200900601214 · RCCM RB/COT/07B/336 · C/2213 F Immeuble Athoueinsou Sessou Koutoumou – Cotonou
+        N° IFU 3200900601214 · RCCM RB/COT/07B/336 · C/2213 F Immeuble Ahouansou Sossou Kouhoumou – Cotonou
         Tél : +229 21 38 04 58 · Mobile : +229 90 95 18 90 / 05 07 09 48 &nbsp;|&nbsp;
-        www.cofimabenin.com · cofima@cofimabenin.com
+        site web : www.cofimabenin.com · cofima@cofimabenin.com
     </div>
 
 </body>

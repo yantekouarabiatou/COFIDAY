@@ -3,108 +3,118 @@
 namespace App\Http\Controllers;
 
 use App\Models\DailyEntry;
+use App\Models\WeeklyValidation;
 use App\Models\User;
 use App\Models\Dossier;
 use App\Models\Client;
+use App\Models\CompanySetting;
+use App\Models\TimeEntry;
+use App\Exports\DailyEntriesExport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use RealRashid\SweetAlert\Facades\Alert;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\DailyEntriesExport;
-use App\Models\CompanySetting;
-use App\Models\TimeEntry;
-use App\Rules\BelongsToDailyEntry;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Validator;
 
 class DailyEntryController extends Controller
 {
-    /**
-     * Afficher la liste des feuilles de temps
-     */ public function index(Request $request)
+    // ════════════════════════════════════════════════════════════════════════
+    // LISTE — vue semaine par semaine
+    // ════════════════════════════════════════════════════════════════════════
+
+    public function index(Request $request)
     {
-        $user  = auth()->user();
-        $query = DailyEntry::with(['user', 'timeEntries.dossier.client']);
+        $user = auth()->user();
 
-        // Filtre mois en cours par défaut
-        $mois = $request->filled('mois')
-            ? Carbon::parse($request->mois . '-01')
-            : Carbon::now()->startOfMonth();
+        // Résoudre la semaine affichée
+        [$semaine, $annee] = $this->resolveSemaine($request);
 
-        $query->whereBetween('jour', [
-            $mois->copy()->startOfMonth(),
-            $mois->copy()->endOfMonth()
-        ]);
+        $dateDebut = Carbon::now()->setISODate($annee, $semaine)->startOfWeek();
+        $dateFin   = $dateDebut->copy()->endOfWeek();
 
-        if (!$user->hasRole('admin')) {
-            // L'utilisateur voit ses propres entrées
-            // + celles des collaborateurs du même poste
-            $memePosteIds = User::where('poste_id', $user->poste_id)
-                ->where('id', '!=', $user->id)
-                ->where('is_active', 1)
-                ->pluck('id');
+        $query = DailyEntry::with(['user.poste', 'timeEntries.dossier.client'])
+            ->where('semaine', $semaine)
+            ->where('annee_semaine', $annee);
 
-            $query->where(function ($q) use ($user, $memePosteIds) {
+        // ── Périmètre selon le rôle ──────────────────────────────────────
+        if ($user->hasRole(['admin', 'super-admin'])) {
+            // Tout voir
+        } elseif ($user->hasRole(['directeur-general', 'manager'])) {
+            // Ses propres feuilles + celles de ses subordonnés
+            $subordinateIds = $user->subordinates()->pluck('id');
+            $query->where(fn($q) =>
                 $q->where('user_id', $user->id)
-                    ->orWhereIn('user_id', $memePosteIds);
-            });
+                  ->orWhereIn('user_id', $subordinateIds)
+            );
+        } else {
+            // Collaborateur : uniquement ses propres feuilles
+            $query->where('user_id', $user->id);
         }
 
-
-        // ── Filtres server-side ──────────────────────────────────────────────
-
+        // ── Filtres supplémentaires ──────────────────────────────────────
         if ($request->filled('statut')) {
             $query->where('statut', $request->statut);
         }
 
-        if ($request->filled('user') && $user->hasRole(['admin', 'responsable', 'directeur-general'])) {
+        if ($request->filled('user') && $user->hasRole(['admin', 'manager', 'directeur-general'])) {
             $query->where('user_id', $request->user);
         }
 
-        if ($request->filled('date')) {
-            $query->whereDate('jour', $request->date);
-        }
-
-        if ($request->filled('pending') && $user->hasRole('directeur-general')) {
-            $query->where('statut', 'soumis')
-                ->where('user_id', '!=', $user->id);
-        }
-
-        // ── Statistiques calculées sur la même query filtrée ────────────────
+        // ── Stats ────────────────────────────────────────────────────────
         $statsQuery     = clone $query;
         $totalHours     = (clone $statsQuery)->sum('heures_reelles');
         $submittedCount = (clone $statsQuery)->where('statut', 'soumis')->count();
         $validatedCount = (clone $statsQuery)->where('statut', 'validé')->count();
         $rejectedCount  = (clone $statsQuery)->where('statut', 'refusé')->count();
+        $missingCount   = (clone $statsQuery)->where('est_manquant', true)->count();
 
-        $dailyEntries = $query->latest()->paginate(20)->withQueryString();
+        $dailyEntries = $query->orderBy('jour')->orderBy('user_id')->paginate(20)->withQueryString();
 
-        // Liste des collaborateurs pour le select (rôles autorisés uniquement)
+        // ── Jours manquants de la semaine pour l'utilisateur courant ─────
+        $missingDays = DailyEntry::getMissingDaysForWeek($user->id, $semaine, $annee);
+
+        // ── Semaine de validation groupée ────────────────────────────────
+        $weeklyValidation = WeeklyValidation::where('semaine', $semaine)
+            ->where('annee', $annee)
+            ->where('user_id', $user->id)
+            ->first();
+
+        // ── Liste collaborateurs pour le filtre (managers/admin) ─────────
         $users = collect();
-        if ($user->hasRole(['admin', 'manager', 'directeur-general'])) {
-            $users = User::where('is_active', 1)
-                ->orderBy('prenom')
-                ->get(['id', 'prenom', 'nom']);
+        if ($user->hasRole(['admin', 'super-admin'])) {
+            $users = User::where('is_active', true)->orderBy('prenom')->get(['id', 'prenom', 'nom']);
+        } elseif ($user->hasRole(['manager', 'directeur-general'])) {
+            $users = $user->subordinates()->where('is_active', true)->orderBy('prenom')->get(['id', 'prenom', 'nom']);
         }
 
+        // ── Navigation semaines ──────────────────────────────────────────
+        $semainePrecedente = $dateDebut->copy()->subWeek();
+        $semaineSuivante   = $dateDebut->copy()->addWeek();
+        $isSemaineActuelle = ($semaine === now()->isoWeek() && $annee === now()->isoWeekYear());
+
         return view('pages.daily-entries.index', compact(
-            'dailyEntries',
-            'totalHours',
-            'submittedCount',
-            'validatedCount',
-            'rejectedCount',
-            'users'
+            'dailyEntries', 'totalHours', 'submittedCount', 'validatedCount',
+            'rejectedCount', 'missingCount', 'missingDays', 'users',
+            'semaine', 'annee', 'dateDebut', 'dateFin',
+            'semainePrecedente', 'semaineSuivante', 'isSemaineActuelle',
+            'weeklyValidation'
         ));
     }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // CREATE / STORE
+    // ════════════════════════════════════════════════════════════════════════
 
     public function create()
     {
         $currentUser = Auth::user();
 
-        // Vérifier s'il existe déjà une entrée pour aujourd'hui
+        // Si une feuille existe déjà pour aujourd'hui → rediriger vers edit
         $todayEntry = DailyEntry::where('user_id', $currentUser->id)
             ->whereDate('jour', now()->toDateString())
+            ->where('est_manquant', false)
             ->first();
 
         if ($todayEntry) {
@@ -113,395 +123,248 @@ class DailyEntryController extends Controller
                 ->with('info', 'Vous avez déjà une feuille de temps pour aujourd\'hui.');
         }
 
-        // Récupérer les dossiers accessibles par l'utilisateur
-        if ($currentUser->hasRole(['admin', 'super-admin', 'manager', 'directeur-general'])) {
-            // Admins voient tous les dossiers actifs
-            $dossiers = Dossier::with('client')
-                ->whereIn('statut', ['ouvert', 'en_cours'])
-                ->orderBy('nom')
-                ->get();
-        } else {
-            // Collaborateurs ne voient que les dossiers qui leur sont associés
-            // Utiliser whereHas avec une closure plus précise
-            $dossiers = Dossier::with(['client', 'collaborateurs' => function ($query) use ($currentUser) {
-                $query->where('users.id', $currentUser->id);
-            }])
-                ->whereIn('statut', ['ouvert', 'en_cours'])
-                ->where(function ($query) use ($currentUser) {
-                    $query->where('created_by', $currentUser->id)
-                        ->orWhereHas('collaborateurs', function ($q) use ($currentUser) {
-                            // Utiliser l'accès au pivot
-                            $q->where('users.id', $currentUser->id)
-                                ->where('collaborateur_dossier.is_active', 1);
-                        });
-                })
-                ->orderBy('nom')
-                ->get();
-        }
+        $dossiers = $this->getDossiersForUser($currentUser);
+        $clients  = Client::whereIn('statut', ['actif', 'prospect'])->orderBy('nom')->get();
 
-        // Récupérer les clients actifs
-        $clients = Client::whereIn('statut', ['actif', 'prospect'])
-            ->orderBy('nom')
-            ->get();
-
-        // Pour la sélection des collaborateurs
-        $users = User::where('is_active', 'actif')
-            ->orderBy('prenom')
-            ->get();
-
-        return view('pages.daily-entries.create', compact(
-            'currentUser',
-            'dossiers',
-            'clients',
-            'users'
-        ));
+        return view('pages.daily-entries.create', compact('currentUser', 'dossiers', 'clients'));
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'jour' => 'required|date',
-            'heures_theoriques' => 'required|numeric|min:0|max:24',
-            'commentaire' => 'nullable|string',
-            'time_entries' => 'required|array|min:1',
-            'time_entries.*.dossier_id' => 'required|exists:dossiers,id',
-            'time_entries.*.heure_debut' => 'required|date_format:H:i',
-            'time_entries.*.heure_fin' => 'required|date_format:H:i|after:time_entries.*.heure_debut',
-            'time_entries.*.heures_reelles' => 'required|numeric|min:0.25',
-            'time_entries.*.travaux' => 'nullable|string|max:500',
-            'time_entries.*.rendu' => 'nullable|string|max:500',
-
+            'user_id'                           => 'required|exists:users,id',
+            'jour'                              => 'required|date',
+            'heures_theoriques'                 => 'required|numeric|min:0|max:24',
+            'commentaire'                       => 'nullable|string',
+            'time_entries'                      => 'required|array|min:1',
+            'time_entries.*.dossier_id'         => 'required|exists:dossiers,id',
+            'time_entries.*.heure_debut'        => 'required|date_format:H:i',
+            'time_entries.*.heure_fin'          => 'required|date_format:H:i|after:time_entries.*.heure_debut',
+            'time_entries.*.heures_reelles'     => 'required|numeric|min:0.25',
+            'time_entries.*.travaux'            => 'nullable|string|max:500',
+            'time_entries.*.rendu'              => 'nullable|string|max:500',
         ]);
 
-        // VÉRIFICATION : Récupérer ou créer la DailyEntry
+        $jour = Carbon::parse($validated['jour']);
+
         $dailyEntry = DailyEntry::firstOrCreate(
-            [
-                'user_id' => $validated['user_id'],
-                'jour' => $validated['jour']
-            ],
+            ['user_id' => $validated['user_id'], 'jour' => $validated['jour']],
             [
                 'heures_theoriques' => $validated['heures_theoriques'],
-                'commentaire' => $validated['commentaire'],
-                'statut' => 'soumis',
+                'commentaire'       => $validated['commentaire'],
+                'statut'            => 'soumis',
+                'est_manquant'      => false,
+                'semaine'           => $jour->isoWeek(),
+                'annee_semaine'     => $jour->isoWeekYear(),
             ]
         );
 
-        // Si l'entrée existe déjà, on met à jour les autres champs
-        if ($dailyEntry->wasRecentlyCreated === false) {
+        if (!$dailyEntry->wasRecentlyCreated) {
             $dailyEntry->update([
                 'heures_theoriques' => $validated['heures_theoriques'],
-                'commentaire' => $validated['commentaire'],
-                'statut' => 'soumis', // On remet en "soumis" si modification
+                'commentaire'       => $validated['commentaire'],
+                'statut'            => 'soumis',
+                'est_manquant'      => false,
             ]);
-
-            // Message d'alerte informatif
-            session()->flash('info', 'Une feuille de temps existante pour cette date a été mise à jour.');
+            session()->flash('info', 'Feuille existante mise à jour.');
         }
 
-        // Calcul du total des heures
-        $totalHeures = collect($validated['time_entries'])
-            ->sum('heures_reelles');
-
-        // Mettre à jour le total des heures réelles
+        $totalHeures = collect($validated['time_entries'])->sum('heures_reelles');
         $dailyEntry->update(['heures_reelles' => $totalHeures]);
-
-        // Supprimer les anciennes time entries avant d'ajouter les nouvelles
         $dailyEntry->timeEntries()->delete();
 
-        // Créer les nouvelles time entries
         foreach ($validated['time_entries'] as $entry) {
             $dailyEntry->timeEntries()->create([
-                'user_id' => $dailyEntry->user_id,
-                'dossier_id' => $entry['dossier_id'],
-                'heure_debut' => $entry['heure_debut'],
-                'heure_fin' => $entry['heure_fin'],
+                'user_id'      => $dailyEntry->user_id,
+                'dossier_id'   => $entry['dossier_id'],
+                'heure_debut'  => $entry['heure_debut'],
+                'heure_fin'    => $entry['heure_fin'],
                 'heures_reelles' => $entry['heures_reelles'],
-                'travaux' => $entry['travaux'] ?? null,
-                'rendu' => $entry['rendu'] ?? null,
+                'travaux'      => $entry['travaux'] ?? null,
+                'rendu'        => $entry['rendu'] ?? null,
             ]);
         }
+
         Alert::success('Succès', 'Feuille de temps enregistrée avec succès.');
         return redirect()->route('daily-entries.show', $dailyEntry)
             ->with('success', 'Feuille de temps enregistrée avec succès.');
     }
 
-    /**
-     * Afficher une feuille de temps
-     */
+    // ════════════════════════════════════════════════════════════════════════
+    // SHOW / EDIT / UPDATE / DESTROY
+    // ════════════════════════════════════════════════════════════════════════
+
     public function show(DailyEntry $dailyEntry)
     {
-        $dailyEntry->load(['user', 'timeEntries.dossier.client']);
-
+        $dailyEntry->load(['user.poste', 'timeEntries.dossier.client']);
         return view('pages.daily-entries.show', compact('dailyEntry'));
     }
 
-    /**
-     * Afficher le formulaire d'édition
-     */
     public function edit(DailyEntry $dailyEntry)
     {
-        // Vérifier que l'utilisateur peut éditer cette entrée
-        // if (!$dailyEntry->userCanAccess(auth()->id())) {
-        //     abort(403, 'Accès non autorisé.');
-        // }
+        $this->authorizeEdit($dailyEntry);
 
         $dailyEntry->load('timeEntries');
-
         $currentUser = Auth::user();
+        $dossiers    = $this->getDossiersForUser($currentUser);
+        $clients     = Client::whereIn('statut', ['actif', 'prospect'])->orderBy('nom')->get();
 
-        // Même logique pour filtrer les dossiers
-        if ($currentUser->hasRole(['admin', 'super-admin', 'rh', 'manager', 'directeur-general'])) {
-            $dossiers = Dossier::with('client')
-                ->whereIn('statut', ['ouvert', 'en_cours'])
-                ->orderBy('nom')
-                ->get();
-        } else {
-            $dossiers = Dossier::with('client')
-                ->whereIn('statut', ['ouvert', 'en_cours'])
-                ->where(function ($query) use ($currentUser) {
-                    $query->where('created_by', $currentUser->id)
-                        ->orWhereHas('collaborateurs', function ($q) use ($currentUser) {
-                            $q->where('user_id', $currentUser->id)
-                                ->where('is_active', true);
-                        });
-                })
-                ->orderBy('nom')
-                ->get();
-        }
-
-        $clients = Client::whereIn('statut', ['actif', 'prospect'])
-            ->orderBy('nom')
-            ->get();
-
-        $users = User::where('is_active', 'actif')
-            ->orderBy('prenom')
-            ->get();
-
-        return view('pages.daily-entries.edit', compact(
-            'dailyEntry',
-            'currentUser',
-            'dossiers',
-            'clients',
-            'users'
-        ));
+        return view('pages.daily-entries.edit', compact('dailyEntry', 'currentUser', 'dossiers', 'clients'));
     }
 
-    /**
-     * Mettre à jour une feuille de temps
-     */
     public function update(Request $request, DailyEntry $dailyEntry)
     {
-        // Validation de base - sans statut required
+        $this->authorizeEdit($dailyEntry);
+
         $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'jour' => 'required|date',
+            'user_id'           => 'required|exists:users,id',
+            'jour'              => 'required|date',
             'heures_theoriques' => 'required|numeric|min:0|max:24',
-            'commentaire' => 'nullable|string',
-            'time_entries' => 'required|array|min:1',
+            'commentaire'       => 'nullable|string',
+            'time_entries'      => 'required|array|min:1',
         ]);
 
-        // Validation détaillée pour les time_entries
-        foreach ($request->time_entries as $index => $entry) {
-            $validator = Validator::make($entry, [
-                'id' => ['nullable', 'exists:time_entries,id'],
-                'dossier_id' => 'required|exists:dossiers,id',
-                'heure_debut' => 'required|date_format:H:i',
-                'heure_fin' => 'required|date_format:H:i',
+        foreach ($request->time_entries as $entry) {
+            $v = Validator::make($entry, [
+                'id'             => ['nullable', 'exists:time_entries,id'],
+                'dossier_id'     => 'required|exists:dossiers,id',
+                'heure_debut'    => 'required|date_format:H:i',
+                'heure_fin'      => 'required|date_format:H:i',
                 'heures_reelles' => 'required|numeric|min:0.25',
-                'travaux' => 'nullable|string|max:500',
-                'rendu' => 'nullable|string|max:500',
+                'travaux'        => 'nullable|string|max:500',
+                'rendu'          => 'nullable|string|max:500',
             ]);
 
-            // Validation supplémentaire : heure_fin doit être après heure_debut
-            if (
-                isset($entry['heure_debut'], $entry['heure_fin']) &&
-                strtotime($entry['heure_fin']) <= strtotime($entry['heure_debut'])
-            ) {
-                $validator->errors()->add('heure_fin', 'L\'heure de fin doit être après l\'heure de début.');
+            if (isset($entry['heure_debut'], $entry['heure_fin'])
+                && strtotime($entry['heure_fin']) <= strtotime($entry['heure_debut'])) {
+                $v->errors()->add('heure_fin', 'L\'heure de fin doit être après l\'heure de début.');
             }
 
-            if ($validator->fails()) {
-                return redirect()->back()
-                    ->withInput()
-                    ->withErrors($validator->errors());
+            if ($v->fails()) {
+                return redirect()->back()->withInput()->withErrors($v->errors());
             }
 
-            // Vérifier que l'TimeEntry appartient bien au DailyEntry si ID existe
             if (!empty($entry['id'])) {
-                $timeEntry = TimeEntry::find($entry['id']);
-                if (!$timeEntry || $timeEntry->daily_entry_id != $dailyEntry->id) {
-                    return redirect()->back()
-                        ->withInput()
-                        ->withErrors(['error' => 'Activité invalide.']);
+                $te = TimeEntry::find($entry['id']);
+                if (!$te || $te->daily_entry_id != $dailyEntry->id) {
+                    return redirect()->back()->withInput()->withErrors(['error' => 'Activité invalide.']);
                 }
             }
         }
 
-        // VÉRIFICATION : Si la date OU l'utilisateur a changé, vérifier qu'il n'existe pas déjà une entrée pour cette combinaison
-        $existingJour = Carbon::parse($dailyEntry->jour)->toDateString();
-        $requestedJour = Carbon::parse($request->jour)->toDateString();
+        // Vérif doublon si date/user a changé
+        $hasChanged = Carbon::parse($dailyEntry->jour)->toDateString() !== Carbon::parse($request->jour)->toDateString()
+            || $dailyEntry->user_id != $request->user_id;
 
-        $hasDateOrUserChanged = ($existingJour !== $requestedJour) ||
-            ($dailyEntry->user_id != $request->user_id);
-
-        if ($hasDateOrUserChanged) {
-            $existingEntry = DailyEntry::where('user_id', $request->user_id)
+        if ($hasChanged) {
+            $duplicate = DailyEntry::where('user_id', $request->user_id)
                 ->whereDate('jour', $request->jour)
                 ->where('id', '!=', $dailyEntry->id)
                 ->first();
 
-            if ($existingEntry) {
-                return redirect()->back()
-                    ->withInput()
-                    ->with('error', 'Une feuille de temps existe déjà pour cet utilisateur et cette date.
-                        Veuillez choisir une autre date ou un autre utilisateur.');
+            if ($duplicate) {
+                return redirect()->back()->withInput()
+                    ->with('error', 'Une feuille existe déjà pour cet utilisateur et cette date.');
             }
         }
 
-        // Calcul du total des heures réelles
         $totalHeures = collect($request->time_entries)->sum('heures_reelles');
+        $jour        = Carbon::parse($request->jour);
 
-        // Préparer les données de mise à jour
         $updateData = [
-            'user_id' => $validated['user_id'],
-            'jour' => $validated['jour'],
-            'heures_theoriques' => $validated['heures_theoriques'],
-            'heures_reelles' => $totalHeures,
-            'commentaire' => $validated['commentaire'] ?? null,
+            'user_id'          => $validated['user_id'],
+            'jour'             => $validated['jour'],
+            'semaine'          => $jour->isoWeek(),
+            'annee_semaine'    => $jour->isoWeekYear(),
+            'heures_theoriques'=> $validated['heures_theoriques'],
+            'heures_reelles'   => $totalHeures,
+            'commentaire'      => $validated['commentaire'] ?? null,
+            'est_manquant'     => false,
         ];
 
-        // Mettre à jour uniquement si le statut est fourni (pour les responsables)
-        if ($request->has('statut') && auth()->user()->can('change-status', $dailyEntry)) {
+        // Gestion statut selon rôle
+        $authUser = auth()->user();
+        if ($request->has('statut') && $this->canValidate($dailyEntry)) {
             $updateData['statut'] = $request->statut;
-
-            // Si validation ou refus, enregistrer qui et quand
             if (in_array($request->statut, ['validé', 'refusé'])) {
                 $updateData['valide_par'] = auth()->id();
-                $updateData['valide_le'] = now();
-
+                $updateData['valide_le']  = now();
                 if ($request->statut === 'refusé' && $request->has('motif_refus')) {
                     $updateData['motif_refus'] = $request->motif_refus;
                 }
             }
         } else {
-            // Pour les utilisateurs normaux, remettre en "soumis" s'ils modifient
-            $updateData['statut'] = 'soumis';
-            $updateData['valide_par'] = null;
-            $updateData['valide_le'] = null;
+            $updateData['statut']      = 'soumis';
+            $updateData['valide_par']  = null;
+            $updateData['valide_le']   = null;
             $updateData['motif_refus'] = null;
         }
 
-        // Mise à jour de la feuille principale
         $dailyEntry->update($updateData);
 
         $existingIds = [];
-
         foreach ($request->time_entries as $entry) {
             $data = [
-                'user_id' => $dailyEntry->user_id,
-                'dossier_id' => $entry['dossier_id'],
-                'heure_debut' => $entry['heure_debut'],
-                'heure_fin' => $entry['heure_fin'],
+                'user_id'        => $dailyEntry->user_id,
+                'dossier_id'     => $entry['dossier_id'],
+                'heure_debut'    => $entry['heure_debut'],
+                'heure_fin'      => $entry['heure_fin'],
                 'heures_reelles' => $entry['heures_reelles'],
-                'travaux' => $entry['travaux'] ?? null,
-                'rendu' => $entry['rendu'] ?? null,
+                'travaux'        => $entry['travaux'] ?? null,
+                'rendu'          => $entry['rendu'] ?? null,
             ];
 
-            if (isset($entry['id']) && !empty($entry['id'])) {
-                // Mise à jour d'une entrée existante
-                $timeEntry = $dailyEntry->timeEntries()->find($entry['id']);
-                if ($timeEntry) {
-                    $timeEntry->update($data);
-                    $existingIds[] = $timeEntry->id;
-                }
+            if (!empty($entry['id'])) {
+                $te = $dailyEntry->timeEntries()->find($entry['id']);
+                if ($te) { $te->update($data); $existingIds[] = $te->id; }
             } else {
-                // Création d'une nouvelle activité
-                $newEntry = $dailyEntry->timeEntries()->create($data);
-                $existingIds[] = $newEntry->id;
+                $new = $dailyEntry->timeEntries()->create($data);
+                $existingIds[] = $new->id;
             }
         }
 
-        // Suppression des activités qui ont été retirées dans le formulaire
-        $dailyEntry->timeEntries()
-            ->whereNotIn('id', $existingIds)
-            ->delete();
+        $dailyEntry->timeEntries()->whereNotIn('id', $existingIds)->delete();
 
-        // Message d'alerte selon qui fait la modification
-        $message = 'Feuille de temps mise à jour avec succès.';
-        $alertType = 'success';
-
-        if (auth()->user()->hasRole(['responsable', 'directeur-general'])) {
-            if ($request->has('statut')) {
-                switch ($request->statut) {
-                    case 'validé':
-                        $message = 'Feuille de temps validée avec succès.';
-                        break;
-                    case 'refusé':
-                        $message = 'Feuille de temps refusée avec succès.';
-                        break;
-                    case 'soumis':
-                        $message = 'Feuille de temps modifiée et remise en attente de validation.';
-                        break;
-                }
-            }
-        } else {
-            // Utilisateur normal
-            $message = 'Feuille de temps modifiée et soumise pour validation.';
-        }
-
-        Alert::success($alertType, $message);
-        return redirect()
-            ->route('daily-entries.show', $dailyEntry)
-            ->with($alertType, $message);
+        Alert::success('Succès', 'Feuille de temps mise à jour avec succès.');
+        return redirect()->route('daily-entries.show', $dailyEntry)
+            ->with('success', 'Feuille de temps mise à jour.');
     }
-    /**
-     * Supprimer une feuille de temps
-     */
+
     public function destroy(DailyEntry $dailyEntry)
     {
-        // Supprimer d'abord les entrées de temps associées
         $dailyEntry->timeEntries()->delete();
-
-        // Puis supprimer la feuille de temps
         $dailyEntry->delete();
         Alert::success('Succès', 'Feuille de temps supprimée avec succès.');
         return redirect()->route('daily-entries.index')
-            ->with('success', 'Feuille de temps supprimée avec succès.');
+            ->with('success', 'Feuille supprimée.');
     }
 
-    /**
-     * Valider une feuille de temps (pour les responsables)
-     */
+    // ════════════════════════════════════════════════════════════════════════
+    // VALIDATION INDIVIDUELLE
+    // ════════════════════════════════════════════════════════════════════════
+
     public function validateEntry(DailyEntry $dailyEntry)
     {
+        $this->ensureCanManage($dailyEntry);
+
         $dailyEntry->update([
-            'statut' => 'validé',
-            'valide_par' => Auth::id(),
+            'statut'    => 'validé',
+            'valide_par'=> Auth::id(),
             'valide_le' => now(),
         ]);
 
-        return redirect()->back()
-            ->with('success', 'Feuille de temps validée avec succès.');
+        return redirect()->back()->with('success', 'Feuille validée.');
     }
 
-    /**
-     * Refuser une feuille de temps (pour les responsables)
-     */
     public function rejectEntry(DailyEntry $dailyEntry, Request $request)
     {
-        // Autoriser le refus même si déjà refusé (pour changer le motif)
-        // ou bloquer si déjà validé
+        $this->ensureCanManage($dailyEntry);
+
         if ($dailyEntry->statut === 'validé') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Impossible de refuser une feuille déjà validée.'
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'Impossible de refuser une feuille déjà validée.'], 422);
         }
 
-        $request->validate([
-            'motif_refus' => 'required|string|max:500',
-        ]);
+        $request->validate(['motif_refus' => 'required|string|max:500']);
 
         $dailyEntry->update([
             'statut'      => 'refusé',
@@ -510,47 +373,159 @@ class DailyEntryController extends Controller
             'motif_refus' => $request->motif_refus,
         ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Feuille de temps refusée avec succès.'
+        return response()->json(['success' => true, 'message' => 'Feuille refusée.']);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // VALIDATION HEBDOMADAIRE GROUPÉE
+    // ════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Valider toutes les feuilles soumises d'un collaborateur pour une semaine.
+     */
+    public function validateWeek(Request $request)
+    {
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'semaine' => 'required|integer|min:1|max:53',
+            'annee'   => 'required|integer',
         ]);
+
+        $manager = auth()->user();
+        $collab  = User::findOrFail($request->user_id);
+
+        // Seul le manager direct peut valider
+        if (!$manager->isManagerOf($collab->id) && !$manager->hasRole(['admin', 'super-admin'])) {
+            return response()->json(['success' => false, 'message' => 'Vous n\'êtes pas le supérieur de cet utilisateur.'], 403);
+        }
+
+        $count = DailyEntry::where('user_id', $request->user_id)
+            ->where('semaine', $request->semaine)
+            ->where('annee_semaine', $request->annee)
+            ->where('statut', 'soumis')
+            ->update(['statut' => 'validé', 'valide_par' => $manager->id, 'valide_le' => now()]);
+
+        // Enregistrer la validation hebdomadaire
+        WeeklyValidation::updateOrCreate(
+            ['user_id' => $request->user_id, 'semaine' => $request->semaine, 'annee' => $request->annee],
+            ['validated_by' => $manager->id, 'statut' => 'validé', 'validated_at' => now()]
+        );
+
+        return response()->json(['success' => true, 'message' => "{$count} feuille(s) validée(s) pour la semaine {$request->semaine}."]);
     }
 
     /**
-     * AJAX: Créer un dossier rapidement
+     * Refuser toutes les feuilles d'un collaborateur pour une semaine.
      */
+    public function rejectWeek(Request $request)
+    {
+        $request->validate([
+            'user_id'     => 'required|exists:users,id',
+            'semaine'     => 'required|integer|min:1|max:53',
+            'annee'       => 'required|integer',
+            'motif_refus' => 'required|string|max:500',
+        ]);
+
+        $manager = auth()->user();
+        $collab  = User::findOrFail($request->user_id);
+
+        if (!$manager->isManagerOf($collab->id) && !$manager->hasRole(['admin', 'super-admin'])) {
+            return response()->json(['success' => false, 'message' => 'Permission refusée.'], 403);
+        }
+
+        $count = DailyEntry::where('user_id', $request->user_id)
+            ->where('semaine', $request->semaine)
+            ->where('annee_semaine', $request->annee)
+            ->whereIn('statut', ['soumis', 'refusé'])
+            ->update([
+                'statut'      => 'refusé',
+                'valide_par'  => $manager->id,
+                'valide_le'   => now(),
+                'motif_refus' => $request->motif_refus,
+            ]);
+
+        WeeklyValidation::updateOrCreate(
+            ['user_id' => $request->user_id, 'semaine' => $request->semaine, 'annee' => $request->annee],
+            ['validated_by' => $manager->id, 'statut' => 'refusé', 'motif_refus' => $request->motif_refus, 'validated_at' => now()]
+        );
+
+        return response()->json(['success' => true, 'message' => "{$count} feuille(s) refusée(s)."]);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ACTIONS GROUPÉES
+    // ════════════════════════════════════════════════════════════════════════
+
+    public function bulkValidate(Request $request)
+    {
+        $request->validate(['ids' => 'required|array', 'ids.*' => 'exists:daily_entries,id']);
+        $manager = auth()->user();
+
+        $count = DailyEntry::whereIn('id', $request->ids)
+            ->where('user_id', '!=', $manager->id)
+            ->where('statut', 'soumis')
+            ->whereIn('user_id', $manager->subordinates()->pluck('id'))
+            ->update(['statut' => 'validé', 'valide_par' => $manager->id, 'valide_le' => now()]);
+
+        return response()->json(['success' => true, 'message' => "{$count} feuille(s) validée(s)."]);
+    }
+
+    public function bulkReject(Request $request)
+    {
+        $request->validate([
+            'ids'         => 'required|array',
+            'ids.*'       => 'exists:daily_entries,id',
+            'motif_refus' => 'required|string|max:500',
+        ]);
+        $manager = auth()->user();
+
+        $count = DailyEntry::whereIn('id', $request->ids)
+            ->where('user_id', '!=', $manager->id)
+            ->whereIn('statut', ['soumis', 'refusé'])
+            ->whereIn('user_id', $manager->subordinates()->pluck('id'))
+            ->update(['statut' => 'refusé', 'valide_par' => $manager->id, 'valide_le' => now(), 'motif_refus' => $request->motif_refus]);
+
+        return response()->json(['success' => true, 'message' => "{$count} feuille(s) refusée(s)."]);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // CRÉATION RAPIDE DE DOSSIER (AJAX)
+    // ════════════════════════════════════════════════════════════════════════
+
     public function createDossierQuick(Request $request)
     {
         $validated = $request->validate([
-            'nom' => 'required|string|max:255',
-            'client_id' => 'required|exists:clients,id',
-            'type_dossier' => 'nullable|in:audit,conseil,formation,expertise,autre',
-            'statut' => 'nullable|in:ouvert,en_cours,suspendu',
+            'nom'         => 'required|string|max:255',
+            'client_id'   => 'nullable|exists:clients,id',
+            'type_dossier'=> 'nullable|in:audit,conseil,formation,expertise,autre',
+            'statut'      => 'nullable|in:ouvert,en_cours,suspendu',
             'description' => 'nullable|string',
         ]);
 
-        // Générer une référence automatique
         $reference = 'DOS-' . strtoupper(substr($validated['nom'], 0, 3)) . '-' . date('Ymd-His');
 
         $dossier = Dossier::create([
-            'nom' => $validated['nom'],
-            'reference' => $reference,
-            'client_id' => $validated['client_id'],
+            'nom'          => $validated['nom'],
+            'reference'    => $reference,
+            'client_id'    => $validated['client_id'] ?? null,
             'type_dossier' => $validated['type_dossier'] ?? 'autre',
-            'statut' => $validated['statut'] ?? 'ouvert',
-            'description' => $validated['description'],
-            'date_ouverture' => now(),
+            'statut'       => $validated['statut'] ?? 'ouvert',
+            'description'  => $validated['description'] ?? null,
+            'date_ouverture'=> now(),
         ]);
 
-        // Charger les relations pour la réponse
         $dossier->load('client');
 
         return response()->json([
             'success' => true,
             'dossier' => $dossier,
-            'client' => $dossier->client,
+            'client'  => $dossier->client,
         ]);
     }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // EXPORT / PDF
+    // ════════════════════════════════════════════════════════════════════════
 
     public function export(Request $request)
     {
@@ -564,11 +539,9 @@ class DailyEntryController extends Controller
         $dateFin   = Carbon::parse($request->date_fin);
         $format    = $request->format;
 
-        // Récupère les données avec les relations nécessaires
         $entries = DailyEntry::with(['user', 'user.poste', 'timeEntries.dossier'])
             ->whereBetween('jour', [$dateDebut, $dateFin])
             ->orderBy('jour', 'desc')
-            ->orderBy('user_id')
             ->get();
 
         $filename = 'feuilles-temps_' . $dateDebut->format('Y-m-d') . '_au_' . $dateFin->format('Y-m-d');
@@ -584,80 +557,84 @@ class DailyEntryController extends Controller
         if ($format === 'pdf') {
             $pdf = Pdf::loadView('pages.daily-entries.export.pdf', compact('entries', 'dateDebut', 'dateFin'))
                 ->setPaper('a4', 'landscape');
-
             return $pdf->download($filename . '.pdf');
         }
     }
 
     public function pdf(DailyEntry $dailyEntry)
     {
-        // Chargement des relations
         $dailyEntry->load(['user.poste', 'timeEntries.dossier']);
 
-        // Sécurité : si la feuille n'existe pas ou jour est null → erreur 404 propre
         if (!$dailyEntry->exists || is_null($dailyEntry->jour)) {
-            abort(404, 'Feuille de temps non trouvée ou date invalide.');
+            abort(404, 'Feuille introuvable.');
         }
 
-        // Logo
-        $logoPath = public_path('images/logo.png');
+        $logoPath   = public_path('images/logo.png');
         $logoBase64 = file_exists($logoPath)
             ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath))
             : null;
 
-        // Paramètres entreprise
         $companySetting = CompanySetting::first();
-
-        // Nom du fichier sécurisé
-        $dateFile = Carbon::parse($dailyEntry->jour)->format('Y-m-d');
-        $filename = "feuille-temps-{$dateFile}.pdf";
+        $dateFile       = Carbon::parse($dailyEntry->jour)->format('Y-m-d');
 
         $pdf = Pdf::loadView('pages.daily-entries.export.pdf1', [
-            'entry' => $dailyEntry,
-            'logoBase64' => $logoBase64,
+            'entry'          => $dailyEntry,
+            'logoBase64'     => $logoBase64,
             'companySetting' => $companySetting,
         ])->setPaper('a4', 'portrait');
 
-        return $pdf->stream($filename);
+        return $pdf->stream("feuille-temps-{$dateFile}.pdf");
     }
-    public function bulkValidate(Request $request)
-{
-    $request->validate(['ids' => 'required|array', 'ids.*' => 'exists:daily_entries,id']);
 
-    $count = DailyEntry::whereIn('id', $request->ids)
-        ->where('user_id', '!=', auth()->id())
-        ->whereIn('statut', ['soumis'])
-        ->update(['statut' => 'validé', 'valide_par' => auth()->id(), 'valide_le' => now()]);
+    // ════════════════════════════════════════════════════════════════════════
+    // HELPERS PRIVÉS
+    // ════════════════════════════════════════════════════════════════════════
 
-    return response()->json(['success' => true, 'message' => "{$count} feuille(s) validée(s)."]);
-}
+    private function resolveSemaine(Request $request): array
+    {
+        if ($request->filled('semaine') && $request->filled('annee')) {
+            return [(int) $request->semaine, (int) $request->annee];
+        }
+        return [now()->isoWeek(), now()->isoWeekYear()];
+    }
 
-public function bulkReject(Request $request)
-{
-    $request->validate([
-        'ids'         => 'required|array',
-        'ids.*'       => 'exists:daily_entries,id',
-        'motif_refus' => 'required|string|max:500',
-    ]);
+    private function getDossiersForUser(User $user)
+    {
+        if ($user->hasRole(['admin', 'super-admin', 'manager', 'directeur-general'])) {
+            return Dossier::with('client')->whereIn('statut', ['ouvert', 'en_cours'])->orderBy('nom')->get();
+        }
 
-    $count = DailyEntry::whereIn('id', $request->ids)
-        ->where('user_id', '!=', auth()->id())
-        ->whereIn('statut', ['soumis', 'refusé'])
-        ->update(['statut' => 'refusé', 'valide_par' => auth()->id(), 'valide_le' => now(), 'motif_refus' => $request->motif_refus]);
+        return Dossier::with(['client', 'collaborateurs'])
+            ->whereIn('statut', ['ouvert', 'en_cours'])
+            ->where(fn($q) =>
+                $q->where('created_by', $user->id)
+                  ->orWhereHas('collaborateurs', fn($s) =>
+                      $s->where('users.id', $user->id)->where('collaborateur_dossier.is_active', 1)
+                  )
+            )
+            ->orderBy('nom')
+            ->get();
+    }
 
-    return response()->json(['success' => true, 'message' => "{$count} feuille(s) refusée(s)."]);
-}
+    private function authorizeEdit(DailyEntry $entry): void
+    {
+        $user = auth()->user();
+        if ($entry->user_id !== $user->id && !$this->canValidate($entry)) {
+            abort(403, 'Accès non autorisé.');
+        }
+    }
 
-public function validateAll(Request $request)
-{
-    $request->validate(['mois' => 'required|date_format:Y-m']);
+    private function canValidate(DailyEntry $entry): bool
+    {
+        $user = auth()->user();
+        if ($user->hasRole(['admin', 'super-admin'])) return true;
+        return $user->isManagerOf($entry->user_id);
+    }
 
-    $mois  = Carbon::parse($request->mois . '-01');
-    $count = DailyEntry::where('statut', 'soumis')
-        ->where('user_id', '!=', auth()->id())
-        ->whereBetween('jour', [$mois->copy()->startOfMonth(), $mois->copy()->endOfMonth()])
-        ->update(['statut' => 'validé', 'valide_par' => auth()->id(), 'valide_le' => now()]);
-
-    return response()->json(['success' => true, 'message' => "{$count} feuille(s) validée(s) pour {$request->mois}."]);
-}
+    private function ensureCanManage(DailyEntry $entry): void
+    {
+        if (!$this->canValidate($entry)) {
+            abort(403, 'Vous n\'êtes pas le supérieur hiérarchique de cet utilisateur.');
+        }
+    }
 }

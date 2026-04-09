@@ -5,11 +5,14 @@ namespace App\Http\Controllers;
 use App\Mail\CertificatTravailMail;
 use App\Mail\DemissionAccepteeMail;
 use App\Mail\DemissionRefuseeMail;
+use App\Mail\DemissionReçueMail;
 use App\Mail\DemissionSoumiseMail;
 use App\Models\DemandeDemission;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use RealRashid\SweetAlert\Facades\Alert;
 
@@ -79,14 +82,30 @@ class DemissionController extends Controller
             'statut'                => 'en_attente',
         ]);
 
-        // Envoyer un email de confirmation à l'employé
         try {
-            Mail::to($user->email)->send(new DemissionSoumiseMail($demande));
+            $emailSecretaire = config('cofima.email_secretaire', 'biroko@cofima.cc');
+            $emailDG = User::role('directeur-general')->value('email')
+                ?? config('cofima.email_dg', 'jmavande@cofima.cc');
+            $emailRH = User::role('rh')->value('email')
+                ?? config('cofima.email_rh');
+
+            $employeeCc = array_unique(array_filter([$emailSecretaire, $emailRH]));
+            Mail::to($user->email)
+                ->cc($employeeCc)
+                ->send(new DemissionSoumiseMail($demande));
+
+            $dgRecipients = array_unique(array_filter([$emailDG, $emailRH]));
+            if (!empty($dgRecipients)) {
+                Mail::to($dgRecipients)
+                    ->cc($emailSecretaire)
+                    ->send(new DemissionReçueMail($demande));
+            }
         } catch (\Exception $e) {
-            // Log l'erreur mais ne bloque pas la soumission
-            DB::rollBack();
-            Alert::error('Erreur', 'Une erreur s\'est produite lors de l\'envoi de l\'email de confirmation.');
-            return back();
+            Log::error('Erreur envoi email démission : ' . $e->getMessage(), [
+                'demande_id' => $demande->id,
+            ]);
+            Alert::warning('Attention', 'Votre lettre de démission a bien été enregistrée, mais l’envoi des emails a rencontré un problème.');
+            return redirect()->route('demissions.index');
         }
 
         Alert::success('Succès', 'Votre lettre de démission a été transmise à la Direction Générale.');
@@ -158,7 +177,7 @@ class DemissionController extends Controller
                     'date_generation_certificat'   => now(),
                 ]);
 
-                $emailSecretaire = config('cofima.email_secretaire', 'ryantekoua@cofima.cc');
+                $emailSecretaire = config('cofima.email_secretaire', 'biroko@cofima.cc');
 
                 // Mail employé : acceptation + certificat de travail joint
                 Mail::to($demission->user->email)

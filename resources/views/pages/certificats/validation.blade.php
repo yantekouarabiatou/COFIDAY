@@ -1,6 +1,18 @@
 @extends('layaout')
 @section('title', 'Validation des démissions')
-
+ @if ($errors->any())
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <strong>Erreur de validation</strong>
+        <ul class="mb-0 mt-2">
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+@endif
 @section('content')
 <section class="section">
     <div class="section-header">
@@ -83,7 +95,7 @@
                                                     <form action="{{ route('demissions.traiter', $demande) }}"
                                                           method="POST" class="d-inline refuse-form">
                                                         @csrf
-                                                        <input type="hidden" name="action" value="refuse">
+                                                        <input type="hidden" name="action" value="refusee">
                                                         <button type="button" class="btn btn-danger btn-sm refuse-btn">
                                                             <i class="fas fa-times"></i> Refuser
                                                         </button>
@@ -115,8 +127,8 @@
 {{-- Formulaire caché pour l'approbation (soumis via JS) --}}
 <form id="approve-form-hidden" method="POST" style="display:none;">
     @csrf
-    <input type="hidden" name="action" value="approuve">
-    <input type="hidden" name="date_depart_effective" id="date_depart_effective_input">
+    <input type="hidden" name="action" value="acceptee">
+    <input type="hidden" name="date_depart_confirmee" id="date_depart_confirmee_input">
     <input type="hidden" name="commentaire" id="commentaire_approbation_input">
 </form>
 @endsection
@@ -168,7 +180,7 @@ $(document).ready(function () {
             if (r.isConfirmed) {
                 const form = document.getElementById('approve-form-hidden');
                 form.action = action;
-                document.getElementById('date_depart_effective_input').value = r.value.date;
+                document.getElementById('date_depart_confirmee_input').value = r.value.date;
                 document.getElementById('commentaire_approbation_input').value = r.value.commentaire;
                 form.submit();
             }

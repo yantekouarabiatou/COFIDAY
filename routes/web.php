@@ -268,7 +268,37 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
 
     Route::get('/user-profile/export-temps/{id}/{format}', [UserProfileController::class, 'exportTemps'])->name('user-profile.export-temps');
 
+    Route::prefix('daily-entries')->name('daily-entries.')->middleware('auth')->group(function () {
 
+        Route::get('/',            [DailyEntryController::class, 'index'])->name('index');
+        Route::get('/create',      [DailyEntryController::class, 'create'])->name('create');
+        Route::post('/',           [DailyEntryController::class, 'store'])->name('store');
+        Route::get('/{dailyEntry}',    [DailyEntryController::class, 'show'])->name('show');
+        Route::get('/{dailyEntry}/edit', [DailyEntryController::class, 'edit'])->name('edit');
+        Route::put('/{dailyEntry}',  [DailyEntryController::class, 'update'])->name('update');
+        Route::delete('/{dailyEntry}', [DailyEntryController::class, 'destroy'])->name('destroy');
+
+        // Validation/refus individuels
+        Route::post('/{dailyEntry}/validate', [DailyEntryController::class, 'validateEntry'])->name('validate');
+        Route::post('/{dailyEntry}/reject',   [DailyEntryController::class, 'rejectEntry'])->name('reject');
+
+        // Validation hebdomadaire (manager → collaborateur)
+        Route::post('/week/validate', [DailyEntryController::class, 'validateWeek'])->name('week-validate');
+        Route::post('/week/reject',   [DailyEntryController::class, 'rejectWeek'])->name('week-reject');
+
+        // Actions groupées
+        Route::post('/bulk/validate', [DailyEntryController::class, 'bulkValidate'])->name('bulk-validate');
+        Route::post('/bulk/reject',   [DailyEntryController::class, 'bulkReject'])->name('bulk-reject');
+
+        // Export & PDF
+        Route::get('/export',         [DailyEntryController::class, 'export'])->name('export');
+        Route::get('/{dailyEntry}/pdf', [DailyEntryController::class, 'pdf'])->name('pdf');
+    });
+
+    // Création rapide de dossier (AJAX depuis le formulaire)
+    Route::post('/dossiers/quick-store', [DailyEntryController::class, 'createDossierQuick'])
+        ->name('dossiers.store')
+        ->middleware('auth');
     // Export unique (PDF d'une feuille individuelle) - depuis le bouton "Voir"
     Route::get('/daily-entries/{dailyEntry}/pdf', [DailyEntryController::class, 'pdf'])
         ->name('daily-entries.pdf');
@@ -373,46 +403,46 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
     });
 
 
-// ══════════════════════════════════════════════════════════════════════════════
-// ROUTES — à intégrer dans routes/web.php dans le groupe middleware(['auth'])
-// ══════════════════════════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════════════════════
+    // ROUTES — à intégrer dans routes/web.php dans le groupe middleware(['auth'])
+    // ══════════════════════════════════════════════════════════════════════════════
 
 
 
-// ── Attestations de travail ──────────────────────────────────────────────────
-Route::prefix('attestations')->name('attestations.')->group(function () {
-    Route::get('/',                                [AttestationController::class, 'index'])->name('index');
-    Route::get('/creer',                           [AttestationController::class, 'create'])->name('create');
-    Route::post('/',                               [AttestationController::class, 'store'])->name('store');
-    Route::get('/{attestation}',                   [AttestationController::class, 'show'])->name('show');
-    Route::delete('/{attestation}/annuler',        [AttestationController::class, 'annuler'])->name('annuler');
+    // ── Attestations de travail ──────────────────────────────────────────────────
+    Route::prefix('attestations')->name('attestations.')->group(function () {
+        Route::get('/',                                [AttestationController::class, 'index'])->name('index');
+        Route::get('/creer',                           [AttestationController::class, 'create'])->name('create');
+        Route::post('/',                               [AttestationController::class, 'store'])->name('store');
+        Route::get('/{attestation}',                   [AttestationController::class, 'show'])->name('show');
+        Route::delete('/{attestation}/annuler',        [AttestationController::class, 'annuler'])->name('annuler');
 
-    Route::middleware(['role:directeur-general|rh|admin'])->group(function () {
-        Route::get('/validation/liste',            [AttestationController::class, 'validationIndex'])->name('validation.index');
-        Route::post('/{attestation}/traiter',      [AttestationController::class, 'traiter'])->name('traiter');
+        Route::middleware(['role:directeur-general|rh|admin'])->group(function () {
+            Route::get('/validation/liste',            [AttestationController::class, 'validationIndex'])->name('validation.index');
+            Route::post('/{attestation}/traiter',      [AttestationController::class, 'traiter'])->name('traiter');
+        });
     });
-});
 
-// ── Démissions & Certificats de travail ─────────────────────────────────────
-Route::prefix('demissions')->name('demissions.')->group(function () {
-    Route::get('/',                                [DemissionController::class, 'index'])->name('index');
-    Route::get('/soumettre',                       [DemissionController::class, 'create'])->name('create');
-    Route::post('/',                               [DemissionController::class, 'store'])->name('store');
-    Route::get('/{demission}',                     [DemissionController::class, 'show'])->name('show');
+    // ── Démissions & Certificats de travail ─────────────────────────────────────
+    Route::prefix('demissions')->name('demissions.')->group(function () {
+        Route::get('/',                                [DemissionController::class, 'index'])->name('index');
+        Route::get('/soumettre',                       [DemissionController::class, 'create'])->name('create');
+        Route::post('/',                               [DemissionController::class, 'store'])->name('store');
+        Route::get('/{demission}',                     [DemissionController::class, 'show'])->name('show');
 
-    Route::middleware(['role:directeur-general|rh|admin'])->group(function () {
-        Route::get('/validation/liste',            [DemissionController::class, 'validationIndex'])->name('validation.index');
-        Route::post('/{demission}/traiter',        [DemissionController::class, 'traiter'])->name('traiter');
+        Route::middleware(['role:directeur-general|rh|admin'])->group(function () {
+            Route::get('/validation/liste',            [DemissionController::class, 'validationIndex'])->name('validation.index');
+            Route::post('/{demission}/traiter',        [DemissionController::class, 'traiter'])->name('traiter');
+        });
     });
-});
 
     Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
         Route::resource('soldes', SoldeCongeController::class);
     });
 
     Route::post('/clients/import', [ClientImportController::class, 'import'])
-    ->name('clients.import')
-    ->middleware('auth'); // si besoin
+        ->name('clients.import')
+        ->middleware('auth'); // si besoin
     Route::get('/conges/get-feries', [CongeController::class, 'getFeries'])
         ->name('conges.get-feries')
         ->middleware('auth');

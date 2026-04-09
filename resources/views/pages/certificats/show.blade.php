@@ -14,7 +14,7 @@
 
     <div class="section-body">
         <div class="row justify-content-center">
-            <div class="col-lg-8">
+            <div class="col-lg-12">
                 <div class="card">
 
                     <div class="card-header" style="border-left: 4px solid
@@ -40,7 +40,7 @@
                             </div>
                             <div class="col-md-6">
                                 <p class="text-muted small mb-1">Poste</p>
-                                <p class="font-weight-bold mb-0">{{ $demission->user->poste->libelle ?? '—' }}</p>
+                                <p class="font-weight-bold mb-0">{{ $demission->user->poste->intitule ?? '—' }}</p>
                             </div>
                         </div>
 
