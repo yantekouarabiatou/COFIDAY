@@ -20,86 +20,82 @@ use Illuminate\Support\Facades\Validator;
 
 class DailyEntryController extends Controller
 {
-    // ════════════════════════════════════════════════════════════════════════
-    // LISTE — vue semaine par semaine
-    // ════════════════════════════════════════════════════════════════════════
 
-    public function index(Request $request)
+    /**
+     * Afficher la liste des feuilles de temps
+     */ public function index(Request $request)
     {
-        $user = auth()->user();
+        $user  = auth()->user();
+        $query = DailyEntry::with(['user', 'timeEntries.dossier.client']);
 
-        // Résoudre la semaine affichée
-        [$semaine, $annee] = $this->resolveSemaine($request);
+        // Filtre mois en cours par défaut
+        $mois = $request->filled('mois')
+            ? Carbon::parse($request->mois . '-01')
+            : Carbon::now()->startOfMonth();
 
-        $dateDebut = Carbon::now()->setISODate($annee, $semaine)->startOfWeek();
-        $dateFin   = $dateDebut->copy()->endOfWeek();
+        $query->whereBetween('jour', [
+            $mois->copy()->startOfMonth(),
+            $mois->copy()->endOfMonth()
+        ]);
 
-        $query = DailyEntry::with(['user.poste', 'timeEntries.dossier.client'])
-            ->where('semaine', $semaine)
-            ->where('annee_semaine', $annee);
+        if (!$user->hasRole('admin')) {
+            // L'utilisateur voit ses propres entrées
+            // + celles des collaborateurs du même poste
+            $memePosteIds = User::where('poste_id', $user->poste_id)
+                ->where('id', '!=', $user->id)
+                ->where('is_active', 1)
+                ->pluck('id');
 
-        // ── Périmètre selon le rôle ──────────────────────────────────────
-        if ($user->hasRole(['admin', 'super-admin'])) {
-            // Tout voir
-        } elseif ($user->hasRole(['directeur-general', 'manager'])) {
-            // Ses propres feuilles + celles de ses subordonnés
-            $subordinateIds = $user->subordinates()->pluck('id');
-            $query->where(fn($q) =>
+            $query->where(function ($q) use ($user, $memePosteIds) {
                 $q->where('user_id', $user->id)
-                  ->orWhereIn('user_id', $subordinateIds)
-            );
-        } else {
-            // Collaborateur : uniquement ses propres feuilles
-            $query->where('user_id', $user->id);
+                    ->orWhereIn('user_id', $memePosteIds);
+            });
         }
 
-        // ── Filtres supplémentaires ──────────────────────────────────────
+
+        // ── Filtres server-side ──────────────────────────────────────────────
+
         if ($request->filled('statut')) {
             $query->where('statut', $request->statut);
         }
 
-        if ($request->filled('user') && $user->hasRole(['admin', 'manager', 'directeur-general'])) {
+        if ($request->filled('user') && $user->hasRole(['admin', 'responsable', 'directeur-general'])) {
             $query->where('user_id', $request->user);
         }
 
-        // ── Stats ────────────────────────────────────────────────────────
+        if ($request->filled('date')) {
+            $query->whereDate('jour', $request->date);
+        }
+
+        if ($request->filled('pending') && $user->hasRole('directeur-general')) {
+            $query->where('statut', 'soumis')
+                ->where('user_id', '!=', $user->id);
+        }
+
+        // ── Statistiques calculées sur la même query filtrée ────────────────
         $statsQuery     = clone $query;
         $totalHours     = (clone $statsQuery)->sum('heures_reelles');
         $submittedCount = (clone $statsQuery)->where('statut', 'soumis')->count();
         $validatedCount = (clone $statsQuery)->where('statut', 'validé')->count();
         $rejectedCount  = (clone $statsQuery)->where('statut', 'refusé')->count();
-        $missingCount   = (clone $statsQuery)->where('est_manquant', true)->count();
 
-        $dailyEntries = $query->orderBy('jour')->orderBy('user_id')->paginate(20)->withQueryString();
+        $dailyEntries = $query->latest()->paginate(20)->withQueryString();
 
-        // ── Jours manquants de la semaine pour l'utilisateur courant ─────
-        $missingDays = DailyEntry::getMissingDaysForWeek($user->id, $semaine, $annee);
-
-        // ── Semaine de validation groupée ────────────────────────────────
-        $weeklyValidation = WeeklyValidation::where('semaine', $semaine)
-            ->where('annee', $annee)
-            ->where('user_id', $user->id)
-            ->first();
-
-        // ── Liste collaborateurs pour le filtre (managers/admin) ─────────
+        // Liste des collaborateurs pour le select (rôles autorisés uniquement)
         $users = collect();
-        if ($user->hasRole(['admin', 'super-admin'])) {
-            $users = User::where('is_active', true)->orderBy('prenom')->get(['id', 'prenom', 'nom']);
-        } elseif ($user->hasRole(['manager', 'directeur-general'])) {
-            $users = $user->subordinates()->where('is_active', true)->orderBy('prenom')->get(['id', 'prenom', 'nom']);
+        if ($user->hasRole(['admin', 'manager', 'directeur-general'])) {
+            $users = User::where('is_active', 1)
+                ->orderBy('prenom')
+                ->get(['id', 'prenom', 'nom']);
         }
 
-        // ── Navigation semaines ──────────────────────────────────────────
-        $semainePrecedente = $dateDebut->copy()->subWeek();
-        $semaineSuivante   = $dateDebut->copy()->addWeek();
-        $isSemaineActuelle = ($semaine === now()->isoWeek() && $annee === now()->isoWeekYear());
-
         return view('pages.daily-entries.index', compact(
-            'dailyEntries', 'totalHours', 'submittedCount', 'validatedCount',
-            'rejectedCount', 'missingCount', 'missingDays', 'users',
-            'semaine', 'annee', 'dateDebut', 'dateFin',
-            'semainePrecedente', 'semaineSuivante', 'isSemaineActuelle',
-            'weeklyValidation'
+            'dailyEntries',
+            'totalHours',
+            'submittedCount',
+            'validatedCount',
+            'rejectedCount',
+            'users'
         ));
     }
 
@@ -131,7 +127,7 @@ class DailyEntryController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $validator = Validator::make($request->all(), [
             'user_id'                           => 'required|exists:users,id',
             'jour'                              => 'required|date',
             'heures_theoriques'                 => 'required|numeric|min:0|max:24',
@@ -139,11 +135,22 @@ class DailyEntryController extends Controller
             'time_entries'                      => 'required|array|min:1',
             'time_entries.*.dossier_id'         => 'required|exists:dossiers,id',
             'time_entries.*.heure_debut'        => 'required|date_format:H:i',
-            'time_entries.*.heure_fin'          => 'required|date_format:H:i|after:time_entries.*.heure_debut',
+            'time_entries.*.heure_fin'          => 'required|date_format:H:i',
             'time_entries.*.heures_reelles'     => 'required|numeric|min:0.25',
             'time_entries.*.travaux'            => 'nullable|string|max:500',
             'time_entries.*.rendu'              => 'nullable|string|max:500',
         ]);
+
+        $validator->after(function ($validator) use ($request) {
+            foreach ($request->input('time_entries', []) as $index => $entry) {
+                if (!empty($entry['heure_debut']) && !empty($entry['heure_fin'])
+                    && strtotime($entry['heure_fin']) <= strtotime($entry['heure_debut'])) {
+                    $validator->errors()->add("time_entries.{$index}.heure_fin", 'L\'heure de fin doit être après l\'heure de début.');
+                }
+            }
+        });
+
+        $validated = $validator->validate();
 
         $jour = Carbon::parse($validated['jour']);
 
@@ -216,15 +223,23 @@ class DailyEntryController extends Controller
     {
         $this->authorizeEdit($dailyEntry);
 
-        $validated = $request->validate([
+        $rules = [
             'user_id'           => 'required|exists:users,id',
             'jour'              => 'required|date',
             'heures_theoriques' => 'required|numeric|min:0|max:24',
             'commentaire'       => 'nullable|string',
             'time_entries'      => 'required|array|min:1',
-        ]);
+            'statut'            => 'nullable|in:soumis,validé,refusé',
+            'motif_refus'       => 'nullable|string|max:500',
+        ];
 
-        foreach ($request->time_entries as $entry) {
+        if ($request->input('statut') === 'refusé') {
+            $rules['motif_refus'] = 'required|string|max:500';
+        }
+
+        $validated = $request->validate($rules);
+
+        foreach ($request->time_entries as $index => $entry) {
             $v = Validator::make($entry, [
                 'id'             => ['nullable', 'exists:time_entries,id'],
                 'dossier_id'     => 'required|exists:dossiers,id',
@@ -235,9 +250,11 @@ class DailyEntryController extends Controller
                 'rendu'          => 'nullable|string|max:500',
             ]);
 
-            if (isset($entry['heure_debut'], $entry['heure_fin'])
-                && strtotime($entry['heure_fin']) <= strtotime($entry['heure_debut'])) {
-                $v->errors()->add('heure_fin', 'L\'heure de fin doit être après l\'heure de début.');
+            if (
+                isset($entry['heure_debut'], $entry['heure_fin'])
+                && strtotime($entry['heure_fin']) <= strtotime($entry['heure_debut'])
+            ) {
+                $v->errors()->add("time_entries.{$index}.heure_fin", 'L\'heure de fin doit être après l\'heure de début.');
             }
 
             if ($v->fails()) {
@@ -276,7 +293,7 @@ class DailyEntryController extends Controller
             'jour'             => $validated['jour'],
             'semaine'          => $jour->isoWeek(),
             'annee_semaine'    => $jour->isoWeekYear(),
-            'heures_theoriques'=> $validated['heures_theoriques'],
+            'heures_theoriques' => $validated['heures_theoriques'],
             'heures_reelles'   => $totalHeures,
             'commentaire'      => $validated['commentaire'] ?? null,
             'est_manquant'     => false,
@@ -316,7 +333,10 @@ class DailyEntryController extends Controller
 
             if (!empty($entry['id'])) {
                 $te = $dailyEntry->timeEntries()->find($entry['id']);
-                if ($te) { $te->update($data); $existingIds[] = $te->id; }
+                if ($te) {
+                    $te->update($data);
+                    $existingIds[] = $te->id;
+                }
             } else {
                 $new = $dailyEntry->timeEntries()->create($data);
                 $existingIds[] = $new->id;
@@ -339,42 +359,7 @@ class DailyEntryController extends Controller
             ->with('success', 'Feuille supprimée.');
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // VALIDATION INDIVIDUELLE
-    // ════════════════════════════════════════════════════════════════════════
 
-    public function validateEntry(DailyEntry $dailyEntry)
-    {
-        $this->ensureCanManage($dailyEntry);
-
-        $dailyEntry->update([
-            'statut'    => 'validé',
-            'valide_par'=> Auth::id(),
-            'valide_le' => now(),
-        ]);
-
-        return redirect()->back()->with('success', 'Feuille validée.');
-    }
-
-    public function rejectEntry(DailyEntry $dailyEntry, Request $request)
-    {
-        $this->ensureCanManage($dailyEntry);
-
-        if ($dailyEntry->statut === 'validé') {
-            return response()->json(['success' => false, 'message' => 'Impossible de refuser une feuille déjà validée.'], 422);
-        }
-
-        $request->validate(['motif_refus' => 'required|string|max:500']);
-
-        $dailyEntry->update([
-            'statut'      => 'refusé',
-            'valide_par'  => Auth::id(),
-            'valide_le'   => now(),
-            'motif_refus' => $request->motif_refus,
-        ]);
-
-        return response()->json(['success' => true, 'message' => 'Feuille refusée.']);
-    }
 
     // ════════════════════════════════════════════════════════════════════════
     // VALIDATION HEBDOMADAIRE GROUPÉE
@@ -453,42 +438,6 @@ class DailyEntryController extends Controller
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    // ACTIONS GROUPÉES
-    // ════════════════════════════════════════════════════════════════════════
-
-    public function bulkValidate(Request $request)
-    {
-        $request->validate(['ids' => 'required|array', 'ids.*' => 'exists:daily_entries,id']);
-        $manager = auth()->user();
-
-        $count = DailyEntry::whereIn('id', $request->ids)
-            ->where('user_id', '!=', $manager->id)
-            ->where('statut', 'soumis')
-            ->whereIn('user_id', $manager->subordinates()->pluck('id'))
-            ->update(['statut' => 'validé', 'valide_par' => $manager->id, 'valide_le' => now()]);
-
-        return response()->json(['success' => true, 'message' => "{$count} feuille(s) validée(s)."]);
-    }
-
-    public function bulkReject(Request $request)
-    {
-        $request->validate([
-            'ids'         => 'required|array',
-            'ids.*'       => 'exists:daily_entries,id',
-            'motif_refus' => 'required|string|max:500',
-        ]);
-        $manager = auth()->user();
-
-        $count = DailyEntry::whereIn('id', $request->ids)
-            ->where('user_id', '!=', $manager->id)
-            ->whereIn('statut', ['soumis', 'refusé'])
-            ->whereIn('user_id', $manager->subordinates()->pluck('id'))
-            ->update(['statut' => 'refusé', 'valide_par' => $manager->id, 'valide_le' => now(), 'motif_refus' => $request->motif_refus]);
-
-        return response()->json(['success' => true, 'message' => "{$count} feuille(s) refusée(s)."]);
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
     // CRÉATION RAPIDE DE DOSSIER (AJAX)
     // ════════════════════════════════════════════════════════════════════════
 
@@ -497,7 +446,7 @@ class DailyEntryController extends Controller
         $validated = $request->validate([
             'nom'         => 'required|string|max:255',
             'client_id'   => 'nullable|exists:clients,id',
-            'type_dossier'=> 'nullable|in:audit,conseil,formation,expertise,autre',
+            'type_dossier' => 'nullable|in:audit,conseil,formation,expertise,autre',
             'statut'      => 'nullable|in:ouvert,en_cours,suspendu',
             'description' => 'nullable|string',
         ]);
@@ -511,7 +460,7 @@ class DailyEntryController extends Controller
             'type_dossier' => $validated['type_dossier'] ?? 'autre',
             'statut'       => $validated['statut'] ?? 'ouvert',
             'description'  => $validated['description'] ?? null,
-            'date_ouverture'=> now(),
+            'date_ouverture' => now(),
         ]);
 
         $dossier->load('client');
@@ -606,11 +555,14 @@ class DailyEntryController extends Controller
 
         return Dossier::with(['client', 'collaborateurs'])
             ->whereIn('statut', ['ouvert', 'en_cours'])
-            ->where(fn($q) =>
+            ->where(
+                fn($q) =>
                 $q->where('created_by', $user->id)
-                  ->orWhereHas('collaborateurs', fn($s) =>
-                      $s->where('users.id', $user->id)->where('collaborateur_dossier.is_active', 1)
-                  )
+                    ->orWhereHas(
+                        'collaborateurs',
+                        fn($s) =>
+                        $s->where('users.id', $user->id)->where('collaborateur_dossier.is_active', 1)
+                    )
             )
             ->orderBy('nom')
             ->get();
@@ -636,5 +588,93 @@ class DailyEntryController extends Controller
         if (!$this->canValidate($entry)) {
             abort(403, 'Vous n\'êtes pas le supérieur hiérarchique de cet utilisateur.');
         }
+    }
+
+    /**
+     * Valider une feuille de temps (pour les responsables)
+     */
+    public function validateEntry(DailyEntry $dailyEntry)
+    {
+        $dailyEntry->update([
+            'statut' => 'validé',
+            'valide_par' => Auth::id(),
+            'valide_le' => now(),
+        ]);
+
+        return redirect()->back()
+            ->with('success', 'Feuille de temps validée avec succès.');
+    }
+
+    /**
+     * Refuser une feuille de temps (pour les responsables)
+     */
+    public function rejectEntry(DailyEntry $dailyEntry, Request $request)
+    {
+        // Autoriser le refus même si déjà refusé (pour changer le motif)
+        // ou bloquer si déjà validé
+        if ($dailyEntry->statut === 'validé') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible de refuser une feuille déjà validée.'
+            ], 422);
+        }
+
+        $request->validate([
+            'motif_refus' => 'required|string|max:500',
+        ]);
+
+        $dailyEntry->update([
+            'statut'      => 'refusé',
+            'valide_par'  => Auth::id(),
+            'valide_le'   => now(),
+            'motif_refus' => $request->motif_refus,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Feuille de temps refusée avec succès.'
+        ]);
+    }
+
+
+    public function bulkValidate(Request $request)
+    {
+        $request->validate(['ids' => 'required|array', 'ids.*' => 'exists:daily_entries,id']);
+
+        $count = DailyEntry::whereIn('id', $request->ids)
+            ->where('user_id', '!=', auth()->id())
+            ->whereIn('statut', ['soumis'])
+            ->update(['statut' => 'validé', 'valide_par' => auth()->id(), 'valide_le' => now()]);
+
+        return response()->json(['success' => true, 'message' => "{$count} feuille(s) validée(s)."]);
+    }
+
+    public function bulkReject(Request $request)
+    {
+        $request->validate([
+            'ids'         => 'required|array',
+            'ids.*'       => 'exists:daily_entries,id',
+            'motif_refus' => 'required|string|max:500',
+        ]);
+
+        $count = DailyEntry::whereIn('id', $request->ids)
+            ->where('user_id', '!=', auth()->id())
+            ->whereIn('statut', ['soumis', 'refusé'])
+            ->update(['statut' => 'refusé', 'valide_par' => auth()->id(), 'valide_le' => now(), 'motif_refus' => $request->motif_refus]);
+
+        return response()->json(['success' => true, 'message' => "{$count} feuille(s) refusée(s)."]);
+    }
+
+    public function validateAll(Request $request)
+    {
+        $request->validate(['mois' => 'required|date_format:Y-m']);
+
+        $mois  = Carbon::parse($request->mois . '-01');
+        $count = DailyEntry::where('statut', 'soumis')
+            ->where('user_id', '!=', auth()->id())
+            ->whereBetween('jour', [$mois->copy()->startOfMonth(), $mois->copy()->endOfMonth()])
+            ->update(['statut' => 'validé', 'valide_par' => auth()->id(), 'valide_le' => now()]);
+
+        return response()->json(['success' => true, 'message' => "{$count} feuille(s) validée(s) pour {$request->mois}."]);
     }
 }

@@ -269,6 +269,8 @@ class UserSeeder extends Seeder
 
         $currentYear = 2026; // année en cours
 
+        $createdUsers = [];
+
         foreach ($users as $data) {
             // Nettoyage du username : si c'est un email, on prend la partie avant @
             $username = $data['username_raw'];
@@ -311,9 +313,53 @@ class UserSeeder extends Seeder
             } else {
                 $this->command->warn("Rôle non mappé pour : " . $data['email'] . " (" . $data['role'] . ")");
             }
+
+            $createdUsers[] = compact('user', 'data');
+        }
+
+        foreach ($createdUsers as $entry) {
+            $user = $entry['user'];
+            $data = $entry['data'];
+
+            if ($user->hasRole('collaborateur') && !$user->manager_id) {
+                $managerId = $this->resolveManagerId($data);
+                if ($managerId) {
+                    $user->update(['manager_id' => $managerId]);
+                }
+            }
         }
 
         $this->command->info('✅ Utilisateurs créés avec succès !');
+    }
+
+    private function resolveManagerId(array $data): ?int
+    {
+        $poste = $data['poste'] ?? null;
+
+        $posteManagerMapping = [
+            'INFORMATICIEN' => 'DIRECTEUR INFORMATIQUE',
+            'CONSULTANTS' => 'AGENT GESTIONNAIRE',
+            'AUDITEUR' => 'AGENT GESTIONNAIRE',
+            'STATISTICIEN' => 'AGENT GESTIONNAIRE',
+            'COMPTABLE' => 'AGENT GESTIONNAIRE',
+            'SECRETAIRE' => 'AGENT GESTIONNAIRE',
+            'CONDUCTEUR' => 'AGENT GESTIONNAIRE',
+            'CHEF SERVICES QUALITÉS ' => 'AGENT GESTIONNAIRE',
+        ];
+
+        if ($poste && isset($posteManagerMapping[$poste])) {
+            $managerPoste = $posteManagerMapping[$poste];
+
+            $manager = User::role('manager')
+                ->whereHas('poste', fn($query) => $query->where('intitule', $managerPoste))
+                ->first();
+
+            if ($manager) {
+                return $manager->id;
+            }
+        }
+
+        return User::role('manager')->first()?->id;
     }
 
     /**

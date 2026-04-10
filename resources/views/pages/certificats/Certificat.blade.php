@@ -67,7 +67,7 @@
                 en qualité de <strong>{{ $employe->poste->libelle ?? '[Poste]' }}</strong>
                 au sein du Cabinet sous un Contrat de travail à Durée Indéterminée depuis le
                 <strong>{{ optional($employe->date_embauche)->isoFormat('D MMMM YYYY') ?? '[date d\'embauche]' }}</strong>
-                au <strong>{{ $dateDepartConfirmee->isoFormat('D MMMM YYYY') }}</strong>.
+                au <strong> {{ $dateDepartConfirmee->isoFormat('D MMMM YYYY') }} </strong> .
             </p>
 
             <p style="text-align:justify; line-height:2; color:#222; font-size:.95rem; margin-bottom:24px;">
@@ -96,16 +96,6 @@
             </p>
         </div>
         {{-- ════════════════════════════════════════════════════════════════ --}}
-
-        {{-- Avertissement version originale --}}
-        <div style="background:#fff3cd; border:1px solid #ffc107; border-radius:6px; padding:16px; margin:20px 0;">
-            <p style="margin:0; color:#856404; font-size:.9rem;">
-                <strong>⚠️ Important :</strong>
-                Ce document est une version préliminaire <strong>sans cachet</strong>.
-                Merci de vous présenter auprès de la <strong>secrétaire</strong> pour retirer
-                la <strong>version originale officielle</strong> cachetée et signée.
-            </p>
-        </div>
 
         <p style="color:#888; font-size:.82rem; margin-top:24px; border-top:1px solid #eee; padding-top:14px;">
             © {{ date('Y') }} COFIMA BENIN — Ce document est confidentiel.

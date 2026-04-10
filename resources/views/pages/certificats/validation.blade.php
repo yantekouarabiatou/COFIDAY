@@ -1,18 +1,6 @@
 @extends('layaout')
 @section('title', 'Validation des démissions')
- @if ($errors->any())
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <strong>Erreur de validation</strong>
-        <ul class="mb-0 mt-2">
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-        </button>
-    </div>
-@endif
+
 @section('content')
 <section class="section">
     <div class="section-header">
@@ -25,9 +13,23 @@
     </div>
 
     <div class="section-body">
+        {{-- Affichage des erreurs de validation --}}
+        @if ($errors->any())
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <strong>Erreur de validation</strong>
+                <ul class="mb-0 mt-2">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        @endif
+
         <div class="row">
             <div class="col-12">
-
                 @if($nbEnAttente > 0)
                     <div class="alert alert-warning">
                         <i class="fas fa-exclamation-triangle"></i>
@@ -118,7 +120,6 @@
                         {{ $demandes->links('vendor.pagination.stisla') }}
                     </div>
                 </div>
-
             </div>
         </div>
     </div>
@@ -137,8 +138,7 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 $(document).ready(function () {
-
-    // ── Approbation avec date effective ─────────────────────────────────────
+    // Approbation
     $('.approve-btn').on('click', function () {
         const action   = $(this).data('action');
         const nom      = $(this).data('nom');
@@ -187,7 +187,7 @@ $(document).ready(function () {
         });
     });
 
-    // ── Refus ────────────────────────────────────────────────────────────────
+    // Refus
     $('.refuse-btn').on('click', function () {
         const form = $(this).closest('form');
         Swal.fire({

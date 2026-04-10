@@ -6,8 +6,8 @@
 <link rel="stylesheet" href="{{ asset('assets/bundles/select2/dist/css/select2.min.css') }}">
 <style>
 :root {
-    --ts-blue:#2563EB; --ts-blue-lt:#EFF6FF; --ts-green:#059669;
-    --ts-amber:#D97706; --ts-red:#DC2626; --ts-slate:#475569;
+    --ts-blue:#244584; --ts-blue-lt:#EFF6FF; --ts-green:#059669;
+    --ts-amber:#675540; --ts-red:#DC2626; --ts-slate:#475569;
     --ts-border:#E2E8F0; --ts-radius:12px;
 }
 
@@ -584,7 +584,7 @@ $(function() {
 
         const fd = new FormData(form);
 
-        fetch('{{ route("dossiers.store") }}', {
+        fetch('{{ route("daily-entries.create-dossier-quick") }}', {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
             body: fd

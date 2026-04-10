@@ -68,15 +68,18 @@ class DemissionController extends Controller
 
         $request->validate([
             'date_depart_souhaitee' => 'required|date|after:today',
+            'date_embauche'         => 'required|date|before_or_equal:today',
             'lettre'                => 'required|string|min:50|max:5000',
         ], [
             'date_depart_souhaitee.after' => 'La date de départ doit être postérieure à aujourd\'hui.',
+            'date_embauche.before_or_equal' => 'La date d\'embauche ne peut pas être une date future.',
             'lettre.min'                  => 'La lettre de démission doit contenir au moins 50 caractères.',
         ]);
 
         $demande = DemandeDemission::create([
             'user_id'               => $user->id,
             'date_depart_souhaitee' => $request->date_depart_souhaitee,
+            'date_embauche'         => $request->date_embauche,
             'lettre'                => $request->lettre,
             'numero_reference'      => DemandeDemission::genererNumeroReference(),
             'statut'                => 'en_attente',
@@ -180,9 +183,33 @@ class DemissionController extends Controller
                 $emailSecretaire = config('cofima.email_secretaire', 'biroko@cofima.cc');
 
                 // Mail employé : acceptation + certificat de travail joint
-                Mail::to($demission->user->email)
-                    ->cc($emailSecretaire)
-                    ->send(new CertificatTravailMail($demission, $request->date_depart_confirmee));
+                try {
+                    Log::info('Tentative d\'envoi du certificat de travail', [
+                        'demande_id' => $demission->id,
+                        'user_email' => $demission->user->email,
+                        'numero_certificat' => $numeroCertificat,
+                        'date_depart_confirmee' => $request->date_depart_confirmee
+                    ]);
+
+                    Mail::to($demission->user->email)
+                        ->cc($emailSecretaire)
+                        ->send(new CertificatTravailMail($demission, $request->date_depart_confirmee));
+
+                    Log::info('Certificat de travail envoyé avec succès', [
+                        'demande_id' => $demission->id,
+                        'user_email' => $demission->user->email
+                    ]);
+                } catch (\Exception $mailException) {
+                    Log::error('Erreur lors de l\'envoi du certificat de travail', [
+                        'demande_id' => $demission->id,
+                        'user_email' => $demission->user->email,
+                        'error' => $mailException->getMessage(),
+                        'trace' => $mailException->getTraceAsString()
+                    ]);
+
+                    // Ne pas rollback la transaction, juste logger l'erreur
+                    Alert::warning('Attention', 'La démission a été acceptée mais l\'envoi du certificat par mail a échoué. Veuillez contacter le support technique.');
+                }
             } else {
             }
 

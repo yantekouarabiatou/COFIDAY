@@ -15,6 +15,7 @@ class DemandeDemission extends Model
     protected $fillable = [
         'user_id',
         'date_depart_souhaitee',
+        'date_embauche',
         'lettre',
         'statut',
         'valide_par',
@@ -28,6 +29,7 @@ class DemandeDemission extends Model
 
     protected $casts = [
         'date_depart_souhaitee'      => 'date',
+        'date_embauche'              => 'date',
         'date_validation'             => 'datetime',
         'date_generation_certificat'  => 'datetime',
         'certificat_genere'           => 'boolean',

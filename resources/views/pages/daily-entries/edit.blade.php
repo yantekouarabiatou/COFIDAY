@@ -1,663 +1,739 @@
 @extends('layaout')
-
 @section('title', 'Modifier la Feuille de Temps')
 
+@push('styles')
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ asset('assets/bundles/select2/dist/css/select2.min.css') }}">
+<style>
+:root {
+    --ts-blue:#244584; --ts-blue-lt:#EFF6FF; --ts-green:#059669;
+    --ts-amber:#675540; --ts-red:#DC2626; --ts-slate:#475569;
+    --ts-border:#E2E8F0; --ts-radius:12px;
+}
+body { background:#F1F5F9; font-family:'DM Sans',sans-serif; }
+.form-wrap { max-width:960px; margin:0 auto; padding:24px 20px 60px; }
+
+.page-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;gap:12px;flex-wrap:wrap; }
+.page-header__title { font-size:22px;font-weight:700;color:#0F172A;display:flex;align-items:center;gap:10px; }
+.page-header__title i { color:var(--ts-blue); }
+
+.status-badge { display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600; }
+.status-badge.soumis  { background:#DBEAFE;color:#1E40AF; }
+.status-badge.validé  { background:#D1FAE5;color:#065F46; }
+.status-badge.refusé  { background:#FEE2E2;color:#7F1D1D; }
+.status-badge.manquant{ background:#FEF3C7;color:#78350F; }
+
+.refus-banner { background:#FEF2F2;border:1px solid #FECACA;border-left:4px solid var(--ts-red);border-radius:var(--ts-radius);padding:14px 20px;margin-bottom:16px;display:flex;align-items:flex-start;gap:12px; }
+.refus-banner i { color:var(--ts-red);font-size:18px;flex-shrink:0;margin-top:1px; }
+.refus-banner__label { font-size:12px;font-weight:700;color:var(--ts-red);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px; }
+.refus-banner__motif { font-size:14px;color:#7F1D1D; }
+
+.validation-panel { background:#F0FDF4;border:1px solid #BBF7D0;border-radius:var(--ts-radius);padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap; }
+.validation-panel > i { font-size:20px;color:var(--ts-green); }
+
+.card-ts { background:#fff;border:1px solid var(--ts-border);border-radius:var(--ts-radius);box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:16px;overflow:hidden; }
+.card-ts__head { padding:16px 24px;border-bottom:1px solid #F1F5F9;display:flex;align-items:center;gap:10px;font-weight:700;font-size:14px;color:#0F172A; }
+.card-ts__head i { color:var(--ts-blue);font-size:15px; }
+.card-ts__body { padding:24px; }
+
+.form-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px; }
+.form-group-ts { display:flex;flex-direction:column;gap:6px; }
+.form-label-ts { font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--ts-slate); }
+.form-input-ts { border:1.5px solid var(--ts-border);border-radius:10px;padding:10px 14px;font-size:14px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .15s,box-shadow .15s;background:#fff;color:#0F172A; }
+.form-input-ts:focus { border-color:var(--ts-blue);box-shadow:0 0 0 3px #DBEAFE; }
+.form-input-ts:disabled,.form-input-ts[readonly] { background:#F8FAFC;color:var(--ts-slate);cursor:not-allowed; }
+textarea.form-input-ts { resize:vertical;min-height:70px; }
+
+.activity-card { background:#fff;border:1.5px solid var(--ts-border);border-left:4px solid var(--ts-blue);border-radius:var(--ts-radius);padding:20px;margin-bottom:12px;animation:slideDown .25s ease;position:relative;transition:box-shadow .2s; }
+.activity-card:hover { box-shadow:0 4px 16px rgba(0,0,0,.08); }
+.activity-card.existing { border-left-color:#244584; }
+@keyframes slideDown { from{opacity:0;transform:translateY(-12px)} to{opacity:1;transform:translateY(0)} }
+
+.activity-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:8px; }
+.activity-num { width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0; }
+.activity-num.existing { background:linear-gradient(135deg,#244584,#4F46E5); }
+.activity-num.new      { background:linear-gradient(135deg,#234b96,#0891B2); }
+
+.activity-grid { display:grid;grid-template-columns:2fr 1fr 1fr 0.8fr;gap:12px;margin-bottom:14px; }
+.activity-grid-desc { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+@media(max-width:640px){ .activity-grid{grid-template-columns:1fr 1fr} .activity-grid-desc{grid-template-columns:1fr} }
+
+.autre-checkbox-wrap { display:flex;align-items:center;gap:8px;margin-top:6px;padding:8px 12px;background:var(--ts-blue-lt);border:1px dashed #93C5FD;border-radius:8px;cursor:pointer;transition:background .15s;user-select:none;font-size:13px;color:var(--ts-blue);font-weight:500; }
+.autre-checkbox-wrap:hover { background:#DBEAFE; }
+.autre-checkbox-wrap input[type="checkbox"] { width:16px;height:16px;accent-color:var(--ts-blue);cursor:pointer;flex-shrink:0; }
+
+.progress-ts { height:10px;background:#E2E8F0;border-radius:5px;overflow:hidden;position:relative; }
+.progress-ts__fill { height:100%;border-radius:5px;transition:width .4s ease,background-color .3s;position:relative; }
+.progress-ts__text { position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:700;color:#fff;font-family:'DM Mono',monospace; }
+.hours-recap { display:flex;align-items:center;gap:16px;padding:16px 20px;background:#F8FAFC;border-radius:10px;margin-top:12px; }
+.hours-recap__total { font-size:28px;font-weight:700;font-family:'DM Mono',monospace;color:var(--ts-blue); }
+.hours-recap__label { font-size:12px;color:var(--ts-slate); }
+
+.btn-ts { display:inline-flex;align-items:center;gap:7px;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;border:none;cursor:pointer;transition:all .15s;text-decoration:none;font-family:'DM Sans',sans-serif; }
+.btn-ts.primary { background:var(--ts-blue);color:#fff; }
+.btn-ts.primary:hover { background:#1D4ED8; }
+.btn-ts.success { background:var(--ts-green);color:#fff; }
+.btn-ts.success:hover { background:#047857; }
+.btn-ts.outline { background:#fff;color:var(--ts-slate);border:1.5px solid var(--ts-border); }
+.btn-ts.outline:hover { background:#F8FAFC; }
+.btn-ts.danger-outline { background:#fff;color:var(--ts-red);border:1.5px solid #FCA5A5; }
+.btn-ts.danger-outline:hover { background:var(--ts-red);color:#fff; }
+.btn-ts.sm { padding:7px 14px;font-size:12px;border-radius:8px; }
+.btn-ts.lg { padding:13px 28px;font-size:15px;border-radius:11px; }
+.btn-ts:disabled { opacity:.5;cursor:not-allowed; }
+
+.select2-container .select2-selection--single { height:42px!important;border:1.5px solid var(--ts-border)!important;border-radius:10px!important;display:flex;align-items:center; }
+.select2-container--default .select2-selection--single .select2-selection__rendered { line-height:42px!important;padding:0 14px!important;color:#0F172A!important;font-family:'DM Sans',sans-serif!important; }
+.select2-container--default .select2-selection--single .select2-selection__arrow { height:42px!important; }
+.select2-container--focus .select2-selection--single { border-color:var(--ts-blue)!important;box-shadow:0 0 0 3px #DBEAFE!important; }
+.select2-dropdown { border:1.5px solid var(--ts-border)!important;border-radius:10px!important;font-family:'DM Sans',sans-serif; }
+.select2-container--default .select2-results__option--highlighted { background:var(--ts-blue-lt)!important;color:var(--ts-blue)!important; }
+
+.ts-modal-overlay { position:fixed;inset:0;background:rgba(15,23,42,.5);backdrop-filter:blur(6px);z-index:9999;display:none;align-items:center;justify-content:center; }
+.ts-modal-overlay.open { display:flex; }
+.ts-modal { background:#fff;border-radius:20px;box-shadow:0 32px 80px rgba(0,0,0,.2);padding:36px;width:100%;max-width:520px;animation:modalIn .25s cubic-bezier(.34,1.56,.64,1);max-height:90vh;overflow-y:auto; }
+@keyframes modalIn { from{opacity:0;transform:scale(.92) translateY(-20px)} to{opacity:1;transform:scale(1) translateY(0)} }
+.ts-modal__head { display:flex;align-items:flex-start;gap:14px;margin-bottom:28px; }
+.ts-modal__icon { width:48px;height:48px;background:var(--ts-blue-lt);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--ts-blue);flex-shrink:0; }
+.ts-modal__title { font-size:20px;font-weight:700;color:#0F172A;margin:0 0 4px; }
+.ts-modal__sub   { font-size:13px;color:var(--ts-slate);margin:0; }
+.ts-modal__grid  { display:grid;grid-template-columns:1fr 1fr;gap:14px; }
+.ts-modal__footer { display:flex;gap:10px;justify-content:flex-end;margin-top:28px;padding-top:20px;border-top:1px solid #F1F5F9; }
+
+#add-row { width:100%;border:2px dashed #CBD5E1;border-radius:12px;background:transparent;color:var(--ts-slate);padding:14px;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px; }
+#add-row:hover { border-color:var(--ts-blue);color:var(--ts-blue);background:var(--ts-blue-lt); }
+</style>
+@endpush
+
 @section('content')
-<section class="section">
-    <div class="section-header">
-        <h1><i class="fas fa-clock"></i> Modifier la Feuille de Temps</h1>
-        <div class="section-header-breadcrumb">
-            <div class="breadcrumb-item active"><a href="{{ route('dashboard') }}">Dashboard</a></div>
-            <div class="breadcrumb-item"><a href="{{ route('daily-entries.index') }}">Feuilles de Temps</a></div>
-            <div class="breadcrumb-item"><a href="{{ route('daily-entries.show', $dailyEntry) }}">Détail</a></div>
-            <div class="breadcrumb-item">Modifier</div>
+<div class="form-wrap">
+
+    {{-- Header --}}
+    <div class="page-header">
+        <div>
+            <div class="page-header__title">
+                <i class="fas fa-pen-to-square"></i>
+                Modifier — {{ \Carbon\Carbon::parse($dailyEntry->jour)->translatedFormat('l d F Y') }}
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+                @switch($dailyEntry->statut)
+                    @case('soumis')  <span class="status-badge soumis"><i class="fas fa-hourglass-half"></i> Soumise</span> @break
+                    @case('validé')  <span class="status-badge validé"><i class="fas fa-check-circle"></i> Validée</span> @break
+                    @case('refusé')  <span class="status-badge refusé"><i class="fas fa-times-circle"></i> Refusée</span> @break
+                    @case('manquant')<span class="status-badge manquant"><i class="fas fa-exclamation-triangle"></i> Jour manquant</span> @break
+                @endswitch
+                <span style="font-size:12px;color:var(--ts-slate);">
+                    Semaine S{{ \Carbon\Carbon::parse($dailyEntry->jour)->isoWeek() }}
+                </span>
+            </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <a href="{{ route('daily-entries.show', $dailyEntry) }}" class="btn-ts outline sm">
+                <i class="fas fa-eye"></i> Voir
+            </a>
+            <a href="{{ route('daily-entries.index') }}" class="btn-ts outline sm">
+                <i class="fas fa-arrow-left"></i> Retour
+            </a>
         </div>
     </div>
 
-    <div class="section-body">
-        <div class="card card-primary">
-            <div class="card-header">
-                <h4>Modification du {{ \Carbon\Carbon::parse($dailyEntry->jour)->format('d/m/Y') }}</h4>
-            </div>
-
-            <div class="card-body">
-                <form action="{{ route('daily-entries.update', $dailyEntry) }}" method="POST" id="daily-form">
-                    @csrf
-                    @method('PUT')
-
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label>Collaborateur</label>
-                                <div class="input-group">
-                                    <input type="text" class="form-control" value="{{ $dailyEntry->user->prenom }} - {{ $dailyEntry->user->nom }} ({{ $dailyEntry->user->poste->intitule ?? '-' }})" readonly>
-                                    <input type="hidden" name="user_id" value="{{ $dailyEntry->user_id }}">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label>Date <span class="text-danger">*</span></label>
-                                <input type="date" name="jour" class="form-control" value="{{ $dailyEntry->jour->format('Y-m-d') }}" required>
-                            </div>
-                        </div>
-
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label>Heures théoriques <span class="text-danger">*</span></label>
-                                <input type="number" step="0.25" min="0" max="24" name="heures_theoriques"
-                                       class="form-control" value="{{ $dailyEntry->heures_theoriques }}" required>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Commentaire général</label>
-                        <textarea name="commentaire" class="form-control" rows="2">{{ $dailyEntry->commentaire }}</textarea>
-                    </div>
-
-                    <hr>
-
-                    <!-- Titre + bouton global nouveau dossier -->
-                    <div class="d-flex align-items-center justify-content-between mb-4">
-                        <h5 class="mb-0"><i class="fas fa-tasks"></i> Activités de la journée</h5>
-                        <button type="button" class="btn btn-outline-primary btn-new-dossier-global">
-                            <i class="fas fa-plus"></i> Nouveau dossier
-                        </button>
-                    </div>
-
-                    <!-- Conteneur des activités -->
-                    <div id="time-entries-container">
-                        @foreach($dailyEntry->timeEntries as $index => $entry)
-                        <div class="time-entry-row mb-4">
-                            <div class="card bg-light">
-                                <div class="card-body">
-                                    <!-- Première ligne: Informations principales -->
-                                    <div class="row align-items-end mb-3">
-                                        <div class="col-lg-3 col-md-4 col-12 mb-2">
-                                            <div class="form-group mb-0">
-                                                <label class="font-weight-bold">Activité <span class="text-danger">*</span></label>
-                                                <select name="time_entries[{{ $index }}][dossier_id]" class="form-control select2 dossier-select" required>
-                                                    <option value="">Choisir une activité...</option>
-                                                    @foreach($dossiers as $dossier)
-                                                        <option value="{{ $dossier->id }}"
-                                                            data-client="{{ $dossier->client->nom ?? 'Sans client' }}"
-                                                            data-reference="{{ $dossier->reference ?? '' }}"
-                                                            {{ $entry->dossier_id == $dossier->id ? 'selected' : '' }}>
-                                                            {{ $dossier->nom }} - {{ $dossier->client->nom ?? 'Sans client' }}
-                                                        </option>
-                                                    @endforeach
-                                                    <option value="autre">Autre (créer une nouvelle activité)</option>
-                                                </select>
-                                                <input type="hidden" name="time_entries[{{ $index }}][id]" value="{{ $entry->id }}">
-                                            </div>
-                                        </div>
-
-                                        <div class="col-lg-2 col-md-3 col-6 mb-2">
-                                            <div class="form-group mb-0">
-                                                <label class="font-weight-bold">Heure début <span class="text-danger">*</span></label>
-                                                <input type="time" name="time_entries[{{ $index }}][heure_debut]"
-                                                    class="form-control heure-debut text-center"
-                                                    value="{{ $entry->heure_debut ? $entry->heure_debut->format('H:i') : '' }}"
-                                                    required>
-                                            </div>
-                                        </div>
-
-                                        <div class="col-lg-2 col-md-3 col-6 mb-2">
-                                            <div class="form-group mb-0">
-                                                <label class="font-weight-bold">Heure fin <span class="text-danger">*</span></label>
-                                                <input type="time" name="time_entries[{{ $index }}][heure_fin]"
-                                                    class="form-control heure-fin text-center"
-                                                    value="{{ $entry->heure_fin ? $entry->heure_fin->format('H:i') : '' }}"
-                                                    required>
-                                            </div>
-                                        </div>
-
-                                        <div class="col-lg-2 col-md-2 col-6 mb-2">
-                                            <div class="form-group mb-0">
-                                                <label class="font-weight-bold">Heures <span class="text-danger">*</span></label>
-                                                <input type="number" step="0.25" min="0.25" 
-                                                    name="time_entries[{{ $index }}][heures_reelles]"
-                                                    class="form-control heures-input text-center" 
-                                                    value="{{ $entry->heures_reelles }}" readonly required>
-                                            </div>
-                                        </div>
-
-                                        <div class="col-lg-3 col-md-12 col-6 mb-2 text-lg-right text-md-left">
-                                            <div class="form-group mb-0">
-                                                <label class="d-none d-lg-block text-white">-</label>
-                                                <button type="button" class="btn btn-danger btn-sm remove-row" title="Supprimer cette activité">
-                                                    <i class="fas fa-trash"></i> Supprimer
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Deuxième ligne: Descriptions détaillées -->
-                                    <div class="row">
-                                        <div class="col-md-6 col-12 mb-2">
-                                            <div class="form-group mb-0">
-                                                <label class="font-weight-bold">Travaux réalisés</label>
-                                                <textarea name="time_entries[{{ $index }}][travaux]"
-                                                    class="form-control travaux-input"
-                                                    rows="3"
-                                                    placeholder="Ex: Analyse des documents, rédaction rapport...">{{ $entry->travaux }}</textarea>
-                                            </div>
-                                        </div>
-
-                                        <div class="col-md-6 col-12 mb-2">
-                                            <div class="form-group mb-0">
-                                                <label class="font-weight-bold">Rendu</label>
-                                                <textarea name="time_entries[{{ $index }}][rendu]"
-                                                    class="form-control"
-                                                    rows="3"
-                                                    placeholder="Ex: Rapport v1, 5 pages...">{{ $entry->rendu ?? '' }}</textarea>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        @endforeach
-                    </div>
-
-                    <div class="mb-4 text-center">
-                        <button type="button" id="add-row" class="btn btn-outline-primary btn-lg">
-                            <i class="fas fa-plus-circle"></i> Ajouter une tâche
-                        </button>
-                    </div>
-
-                    <!-- Récapitulatif -->
-                    <div class="card mt-4">
-                        <div class="card-body">
-                            <h6>Récapitulatif des heures</h6>
-                            <div class="row align-items-center">
-                                <div class="col-md-8">
-                                    <div class="progress" style="height: 30px;">
-                                        <div class="progress-bar bg-info" role="progressbar" id="progress-bar" style="width: 0%">
-                                            <span class="progress-text">0h / 0h</span>
-                                        </div>
-                                        <div class="progress-bar bg-success" role="progressbar" id="progress-over" style="width: 0%"></div>
-                                        <div class="progress-bar bg-danger" role="progressbar" id="progress-under" style="width: 0%"></div>
-                                    </div>
-                                </div>
-                                <div class="col-md-4 text-right">
-                                    <h4 id="total-heures">Total : <span class="text-info">0.00</span></h4>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="text-right mt-4">
-                        <a href="{{ route('daily-entries.show', $dailyEntry) }}" class="btn btn-secondary btn-lg mr-3">
-                            <i class="fas fa-times"></i> Annuler
-                        </a>
-                        <button type="submit" class="btn btn-primary btn-lg px-5">
-                            <i class="fas fa-save"></i> Enregistrer les modifications
-                        </button>
-                    </div>
-                </form>
-            </div>
+    {{-- Bannière motif refus --}}
+    @if($dailyEntry->statut === 'refusé' && $dailyEntry->motif_refus)
+    <div class="refus-banner">
+        <i class="fas fa-exclamation-circle"></i>
+        <div>
+            <div class="refus-banner__label">Motif du refus</div>
+            <div class="refus-banner__motif">{{ $dailyEntry->motif_refus }}</div>
         </div>
     </div>
-</section>
+    @endif
 
-<!-- Modal nouveau dossier -->
-<div class="modal fade mt-5" id="newDossierModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-md" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-folder-plus"></i> Nouvelle activité</h5>
-                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
-            </div>
-            <div class="modal-body">
-                <form id="new-dossier-form">
-                    @csrf
+    {{-- Panel manager --}}
+    @if(auth()->user()->isManagerOf($dailyEntry->user_id) || auth()->user()->hasRole(['admin','super-admin']))
+    <div class="validation-panel">
+        <i class="fas fa-shield-check"></i>
+        <div style="flex:1;">
+            <div style="font-size:13px;font-weight:700;color:#065F46;">Vous êtes le supérieur hiérarchique</div>
+            <div style="font-size:12px;color:#047857;">Vous pouvez modifier et valider directement cette feuille.</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+            <button type="button" class="btn-ts success sm" id="quick-validate-btn">
+                <i class="fas fa-check"></i> Valider
+            </button>
+            <button type="button" class="btn-ts danger-outline sm" id="quick-reject-btn">
+                <i class="fas fa-times"></i> Refuser
+            </button>
+        </div>
+    </div>
+    @endif
 
-                    <div class="form-group">
-                        <label>Nom de l'activité <span class="text-danger">*</span></label>
-                        <input type="text" name="nom" id="modal-nom" class="form-control" required
-                            placeholder="Ex: Audit financier 2024">
+    <form action="{{ route('daily-entries.update', $dailyEntry) }}" method="POST" id="daily-form">
+        @csrf
+        @method('PUT')
+
+        {{-- Infos générales --}}
+        <div class="card-ts">
+            <div class="card-ts__head"><i class="fas fa-info-circle"></i> Informations générales</div>
+            <div class="card-ts__body">
+                <div class="form-grid">
+                    <div class="form-group-ts">
+                        <label class="form-label-ts">Collaborateur</label>
+                        <input type="text" class="form-input-ts" readonly
+                            value="{{ $dailyEntry->user->prenom }} {{ $dailyEntry->user->nom }} ({{ $dailyEntry->user->poste->intitule ?? '—' }})">
+                        <input type="hidden" name="user_id" value="{{ $dailyEntry->user_id }}">
                     </div>
-
-                    <div class="form-group">
-                        <label>Référence <small class="text-muted">(générée automatiquement)</small></label>
-                        <input type="text" name="reference" id="modal-reference" class="form-control"
-                            placeholder="Ex: DOS-AUD-260331" readonly
-                            style="background-color: #f8f9fa; cursor: not-allowed;">
+                    <div class="form-group-ts">
+                        <label class="form-label-ts">Date <span style="color:var(--ts-red);">*</span></label>
+                        <input type="date" name="jour" class="form-input-ts"
+                            value="{{ $dailyEntry->jour->format('Y-m-d') }}"
+                            max="{{ now()->format('Y-m-d') }}" required>
                     </div>
+                    <div class="form-group-ts">
+                        <label class="form-label-ts">Heures théoriques <span style="color:var(--ts-red);">*</span></label>
+                        <input type="number" step="0.25" min="0" max="24" name="heures_theoriques"
+                            class="form-input-ts" value="{{ $dailyEntry->heures_theoriques }}" required>
+                    </div>
+                </div>
 
-                    <div class="form-group">
-                        <label>Client</label>
-                        <select name="client_id" class="form-control select2-modal">
-                            <option value="">Sans client (Coftime par défaut)</option>
-                            @foreach($clients as $client)
-                                <option value="{{ $client->id }}">{{ $client->nom }}</option>
-                            @endforeach
+                {{-- Statut & motif refus (managers uniquement) --}}
+                @if(auth()->user()->isManagerOf($dailyEntry->user_id) || auth()->user()->hasRole(['admin','super-admin']))
+                <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:16px;align-items:flex-end;">
+                    <div class="form-group-ts" style="min-width:200px;">
+                        <label class="form-label-ts">Statut</label>
+                        <select name="statut" class="form-input-ts" id="statut-select">
+                            <option value="soumis" {{ $dailyEntry->statut === 'soumis' ? 'selected' : '' }}>Soumise</option>
+                            <option value="validé" {{ $dailyEntry->statut === 'validé' ? 'selected' : '' }}>Validée</option>
+                            <option value="refusé" {{ $dailyEntry->statut === 'refusé' ? 'selected' : '' }}>Refusée</option>
                         </select>
                     </div>
-
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Type <span class="text-danger">*</span></label>
-                                <select name="type_dossier" class="form-control" required>
-                                    <option value="">Sélectionner...</option>
-                                    <option value="audit">Audit</option>
-                                    <option value="conseil">Conseil</option>
-                                    <option value="formation">Formation</option>
-                                    <option value="expertise">Expertise</option>
-                                    <option value="autre">Autre</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Statut <span class="text-danger">*</span></label>
-                                <select name="statut" class="form-control" required>
-                                    <option value="ouvert">Ouvert</option>
-                                    <option value="en_cours" selected>En cours</option>
-                                    <option value="suspendu">Suspendu</option>
-                                    <option value="cloture">Clôturé</option>
-                                </select>
-                            </div>
-                        </div>
+                    <div class="form-group-ts" id="motif-refus-wrap" style="flex:1;min-width:220px;{{ $dailyEntry->statut !== 'refusé' ? 'display:none;' : '' }}">
+                        <label class="form-label-ts">Motif du refus <span style="color:var(--ts-red);">*</span></label>
+                        <textarea name="motif_refus" class="form-input-ts" rows="2"
+                            placeholder="Expliquez le motif…">{{ $dailyEntry->motif_refus }}</textarea>
                     </div>
+                </div>
+                @endif
 
-                    <div class="form-group">
-                        <label>Date d'ouverture <span class="text-danger">*</span></label>
-                        <input type="date" name="date_ouverture" class="form-control"
-                            value="{{ now()->format('Y-m-d') }}" required>
-                    </div>
-
-                    <input type="hidden" name="date_cloture_prevue" value="">
-                </form>
+                <div class="form-group-ts" style="margin-top:16px;">
+                    <label class="form-label-ts">Commentaire général</label>
+                    <textarea name="commentaire" class="form-input-ts"
+                        placeholder="Ex: Réunion client, télétravail…">{{ $dailyEntry->commentaire }}</textarea>
+                </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
-                <button type="button" class="btn btn-primary" id="save-new-dossier">
-                    <i class="fas fa-save"></i> Créer
+        </div>
+
+        {{-- Activités --}}
+        <div class="card-ts">
+            <div class="card-ts__head" style="justify-content:space-between;">
+                <span><i class="fas fa-tasks"></i> Activités de la journée</span>
+                <button type="button" id="open-new-dossier-global" class="btn-ts outline sm">
+                    <i class="fas fa-plus"></i> Nouvelle activité
                 </button>
             </div>
+            <div class="card-ts__body" style="padding-bottom:8px;">
+                <div id="time-entries-container">
+                    @foreach($dailyEntry->timeEntries as $index => $entry)
+                    <div class="activity-card existing" data-index="{{ $index }}">
+                        <div class="activity-header">
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <div class="activity-num existing">{{ $index + 1 }}</div>
+                                <div>
+                                    <span style="font-size:13px;font-weight:600;color:#0F172A;">Activité {{ $index + 1 }}</span>
+                                    <span style="font-size:11px;color:var(--ts-slate);margin-left:6px;">existante</span>
+                                </div>
+                            </div>
+                            <button type="button" class="btn-ts danger-outline sm remove-row">
+                                <i class="fas fa-trash"></i> Supprimer
+                            </button>
+                        </div>
+
+                        <input type="hidden" name="time_entries[{{ $index }}][id]" value="{{ $entry->id }}">
+
+                        <div class="activity-grid">
+                            <div class="form-group-ts" style="grid-column:1/-1;">
+                                <label class="form-label-ts">Dossier / Activité <span style="color:var(--ts-red);">*</span></label>
+                                <select name="time_entries[{{ $index }}][dossier_id]"
+                                    class="form-input-ts select2 dossier-select" required>
+                                    <option value="">Choisir un dossier…</option>
+                                    @foreach($dossiers as $dossier)
+                                        <option value="{{ $dossier->id }}"
+                                            data-client="{{ $dossier->client->nom ?? 'Sans client' }}"
+                                            {{ $entry->dossier_id == $dossier->id ? 'selected' : '' }}>
+                                            {{ $dossier->nom }} — {{ $dossier->client->nom ?? 'Sans client' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <label class="autre-checkbox-wrap">
+                                    <input type="checkbox" class="autre-cb">
+                                    <i class="fas fa-plus-circle"></i>
+                                    Créer une nouvelle activité maintenant
+                                </label>
+                            </div>
+                            <div class="form-group-ts">
+                                <label class="form-label-ts">Heure début <span style="color:var(--ts-red);">*</span></label>
+                                <input type="time" name="time_entries[{{ $index }}][heure_debut]"
+                                    class="form-input-ts heure-debut"
+                                    value="{{ $entry->heure_debut ? \Carbon\Carbon::parse($entry->heure_debut)->format('H:i') : '' }}"
+                                    required>
+                            </div>
+                            <div class="form-group-ts">
+                                <label class="form-label-ts">Heure fin <span style="color:var(--ts-red);">*</span></label>
+                                <input type="time" name="time_entries[{{ $index }}][heure_fin]"
+                                    class="form-input-ts heure-fin"
+                                    value="{{ $entry->heure_fin ? \Carbon\Carbon::parse($entry->heure_fin)->format('H:i') : '' }}"
+                                    required>
+                            </div>
+                            <div class="form-group-ts">
+                                <label class="form-label-ts">Durée</label>
+                                <input type="number" step="0.25" min="0.25"
+                                    name="time_entries[{{ $index }}][heures_reelles]"
+                                    class="form-input-ts heures-input"
+                                    value="{{ $entry->heures_reelles }}" readonly required
+                                    style="font-family:'DM Mono',monospace;font-weight:600;color:var(--ts-blue);">
+                            </div>
+                        </div>
+
+                        <div class="activity-grid-desc">
+                            <div class="form-group-ts">
+                                <label class="form-label-ts">Travaux réalisés</label>
+                                <textarea name="time_entries[{{ $index }}][travaux]" class="form-input-ts"
+                                    placeholder="Analyse, rédaction…">{{ $entry->travaux }}</textarea>
+                            </div>
+                            <div class="form-group-ts">
+                                <label class="form-label-ts">Rendu / Livrable</label>
+                                <textarea name="time_entries[{{ $index }}][rendu]" class="form-input-ts"
+                                    placeholder="Rapport, présentation…">{{ $entry->rendu ?? '' }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+
+                <button type="button" id="add-row">
+                    <i class="fas fa-plus-circle"></i> Ajouter une activité
+                </button>
+            </div>
+        </div>
+
+        {{-- Récapitulatif --}}
+        <div class="card-ts">
+            <div class="card-ts__body">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:12px;flex-wrap:wrap;">
+                    <span style="font-size:13px;font-weight:600;color:#0F172A;">Récapitulatif des heures</span>
+                    <div class="hours-recap" style="margin:0;">
+                        <div>
+                            <div class="hours-recap__total" id="total-display">0h 00min</div>
+                            <div class="hours-recap__label">saisies / <span id="theoriques-display">8h</span> théoriques</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="progress-ts">
+                    <div class="progress-ts__fill" id="progress-fill" style="width:0%;background:#2563EB;">
+                        <span class="progress-ts__text" id="progress-text"></span>
+                    </div>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ts-slate);margin-top:6px;">
+                    <span>0h</span>
+                    <span id="theoriques-end">8h</span>
+                </div>
+            </div>
+        </div>
+
+        {{-- Actions --}}
+        <div style="display:flex;justify-content:flex-end;gap:12px;flex-wrap:wrap;">
+            <a href="{{ route('daily-entries.show', $dailyEntry) }}" class="btn-ts outline lg">
+                <i class="fas fa-times"></i> Annuler
+            </a>
+            <button type="submit" class="btn-ts primary lg" id="submit-btn">
+                <i class="fas fa-save"></i> Enregistrer les modifications
+            </button>
+        </div>
+    </form>
+</div>
+
+{{-- Modal Nouvelle activité --}}
+<div class="ts-modal-overlay" id="new-dossier-modal">
+    <div class="ts-modal">
+        <div class="ts-modal__head">
+            <div class="ts-modal__icon"><i class="fas fa-folder-plus"></i></div>
+            <div>
+                <h3 class="ts-modal__title">Nouvelle activité</h3>
+                <p class="ts-modal__sub">Créer un dossier et l'associer automatiquement à cette ligne</p>
+            </div>
+        </div>
+        <form id="new-dossier-form">
+            @csrf
+            <div class="form-group-ts" style="margin-bottom:14px;">
+                <label class="form-label-ts">Nom <span style="color:var(--ts-red);">*</span></label>
+                <input type="text" name="nom" id="modal-nom" class="form-input-ts" placeholder="Ex: Audit financier client X" required>
+            </div>
+            <div class="form-group-ts" style="margin-bottom:14px;">
+                <label class="form-label-ts">Référence <small style="font-weight:400;text-transform:none;letter-spacing:0;">(auto)</small></label>
+                <input type="text" name="reference" id="modal-reference" class="form-input-ts" readonly
+                    style="background:#F8FAFC;font-family:'DM Mono',monospace;font-size:13px;">
+            </div>
+            <div class="form-group-ts" style="margin-bottom:14px;">
+                <label class="form-label-ts">Client</label>
+                <select name="client_id" id="modal-client" class="form-input-ts select2-modal">
+                    <option value="">Sans client</option>
+                    @foreach($clients as $client)
+                        <option value="{{ $client->id }}">{{ $client->nom }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="ts-modal__grid" style="margin-bottom:14px;">
+                <div class="form-group-ts">
+                    <label class="form-label-ts">Type <span style="color:var(--ts-red);">*</span></label>
+                    <select name="type_dossier" class="form-input-ts" required>
+                        <option value="">Sélectionner…</option>
+                        <option value="audit">Audit</option>
+                        <option value="conseil">Conseil</option>
+                        <option value="formation">Formation</option>
+                        <option value="expertise">Expertise</option>
+                        <option value="autre" selected>Autre</option>
+                    </select>
+                </div>
+                <div class="form-group-ts">
+                    <label class="form-label-ts">Statut</label>
+                    <select name="statut" class="form-input-ts">
+                        <option value="ouvert">Ouvert</option>
+                        <option value="en_cours" selected>En cours</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group-ts">
+                <label class="form-label-ts">Description</label>
+                <textarea name="description" class="form-input-ts" rows="2" placeholder="Description optionnelle…"></textarea>
+            </div>
+        </form>
+        <div class="ts-modal__footer">
+            <button type="button" class="btn-ts outline" id="close-modal-btn"><i class="fas fa-times"></i> Annuler</button>
+            <button type="button" class="btn-ts primary" id="save-dossier-btn"><i class="fas fa-check"></i> Créer & sélectionner</button>
+        </div>
+    </div>
+</div>
+
+{{-- Modal refus rapide (manager) --}}
+<div class="ts-modal-overlay" id="quick-reject-modal">
+    <div class="ts-modal" style="max-width:420px;">
+        <div class="ts-modal__head">
+            <div class="ts-modal__icon" style="background:#FEF2F2;color:var(--ts-red);"><i class="fas fa-times-circle"></i></div>
+            <div>
+                <h3 class="ts-modal__title">Refuser la feuille</h3>
+                <p class="ts-modal__sub">{{ $dailyEntry->user->prenom }} {{ $dailyEntry->user->nom }} — {{ \Carbon\Carbon::parse($dailyEntry->jour)->format('d/m/Y') }}</p>
+            </div>
+        </div>
+        <div class="form-group-ts">
+            <label class="form-label-ts">Motif du refus <span style="color:var(--ts-red);">*</span></label>
+            <textarea id="quick-reject-motif" class="form-input-ts" rows="4"
+                placeholder="Expliquez pourquoi cette feuille est refusée…"></textarea>
+        </div>
+        <div class="ts-modal__footer">
+            <button type="button" class="btn-ts outline" onclick="document.getElementById('quick-reject-modal').classList.remove('open')">Annuler</button>
+            <button type="button" class="btn-ts danger-outline" id="quick-reject-confirm">
+                <i class="fas fa-times"></i> Confirmer le refus
+            </button>
         </div>
     </div>
 </div>
 @endsection
 
-@push('styles')
-<link rel="stylesheet" href="{{ asset('assets/bundles/select2/dist/css/select2.min.css') }}">
-<style>
-    .progress-text { 
-        position: absolute; 
-        width: 100%; 
-        text-align: center; 
-        font-weight: bold; 
-        color: #fff; 
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.5); 
-    }
-    .select2-container { 
-        width: 100% !important; 
-    }
-
-    /* Styles pour améliorer l'apparence des cartes d'activités */
-    .time-entry-row .card {
-        border-left: 4px solid #6777ef;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-        transition: all 0.3s ease;
-    }
-
-    .time-entry-row .card:hover {
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        transform: translateY(-2px);
-    }
-
-    .time-entry-row textarea {
-        resize: vertical;
-        min-height: 80px;
-        font-size: 0.9rem;
-    }
-
-    .time-entry-row textarea:focus {
-        border-color: #6777ef;
-        box-shadow: 0 0 0 0.2rem rgba(103, 119, 239, 0.25);
-    }
-
-    .time-entry-row input[type="time"],
-    .time-entry-row input[type="number"] {
-        font-weight: 500;
-    }
-
-    .remove-row {
-        padding: 8px 16px;
-        font-weight: 500;
-    }
-
-    .remove-row:hover {
-        transform: scale(1.05);
-    }
-
-    @media (max-width: 768px) {
-        .time-entry-row .card {
-            margin-bottom: 1rem;
-        }
-        
-        .remove-row {
-            width: 100%;
-            margin-top: 10px;
-        }
-    }
-
-    .time-entry-row label {
-        font-size: 0.9rem;
-        margin-bottom: 0.5rem;
-        color: #495057;
-    }
-
-    @keyframes slideIn {
-        from {
-            opacity: 0;
-            transform: translateY(-20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    .time-entry-row {
-        animation: slideIn 0.3s ease-out;
-    }
-</style>
-@endpush
-
 @push('scripts')
 <script src="{{ asset('assets/bundles/select2/dist/js/select2.full.min.js') }}"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-$(document).ready(function() {
-    $('.select2').select2({
-        width: '100%',
-        placeholder: "Choisir une activité..."
-    });
+$(function() {
 
+    const CSRF   = '{{ csrf_token() }}';
     let rowIndex = {{ $dailyEntry->timeEntries->count() }};
-    let currentDossierSelect = null;
+    let currentTriggerSelect = null;
 
-    // Ajouter "Autre" aux selects existants s'il n'y est pas
-    $('.dossier-select').each(function () {
-        if ($(this).find('option[value="autre"]').length === 0) {
-            $(this).append('<option value="autre">Autre (créer une nouvelle activité)</option>');
-        }
+    // ── Select2 ───────────────────────────────────────────────
+    function initSelect2(el) {
+        $(el || '.dossier-select').select2({ width: '100%', placeholder: 'Choisir un dossier…' });
+    }
+    initSelect2();
+
+    // ── Affichage motif refus selon statut sélectionné ────────
+    $('#statut-select').on('change', function() {
+        const wrap = document.getElementById('motif-refus-wrap');
+        if (wrap) wrap.style.display = this.value === 'refusé' ? 'flex' : 'none';
     });
 
-    let dossierOptionsHTML = $('#time-entries-container .dossier-select:first').html();
-
-    // ── Référence auto ────────────────────────────────────────────────────
-    function generateReference(nom) {
-        let prefix = nom ? nom.substring(0, 3).toUpperCase() : 'DOS';
-        let now    = new Date();
-        let date   = now.toISOString().slice(2, 10).replace(/-/g, '');
-        let time   = now.toTimeString().slice(0, 8).replace(/:/g, '');
-        return 'DOS-' + prefix + '-' + date + time;
+    // ── Modal nouvelle activité ───────────────────────────────
+    function openModal(triggerSelect) {
+        currentTriggerSelect = triggerSelect;
+        document.getElementById('new-dossier-modal').classList.add('open');
+        generateRef('');
+        if (!$('#modal-client').data('select2')) {
+            $('#modal-client').select2({ dropdownParent: $('#new-dossier-modal'), width: '100%', placeholder: 'Sans client' });
+        }
     }
 
-    $('#newDossierModal').on('shown.bs.modal', function () {
-        if (!$('.select2-modal').data('select2')) {
-            $('.select2-modal').select2({
-                dropdownParent: $('#newDossierModal'),
-                width: '100%',
-                placeholder: "Choisir un client..."
-            });
-        }
-        if (!$('#modal-reference').val()) {
-            $('#modal-reference').val(generateReference(''));
-        }
+    function closeModal() {
+        document.getElementById('new-dossier-modal').classList.remove('open');
+        document.getElementById('new-dossier-form').reset();
+        document.querySelectorAll('.autre-cb').forEach(cb => cb.checked = false);
+        currentTriggerSelect = null;
+    }
+
+    document.getElementById('close-modal-btn').addEventListener('click', closeModal);
+    document.getElementById('new-dossier-modal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+    document.getElementById('open-new-dossier-global').addEventListener('click', () => openModal(null));
+
+    // Checkbox "Autre"
+    $(document).on('change', '.autre-cb', function() {
+        if (!this.checked) return;
+        const card   = this.closest('.activity-card');
+        const select = card ? card.querySelector('.dossier-select') : null;
+        this.checked = false;
+        openModal(select ? $(select) : null);
     });
 
-    $(document).on('blur', '#modal-nom', function () {
-        let nom = $(this).val().trim();
-        if (nom) {
-            $('#modal-reference').val(generateReference(nom));
-        }
-    });
+    // ── Génération référence ──────────────────────────────────
+    function generateRef(nom) {
+        const prefix = (nom || '').substring(0, 3).toUpperCase().padEnd(3, 'X');
+        const now    = new Date();
+        const date   = now.toISOString().slice(2, 10).replace(/-/g, '');
+        const time   = now.toTimeString().slice(0, 5).replace(':', '');
+        document.getElementById('modal-reference').value = `DOS-${prefix}-${date}${time}`;
+    }
+    $('#modal-nom').on('blur', function() { generateRef(this.value); });
+    $('#modal-nom').on('input', function() { if (this.value.length >= 3) generateRef(this.value); });
 
-    $('#newDossierModal').on('hidden.bs.modal', function () {
-        $('#new-dossier-form')[0].reset();
-        $('#modal-reference').val('');
-        currentDossierSelect = null;
-    });
+    // ── Créer le dossier ──────────────────────────────────────
+    document.getElementById('save-dossier-btn').addEventListener('click', function() {
+        const btn  = this;
+        const form = document.getElementById('new-dossier-form');
+        const nom  = form.querySelector('input[name="nom"]').value.trim();
 
-    // ── Ouvrir modal via bouton global ────────────────────────────────────
-    $('.btn-new-dossier-global').on('click', function () {
-        currentDossierSelect = null;
-        $('#newDossierModal').modal('show');
-    });
+        if (!nom) { form.querySelector('input[name="nom"]').style.borderColor = '#DC2626'; return; }
 
-    // ── Ouvrir modal via "Autre" dans un select ───────────────────────────
-    $(document).on('change', '.dossier-select', function () {
-        if ($(this).val() === 'autre') {
-            currentDossierSelect = $(this);
-            $(this).val(null).trigger('change');
-            $('#newDossierModal').modal('show');
-        }
-    });
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Création…';
 
-    // ── Créer le dossier via AJAX ─────────────────────────────────────────
-    $('#save-new-dossier').on('click', function () {
-        let form      = $('#new-dossier-form');
-        let submitBtn = $(this);
-
-        let nom    = form.find('input[name="nom"]').val().trim();
-        let type   = form.find('select[name="type_dossier"]').val();
-        let statut = form.find('select[name="statut"]').val();
-        let dateOuv = form.find('input[name="date_ouverture"]').val();
-
-        if (!nom || !type || !statut || !dateOuv) {
-            Swal.fire('Champs manquants', 'Veuillez remplir tous les champs obligatoires (*).', 'warning');
-            return;
-        }
-
-        submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Création...');
-
-        $.ajax({
-            url: '{{ route("dossiers.store") }}',
+        fetch('{{ route("daily-entries.create-dossier-quick") }}', {
             method: 'POST',
-            data: new FormData(form[0]),
-            processData: false,
-            contentType: false,
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-            success: function (response) {
-                if (!response.success) {
-                    Swal.fire('Erreur', response.message ?? 'Une erreur est survenue.', 'error');
-                    return;
+            headers: { 'X-CSRF-TOKEN': CSRF, 'X-Requested-With': 'XMLHttpRequest' },
+            body: new FormData(form)
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) { Swal.fire('Erreur', data.message || 'Erreur lors de la création.', 'error'); return; }
+
+            const clientNom = data.client?.nom ?? 'Sans client';
+            document.querySelectorAll('.dossier-select').forEach(sel => {
+                const $sel = $(sel);
+                if ($sel.find(`option[value="${data.dossier.id}"]`).length === 0) {
+                    $sel.append(new Option(`${data.dossier.nom} — ${clientNom}`, data.dossier.id));
                 }
+            });
 
-                let clientNom = response.client?.nom ?? 'Sans client';
-                let newOption = `<option value="${response.dossier.id}"
-                    data-client="${clientNom}"
-                    data-reference="${response.dossier.reference ?? ''}">
-                    ${response.dossier.nom} - ${clientNom}
-                </option>`;
-
-                // Insérer avant "Autre" dans tous les selects
-                $('.dossier-select').each(function () {
-                    $(this).find('option[value="autre"]').before(newOption);
+            if (currentTriggerSelect) {
+                currentTriggerSelect.val(data.dossier.id).trigger('change');
+            } else {
+                $('.dossier-select').each(function() {
+                    if (!$(this).val()) { $(this).val(data.dossier.id).trigger('change'); return false; }
                 });
-
-                // Sélectionner dans le select déclencheur
-                if (currentDossierSelect) {
-                    currentDossierSelect.val(response.dossier.id).trigger('change');
-                }
-
-                // Mettre à jour pour les futures lignes
-                dossierOptionsHTML = $('.dossier-select:first').html();
-
-                $('#newDossierModal').modal('hide');
-                form[0].reset();
-                currentDossierSelect = null;
-
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Activité créée !',
-                    text: `"${response.dossier.nom}" a été ajoutée et sélectionnée.`,
-                    timer: 2500,
-                    showConfirmButton: false
-                });
-            },
-            error: function (xhr) {
-                let errors  = xhr.responseJSON?.errors;
-                let message = xhr.responseJSON?.message ?? 'Une erreur est survenue.';
-                if (errors) message = Object.values(errors).flat().join('<br>');
-                Swal.fire({ icon: 'error', title: 'Erreur', html: message });
-            },
-            complete: function () {
-                submitBtn.prop('disabled', false).html('<i class="fas fa-save"></i> Créer');
             }
-        });
+
+            closeModal();
+            Swal.fire({ icon:'success', title:'Activité créée !', text:`"${data.dossier.nom}" ajoutée.`, timer:2000, showConfirmButton:false });
+        })
+        .catch(() => Swal.fire('Erreur', 'Impossible de créer le dossier.', 'error'))
+        .finally(() => { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Créer & sélectionner'; });
     });
 
-    // ── Ajouter une ligne ─────────────────────────────────────────────────
-    $('#add-row').on('click', function () {
-        let newRow = `
-        <div class="time-entry-row mb-4">
-            <div class="card">
-                <div class="card-body">
-                    <div class="row align-items-end mb-3">
-                        <div class="col-lg-3 col-md-4 col-12 mb-2">
-                            <div class="form-group mb-0">
-                                <label class="font-weight-bold">Activité <span class="text-danger">*</span></label>
-                                <select name="time_entries[${rowIndex}][dossier_id]"
-                                    class="form-control select2 dossier-select" required>
-                                    ${dossierOptionsHTML}
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-lg-2 col-md-3 col-6 mb-2">
-                            <div class="form-group mb-0">
-                                <label class="font-weight-bold">Heure début <span class="text-danger">*</span></label>
-                                <input type="time" name="time_entries[${rowIndex}][heure_debut]"
-                                    class="form-control heure-debut text-center" required>
-                            </div>
-                        </div>
-                        <div class="col-lg-2 col-md-3 col-6 mb-2">
-                            <div class="form-group mb-0">
-                                <label class="font-weight-bold">Heure fin <span class="text-danger">*</span></label>
-                                <input type="time" name="time_entries[${rowIndex}][heure_fin]"
-                                    class="form-control heure-fin text-center" required>
-                            </div>
-                        </div>
-                        <div class="col-lg-2 col-md-2 col-6 mb-2">
-                            <div class="form-group mb-0">
-                                <label class="font-weight-bold">Heures <span class="text-danger">*</span></label>
-                                <input type="number" step="0.25" min="0.25"
-                                    name="time_entries[${rowIndex}][heures_reelles]"
-                                    class="form-control heures-input text-center" readonly required>
-                            </div>
-                        </div>
-                        <div class="col-lg-3 col-md-12 col-6 mb-2 text-lg-right text-md-left">
-                            <div class="form-group mb-0">
-                                <label class="d-none d-lg-block text-white">-</label>
-                                <button type="button" class="btn btn-danger btn-sm remove-row">
-                                    <i class="fas fa-trash"></i> Supprimer
-                                </button>
-                            </div>
-                        </div>
+    // ── Ajouter une activité ──────────────────────────────────
+    document.getElementById('add-row').addEventListener('click', function() {
+        const num  = rowIndex + 1;
+        const html = `
+        <div class="activity-card" data-index="${rowIndex}">
+            <div class="activity-header">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div class="activity-num new">${num}</div>
+                    <div>
+                        <span style="font-size:13px;font-weight:600;color:#0F172A;">Activité ${num}</span>
+                        <span style="font-size:11px;color:var(--ts-slate);margin-left:6px;">nouvelle</span>
                     </div>
-                    <div class="row">
-                        <div class="col-md-6 col-12 mb-2">
-                            <div class="form-group mb-0">
-                                <label class="font-weight-bold">Travaux réalisés</label>
-                                <textarea name="time_entries[${rowIndex}][travaux]"
-                                    class="form-control" rows="3"
-                                    placeholder="Ex: Analyse des documents..."></textarea>
-                            </div>
-                        </div>
-                        <div class="col-md-6 col-12 mb-2">
-                            <div class="form-group mb-0">
-                                <label class="font-weight-bold">Rendu</label>
-                                <textarea name="time_entries[${rowIndex}][rendu]"
-                                    class="form-control" rows="3"
-                                    placeholder="Ex: Rapport v1, 5 pages..."></textarea>
-                            </div>
-                        </div>
-                    </div>
+                </div>
+                <button type="button" class="btn-ts danger-outline sm remove-row">
+                    <i class="fas fa-trash"></i> Supprimer
+                </button>
+            </div>
+            <div class="activity-grid">
+                <div class="form-group-ts" style="grid-column:1/-1;">
+                    <label class="form-label-ts">Dossier / Activité <span style="color:var(--ts-red);">*</span></label>
+                    <select name="time_entries[${rowIndex}][dossier_id]" class="form-input-ts select2 dossier-select" required>
+                        ${$('.dossier-select').first().html()}
+                    </select>
+                    <label class="autre-checkbox-wrap">
+                        <input type="checkbox" class="autre-cb">
+                        <i class="fas fa-plus-circle"></i>
+                        Créer une nouvelle activité maintenant
+                    </label>
+                </div>
+                <div class="form-group-ts">
+                    <label class="form-label-ts">Heure début <span style="color:var(--ts-red);">*</span></label>
+                    <input type="time" name="time_entries[${rowIndex}][heure_debut]" class="form-input-ts heure-debut" required>
+                </div>
+                <div class="form-group-ts">
+                    <label class="form-label-ts">Heure fin <span style="color:var(--ts-red);">*</span></label>
+                    <input type="time" name="time_entries[${rowIndex}][heure_fin]" class="form-input-ts heure-fin" required>
+                </div>
+                <div class="form-group-ts">
+                    <label class="form-label-ts">Durée</label>
+                    <input type="number" step="0.25" min="0.25" name="time_entries[${rowIndex}][heures_reelles]"
+                        class="form-input-ts heures-input" readonly required
+                        style="font-family:'DM Mono',monospace;font-weight:600;color:var(--ts-blue);">
+                </div>
+            </div>
+            <div class="activity-grid-desc">
+                <div class="form-group-ts">
+                    <label class="form-label-ts">Travaux réalisés</label>
+                    <textarea name="time_entries[${rowIndex}][travaux]" class="form-input-ts" placeholder="Analyse, rédaction…"></textarea>
+                </div>
+                <div class="form-group-ts">
+                    <label class="form-label-ts">Rendu / Livrable</label>
+                    <textarea name="time_entries[${rowIndex}][rendu]" class="form-input-ts" placeholder="Rapport, présentation…"></textarea>
                 </div>
             </div>
         </div>`;
 
-        $('#time-entries-container').append(newRow);
-        $('#time-entries-container .dossier-select').last().select2({
-            width: '100%',
-            placeholder: "Choisir une activité..."
-        });
+        document.getElementById('time-entries-container').insertAdjacentHTML('beforeend', html);
+        const newSelect = document.querySelector(`[data-index="${rowIndex}"] .dossier-select`);
+        $(newSelect).select2({ width: '100%', placeholder: 'Choisir un dossier…' });
         rowIndex++;
         updateTotal();
     });
 
-    // ── Suppression ligne ─────────────────────────────────────────────────
-    $(document).on('click', '.remove-row', function () {
-        if ($('.time-entry-row').length > 1) {
-            $(this).closest('.time-entry-row').fadeOut(300, function () {
-                $(this).remove();
-                updateTotal();
-            });
-        } else {
-            Swal.fire('Attention', 'Au moins une activité requise.', 'warning');
+    // ── Supprimer activité ────────────────────────────────────
+    $(document).on('click', '.remove-row', function() {
+        if (document.querySelectorAll('.activity-card').length <= 1) {
+            Swal.fire({ icon:'warning', title:'Minimum requis', text:'Au moins une activité est obligatoire.', timer:2000, showConfirmButton:false });
+            return;
         }
+        const card = this.closest('.activity-card');
+        card.style.transition = 'all .2s';
+        card.style.opacity    = '0';
+        card.style.transform  = 'translateY(-10px)';
+        setTimeout(() => { card.remove(); reNumberCards(); updateTotal(); }, 200);
     });
 
-    // ── Calcul heures ─────────────────────────────────────────────────────
-    $(document).on('change', '.heure-debut, .heure-fin', function () {
-        let row = $(this).closest('.time-entry-row');
-        let start = row.find('.heure-debut').val();
-        let end   = row.find('.heure-fin').val();
-        if (start && end) {
-            let s = new Date('1970-01-01T' + start + ':00');
-            let e = new Date('1970-01-01T' + end   + ':00');
-            if (e < s) e.setDate(e.getDate() + 1);
-            let diff = (e - s) / (1000 * 60 * 60);
-            row.find('.heures-input').val(diff.toFixed(2)).attr('title', decimalToHoursMinutes(diff));
-            updateTotal();
-        }
+    function reNumberCards() {
+        document.querySelectorAll('.activity-card').forEach((card, i) => {
+            const el = card.querySelector('.activity-num');
+            if (el) el.textContent = i + 1;
+        });
+    }
+
+    // ── Calcul heures ─────────────────────────────────────────
+    $(document).on('change', '.heure-debut, .heure-fin', function() {
+        calcHours(this.closest('.activity-card'));
     });
+
+    function calcHours(card) {
+        const start = card.querySelector('.heure-debut').value;
+        const end   = card.querySelector('.heure-fin').value;
+        if (!start || !end) return;
+        let s = new Date('1970-01-01T' + start);
+        let e = new Date('1970-01-01T' + end);
+        if (e <= s) e.setDate(e.getDate() + 1);
+        card.querySelector('.heures-input').value = ((e - s) / 3600000).toFixed(2);
+        updateTotal();
+    }
 
     function updateTotal() {
         let total = 0;
-        $('.heures-input').each(function () { total += parseFloat($(this).val()) || 0; });
-        let theoriques = parseFloat($('input[name="heures_theoriques"]').val()) || 8;
+        document.querySelectorAll('.heures-input').forEach(i => total += parseFloat(i.value) || 0);
+        const theoriques = parseFloat(document.querySelector('[name="heures_theoriques"]').value) || 8;
+        const pct        = Math.min((total / theoriques) * 100, 110);
+        const fill       = document.getElementById('progress-fill');
+        const color      = pct >= 100 ? '#059669' : (pct >= 80 ? '#D97706' : '#2563EB');
 
-        $('#total-heures span').text(decimalToHoursMinutes(total));
-        let perc = (total / theoriques) * 100;
-        $('#progress-bar').css('width', Math.min(perc, 100) + '%');
-        $('#progress-bar .progress-text').text(
-            `${decimalToHoursMinutes(total)} / ${decimalToHoursMinutes(theoriques)}`
-        );
-        $('#progress-over').css('width', perc > 100 ? (perc - 100) + '%' : '0%');
-        $('#progress-under').css('width', perc <= 100 ? (100 - perc) + '%' : '0%');
+        fill.style.width           = Math.min(pct, 100) + '%';
+        fill.style.backgroundColor = color;
+        document.getElementById('total-display').textContent      = decToHM(total);
+        document.getElementById('progress-text').textContent      = Math.round(pct) + '%';
+        document.getElementById('theoriques-display').textContent = decToHM(theoriques);
+        document.getElementById('theoriques-end').textContent     = decToHM(theoriques);
     }
 
-    function decimalToHoursMinutes(decimal) {
-        if (!decimal || isNaN(decimal)) return '0h 00min';
-        const hours   = Math.floor(decimal);
-        const minutes = Math.round((decimal - hours) * 60);
-        return `${hours}h ${minutes.toString().padStart(2, '0')}min`;
+    function decToHM(d) {
+        const h = Math.floor(d), m = Math.round((d - h) * 60);
+        return `${h}h ${m.toString().padStart(2,'0')}min`;
     }
 
-    // ── Validation soumission ─────────────────────────────────────────────
-    $('#daily-form').on('submit', function (e) {
+    $('[name="heures_theoriques"]').on('input', updateTotal);
+
+    // ── Validation soumission ─────────────────────────────────
+    document.getElementById('daily-form').addEventListener('submit', function(e) {
         let total = 0;
-        $('.heures-input').each(function () { total += parseFloat($(this).val()) || 0; });
-        if (total === 0) {
+        document.querySelectorAll('.heures-input').forEach(i => total += parseFloat(i.value) || 0);
+        if (total <= 0) {
             e.preventDefault();
-            Swal.fire('Erreur', 'Au moins une activité requise.', 'error');
-            return false;
+            Swal.fire({ icon:'error', title:'Aucune heure saisie', text:'Vous devez saisir au moins une activité.' });
+            return;
         }
-        if ($('.dossier-select').filter(function () { return !$(this).val(); }).length > 0) {
+        let emptySelect = false;
+        document.querySelectorAll('.dossier-select').forEach(s => { if (!s.value) emptySelect = true; });
+        if (emptySelect) {
             e.preventDefault();
-            Swal.fire('Erreur', 'Sélectionnez une activité pour chaque tâche.', 'error');
-            return false;
+            Swal.fire({ icon:'warning', title:'Dossier manquant', text:'Chaque activité doit avoir un dossier sélectionné.' });
+            return;
         }
+        document.getElementById('submit-btn').disabled = true;
+        document.getElementById('submit-btn').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enregistrement…';
+    });
+
+    // ── Validation rapide (manager) ───────────────────────────
+    document.getElementById('quick-validate-btn')?.addEventListener('click', function() {
+        Swal.fire({
+            title: 'Valider cette feuille ?',
+            html: `<strong>{{ $dailyEntry->user->prenom }} {{ $dailyEntry->user->nom }}</strong> — {{ \Carbon\Carbon::parse($dailyEntry->jour)->format('d/m/Y') }}`,
+            icon: 'question', showCancelButton: true,
+            confirmButtonText: 'Valider', cancelButtonText: 'Annuler',
+            confirmButtonColor: '#059669'
+        }).then(r => {
+            if (!r.isConfirmed) return;
+            fetch('{{ route("daily-entries.validate", $dailyEntry) }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF }
+            }).then(() => {
+                Swal.fire({ icon:'success', title:'Validée !', timer:1500, showConfirmButton:false })
+                    .then(() => window.location.href = '{{ route("daily-entries.show", $dailyEntry) }}');
+            });
+        });
+    });
+
+    // ── Refus rapide (manager) ────────────────────────────────
+    document.getElementById('quick-reject-btn')?.addEventListener('click', function() {
+        document.getElementById('quick-reject-modal').classList.add('open');
+    });
+
+    document.getElementById('quick-reject-modal')?.addEventListener('click', function(e) {
+        if (e.target === this) this.classList.remove('open');
+    });
+
+    document.getElementById('quick-reject-confirm')?.addEventListener('click', function() {
+        const motif = document.getElementById('quick-reject-motif').value.trim();
+        if (!motif) { document.getElementById('quick-reject-motif').style.borderColor = '#DC2626'; return; }
+
+        fetch('{{ route("daily-entries.reject", $dailyEntry) }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
+            body: JSON.stringify({ motif_refus: motif })
+        })
+        .then(r => r.json())
+        .then(d => {
+            document.getElementById('quick-reject-modal').classList.remove('open');
+            if (d.success) {
+                Swal.fire({ icon:'success', title:'Refusée', text:d.message, timer:1500, showConfirmButton:false })
+                    .then(() => window.location.href = '{{ route("daily-entries.show", $dailyEntry) }}');
+            } else {
+                Swal.fire('Erreur', d.message, 'error');
+            }
+        });
     });
 
     updateTotal();

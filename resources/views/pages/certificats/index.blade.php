@@ -1,20 +1,6 @@
-
 @extends('layaout')
 @section('title', 'Mes démissions')
 
-@if ($errors->any())
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <strong>Erreur de validation</strong>
-        <ul class="mb-0 mt-2">
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-        </button>
-    </div>
-@endif
 @section('content')
 <section class="section">
     <div class="section-header">
@@ -26,24 +12,36 @@
     </div>
 
     <div class="section-body">
+        {{-- Affichage des erreurs de validation --}}
+        @if ($errors->any())
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <strong>Erreur de validation</strong>
+                <ul class="mb-0 mt-2">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        @endif
+
         <div class="row">
             <div class="col-12">
                 <div class="card card-primary">
-
                     <div class="card-header">
                         <h4>Mes lettres de démission</h4>
                         <div class="card-header-action">
-                            @can('soumettre une démission')
-                                @php
-                                    $dejaEnCours = \App\Models\DemandeDemission::where('user_id', auth()->id())
-                                        ->whereIn('statut', ['en_attente', 'approuve'])->exists();
-                                @endphp
-                                @unless($dejaEnCours)
-                                    <a href="{{ route('demissions.create') }}" class="btn btn-danger btn-icon icon-left">
-                                        <i class="fas fa-pen"></i> Soumettre ma démission
-                                    </a>
-                                @endunless
-                            @endcan
+                            @php
+                                $dejaEnCours = \App\Models\DemandeDemission::where('user_id', auth()->id())
+                                    ->where('statut', 'en_attente')->exists();
+                            @endphp
+                            @if(!$dejaEnCours)
+                                <a href="{{ route('demissions.create') }}" class="btn btn-danger btn-icon icon-left">
+                                    <i class="fas fa-pen"></i> Soumettre ma démission
+                                </a>
+                            @endif
 
                             @hasanyrole('directeur-general|rh|admin')
                                 <a href="{{ route('demissions.validation.index') }}" class="btn btn-warning btn-icon icon-left ml-2">
@@ -65,7 +63,6 @@
                                         <th>#</th>
                                         @if($isAdmin)<th>Collaborateur</th>@endif
                                         <th>Départ souhaité</th>
-                                        <th>Départ effectif</th>
                                         <th>Statut</th>
                                         <th>Certificat</th>
                                         <th>Date soumission</th>
@@ -86,22 +83,14 @@
 
                                             <td>{{ $demande->date_depart_souhaitee->format('d/m/Y') }}</td>
 
-                                            <td>
-                                                @if($demande->date_depart_effective)
-                                                    <strong>{{ $demande->date_depart_effective->format('d/m/Y') }}</strong>
-                                                @else
-                                                    <span class="text-muted">—</span>
-                                                @endif
-                                            </td>
-
                                             <td>{!! $demande->statut_badge !!}</td>
 
                                             <td>
-                                                @if($demande->certificat_genere)
+                                                @if($demande->certificat_genere && $demande->numero_certificat)
                                                     <span class="badge badge-success">
                                                         <i class="fas fa-check"></i> Généré
                                                     </span>
-                                                    <br><small class="text-muted">Réf. {{ $demande->certificat_reference }}</small>
+                                                    <br><small class="text-muted">Réf. {{ $demande->numero_certificat }}</small>
                                                 @else
                                                     <span class="badge badge-secondary">—</span>
                                                 @endif
@@ -121,7 +110,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ $isAdmin ? 8 : 7 }}" class="text-center py-5">
+                                            <td colspan="{{ $isAdmin ? 7 : 6 }}" class="text-center py-5">
                                                 <i class="fas fa-door-open fa-4x text-muted mb-3 d-block"></i>
                                                 <h5>Aucune démission</h5>
                                                 <p class="text-muted">Aucune demande de démission enregistrée.</p>

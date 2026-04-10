@@ -146,7 +146,8 @@
                 Téléphone : {{ $employe->telephone }}
             @endif
             @if($employe->email)
-              <strong>E-mail : <span class="email-blue">{{ $employe->email }}</span></strong>  
+            <br> 
+            <strong>E-mail : <span class="email-blue">{{ $employe->email }}</span></strong>  
             @endif
         </div>
 

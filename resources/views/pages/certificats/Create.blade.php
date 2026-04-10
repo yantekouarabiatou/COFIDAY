@@ -82,6 +82,26 @@
                                 </small>
                             </div>
 
+                            {{-- Date d'embauche --}}
+                            <div class="form-group">
+                                <label class="font-weight-bold">
+                                    <i class="fas fa-calendar-alt mr-1 text-primary"></i>
+                                    Date d'embauche <span class="text-danger">*</span>
+                                </label>
+                                <input type="date"
+                                       name="date_embauche"
+                                       class="form-control @error('date_embauche') is-invalid @enderror"
+                                       value="{{ old('date_embauche') }}"
+                                       max="{{ now()->format('Y-m-d') }}"
+                                       style="max-width:240px;">
+                                @error('date_embauche')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                                <small class="form-text text-muted">
+                                    Indiquez la date de votre embauche dans le cabinet.
+                                </small>
+                            </div>
+
                             {{-- Corps de la lettre --}}
                             <div class="form-group">
                                 <label class="font-weight-bold">
