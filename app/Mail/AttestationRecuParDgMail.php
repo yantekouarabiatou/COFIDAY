@@ -11,7 +11,7 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 use Barryvdh\DomPDF\Facade\Pdf;
 
-class AttestationSoumiseMail extends Mailable
+class AttestationRecuParDgMail extends Mailable
 {
     use Queueable, SerializesModels;
 
@@ -19,18 +19,16 @@ class AttestationSoumiseMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(
-            subject: '[COFIMA] Confirmation de votre demande d\'attestation - ' . $this->demande->numero_reference
-        );
+        return new Envelope(subject: '[COFIMA] Demande d\'attestation en attente de traitement - ' . $this->demande->user->name);
     }
 
     public function content(): Content
     {
         return new Content(
-            view: 'emails.attestation.soumise', // Vue pour l'employé
+            view: 'emails.attestation.recu-dg',
             with: [
                 'demande' => $this->demande,
-                'employe' => $this->demande->user,
+                'employe' => $this->demande->user
             ]
         );
     }
@@ -46,13 +44,13 @@ class AttestationSoumiseMail extends Mailable
             $nomFichier = 'demande_attestation_' . $this->demande->numero_reference . '.pdf';
 
             return [
-                Attachment::fromData(fn() => $pdf->output(), $nomFichier)
-                    ->withMime('application/pdf'),
+                Attachment::fromData(
+                    fn () => $pdf->output(),
+                    $nomFichier
+                )->withMime('application/pdf'),
             ];
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Erreur génération PDF Attestation (soumise)', [
-                'error' => $e->getMessage()
-            ]);
+            \Illuminate\Support\Facades\Log::error('Erreur génération PDF Attestation', ['error' => $e->getMessage()]);
             return [];
         }
     }

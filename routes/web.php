@@ -128,10 +128,6 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
         Route::put('/roles/{role}/permissions', [PermissionController::class, 'updateRolePermissions'])
             ->name('admin.roles.permissions.update');
     });
-
-    Route::get('/daily-entries/export', [DailyEntryController::class, 'export'])
-        ->name('daily-entries.export');
-
     Route::get('/dashboard/data', [App\Http\Controllers\DashboardController::class, 'data'])->name('dashboard.data')->middleware('auth');
     Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
 
@@ -178,59 +174,6 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
 
     Route::get('/statistics/export', [StatisticsController::class, 'export'])->name('statistics.export');
     Route::post('/stats/annual/update', [StatisticsController::class, 'updateCharts'])->name('stats.annual.update');
-    Route::middleware(['auth'])->group(function () {
-        Route::resource('daily-entries', DailyEntryController::class)->names('daily-entries');
-
-        // Routes supplémentaires si besoin (ex: rapport mensuel)
-        Route::get('daily-entries/month/{year}/{month}', [DailyEntryController::class, 'month'])
-            ->name('daily-entries.month');
-    });
-    Route::prefix('daily-entries')->name('daily-entries.')->group(function () {
-
-        // ── CRUD ────────────────────────────────────────────────────────
-        Route::get('/',                [DailyEntryController::class, 'index'])->name('index');
-        Route::get('/create',          [DailyEntryController::class, 'create'])->name('create');
-        Route::post('/',               [DailyEntryController::class, 'store'])->name('store');
-
-        // ── Routes statiques AVANT le paramètre dynamique ───────────────
-        Route::post('/create-dossier-quick', [DailyEntryController::class, 'createDossierQuick'])->name('create-dossier-quick');
-        Route::get('/month/{year}/{month}',  [DailyEntryController::class, 'month'])->name('month');
-        Route::post('/bulk-validate', [DailyEntryController::class, 'bulkValidate'])->name('bulk-validate');
-        Route::post('/bulk-reject',   [DailyEntryController::class, 'bulkReject'])->name('bulk-reject');
-        Route::post('/validate-all',  [DailyEntryController::class, 'validateAll'])->name('validate-all');
-        // ── Routes avec paramètre dynamique ─────────────────────────────
-        Route::get('/{dailyEntry}',          [DailyEntryController::class, 'show'])->name('show');
-        Route::get('/{dailyEntry}/edit',     [DailyEntryController::class, 'edit'])->name('edit');
-        Route::put('/{dailyEntry}',          [DailyEntryController::class, 'update'])->name('update');
-        Route::patch('/{dailyEntry}',        [DailyEntryController::class, 'update']);
-        Route::delete('/{dailyEntry}',       [DailyEntryController::class, 'destroy'])->name('destroy');
-
-        // ── Validation / Refus ───────────────────────────────────────────
-        Route::post('/{dailyEntry}/validate', [DailyEntryController::class, 'validateEntry'])->name('validate');
-        Route::post('/{dailyEntry}/reject',   [DailyEntryController::class, 'rejectEntry'])->name('reject');
-    });
-
-
-    // Ajoutez cette route APRES la route resource
-    Route::post('/dossiers/{dossier}/collaborateurs/gestion', [DossierController::class, 'gestionCollaborateurs'])
-        ->name('dossiers.collaborateurs.gestion');
-    Route::post('dossiers/{dossier}/collaborateurs', [DossierController::class, 'gestionCollaborateurs'])
-        ->name('dossiers.collaborateurs.gestion');
-    // OU si vous voulez regrouper :
-    Route::prefix('dossiers')->name('dossiers.')->group(function () {
-        Route::resource('/', DossierController::class)->names([
-            'index' => 'index',
-            'create' => 'create',
-            'store' => 'store',
-            'show' => 'show',
-            'edit' => 'edit',
-            'update' => 'update',
-            'destroy' => 'destroy',
-        ]);
-
-        Route::post('/{dossier}/collaborateurs/gestion', [DossierController::class, 'gestionCollaborateurs'])
-            ->name('collaborateurs.gestion');
-    });
 
     Route::middleware('auth')
         ->prefix('profile')
@@ -249,60 +192,9 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
 
     Route::get('/rapports/mensuel', [RapportController::class, 'mensuel'])
         ->name('rapports.mensuel');
-    Route::resource('dossiers', DossierController::class);
-    // Routes Clients
-    Route::prefix('clients')->name('clients.')->group(function () {
-        Route::get('/', [ClientController::class, 'index'])->name('index');
-        Route::get('/create', [ClientController::class, 'create'])->name('create');
-        Route::post('/', [ClientController::class, 'store'])->name('store');
-        Route::get('/{client}', [ClientController::class, 'show'])->name('show');
-        Route::get('/{client}/edit', [ClientController::class, 'edit'])->name('edit');
-        Route::put('/{client}', [ClientController::class, 'update'])->name('update');
-        Route::delete('/{client}', [ClientController::class, 'destroy'])->name('destroy');
 
-        // Routes supplémentaires
-        Route::get('/{client}/logo/download', [ClientController::class, 'downloadLogo'])->name('logo.download');
-        Route::delete('/{client}/logo/delete', [ClientController::class, 'deleteLogo'])->name('logo.delete');
-        Route::get('/export/pdf', [ClientController::class, 'exportPdf'])->name('export.pdf');
-    });
 
     Route::get('/user-profile/export-temps/{id}/{format}', [UserProfileController::class, 'exportTemps'])->name('user-profile.export-temps');
-
-    Route::prefix('daily-entries')->name('daily-entries.')->middleware('auth')->group(function () {
-
-        Route::get('/',            [DailyEntryController::class, 'index'])->name('index');
-        Route::get('/create',      [DailyEntryController::class, 'create'])->name('create');
-        Route::post('/',           [DailyEntryController::class, 'store'])->name('store');
-        Route::get('/{dailyEntry}',    [DailyEntryController::class, 'show'])->name('show');
-        Route::get('/{dailyEntry}/edit', [DailyEntryController::class, 'edit'])->name('edit');
-        Route::put('/{dailyEntry}',  [DailyEntryController::class, 'update'])->name('update');
-        Route::delete('/{dailyEntry}', [DailyEntryController::class, 'destroy'])->name('destroy');
-
-        // Validation/refus individuels
-        Route::post('/{dailyEntry}/validate', [DailyEntryController::class, 'validateEntry'])->name('validate');
-        Route::post('/{dailyEntry}/reject',   [DailyEntryController::class, 'rejectEntry'])->name('reject');
-
-        // Validation hebdomadaire (manager → collaborateur)
-        Route::post('/week/validate', [DailyEntryController::class, 'validateWeek'])->name('week-validate');
-        Route::post('/week/reject',   [DailyEntryController::class, 'rejectWeek'])->name('week-reject');
-
-        // Actions groupées
-        Route::post('/bulk/validate', [DailyEntryController::class, 'bulkValidate'])->name('bulk-validate');
-        Route::post('/bulk/reject',   [DailyEntryController::class, 'bulkReject'])->name('bulk-reject');
-
-        // Export & PDF
-        Route::get('/export',         [DailyEntryController::class, 'export'])->name('export');
-        Route::get('/{dailyEntry}/pdf', [DailyEntryController::class, 'pdf'])->name('pdf');
-    });
-
-    // Création rapide de dossier (AJAX depuis le formulaire)
-    Route::post('/dossiers/quick-store', [DailyEntryController::class, 'createDossierQuick'])
-        ->name('dossiers.store')
-        ->middleware('auth');
-    // Export unique (PDF d'une feuille individuelle) - depuis le bouton "Voir"
-    Route::get('/daily-entries/{dailyEntry}/pdf', [DailyEntryController::class, 'pdf'])
-        ->name('daily-entries.pdf');
-
 
     Route::prefix('settings')->group(function () {
         // Affiche les paramètres
@@ -316,27 +208,6 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
         // Ici, on passe l'ID 1 qui sera géré par la méthode update
         Route::put('/{setting}', [CompanySettingController::class, 'update'])->name('settings.update');
     })->middleware('auth'); // Appliquez les middlewares nécessaires
-
-
-
-    Route::middleware(['auth', 'dossier.access'])->group(function () {
-        Route::get('/analyse', [MissionAnalyseController::class, 'index'])->name('missions.analyse');
-        // Analyse GET (pour les liens rapides vers un dossier spécifique)
-        Route::get('/missions/analyse/{dossier}', [MissionAnalyseController::class, 'show'])
-            ->name('missions.analyse.show');
-
-        // Analyse POST (pour les formulaires avec filtres)
-        Route::post('/missions/analyse/filtrer', [MissionAnalyseController::class, 'filtrerPersonnels'])
-            ->name('missions.filtrer');
-        Route::post('/analyse/filtrer', [MissionAnalyseController::class, 'filtrerPersonnels'])->name('missions.filtrer');
-        Route::get('/utilisateur/{user}', [MissionAnalyseController::class, 'vueUtilisateur'])->name('missions.utilisateur');
-        Route::get('/utilisateur/{user}/dossier/{dossier}', [MissionAnalyseController::class, 'vueUtilisateur'])->name('missions.utilisateur.dossier');
-        // Route pour voir un utilisateur spécifique
-        Route::get('/utilisateur/{user}', [MissionAnalyseController::class, 'vueUtilisateur'])->name('missions.utilisateur');
-
-        // Route pour voir un utilisateur sur un dossier spécifique
-        Route::get('/utilisateur/{user}/dossier/{dossier}', [MissionAnalyseController::class, 'vueUtilisateur'])->name('missions.utilisateur.dossier');
-    });
 
     Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
 
@@ -367,10 +238,6 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
 
         Route::get('api/regles-conges/jours-acquis', [RegleCongeController::class, 'getJoursAcquis'])
             ->name('regles-conges.jours-acquis');
-
-        // Route d'import des missions depuis Cofplan
-        Route::post('/missions/import', [MissionImportController::class, 'import'])
-            ->name('missions.import');
     });
 
     Route::middleware(['auth'])->group(function () {
@@ -401,13 +268,6 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
     Route::middleware(['auth', 'role:admin'])->group(function () {
         Route::post('/conges/solde/{user}/ajuster', [CongeController::class, 'ajusterSolde'])->name('conges.ajuster-solde');
     });
-
-
-    // ══════════════════════════════════════════════════════════════════════════════
-    // ROUTES — à intégrer dans routes/web.php dans le groupe middleware(['auth'])
-    // ══════════════════════════════════════════════════════════════════════════════
-
-
 
     // ── Attestations de travail ──────────────────────────────────────────────────
     Route::prefix('attestations')->name('attestations.')->group(function () {

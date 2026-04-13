@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -20,7 +21,8 @@
 
     <style>
         :root {
-            --primary-color: #1A237E; /*244584*/
+            --primary-color: #1A237E;
+            /*244584*/
             --primary-dark: #0D1642;
             --primary-light: #3949AB;
             --accent-color: #304FFE;
@@ -76,13 +78,20 @@
             right: -50%;
             width: 200%;
             height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
             animation: pulse 15s ease-in-out infinite;
         }
 
         @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
         }
 
         .logo-container {
@@ -133,8 +142,15 @@
         }
 
         @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-20px); }
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-20px);
+            }
         }
 
         /* Partie droite - Formulaire */
@@ -365,10 +381,63 @@
                 padding: 12px 12px 12px 40px;
             }
         }
+
+        .auth-left {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .auth-left::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+            animation: pulse 15s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+        }
+
+        .auth-illustration {
+            position: relative;
+            z-index: 2;
+            margin-top: 40px;
+        }
+
+        .auth-illustration i {
+            font-size: 120px;
+            opacity: 0.3;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-20px);
+            }
+        }
     </style>
 
-    @vite(['resources/css/app.css', 'resources/css/auth.css', 'resources/js/app.js'])
+    @vite(['resources/css/app.css','resources/js/app.js'])
 </head>
+
 <body>
     <div class="login-container">
         <!-- Partie gauche -->
@@ -379,7 +448,7 @@
 
             <div class="welcome-text">
                 <h1>Bienvenue !</h1>
-                <p>Connectez-vous à votre espace sécurisé pour accéder à tous vos services Coftime</p>
+                <p>Connectez-vous à votre espace sécurisé pour accéder à tous vos services Cofiday</p>
             </div>
 
             <div class="illustration">
@@ -406,15 +475,9 @@
                     <label for="email">Adresse Email</label>
                     <div class="input-group-custom">
                         <!-- <i class="fas fa-envelope"></i> -->
-                        <input
-                            type="email"
-                            class="form-control @error('email') is-invalid @enderror"
-                            id="email"
-                            name="email"
-                            value="{{ old('email') }}"
-                            placeholder="Entrez votre addresse mail"
-                            required autofocus autocomplete="username"
-                        >
+                        <input type="email" class="form-control @error('email') is-invalid @enderror" id="email"
+                            name="email" value="{{ old('email') }}" placeholder="Entrez votre addresse mail" required
+                            autofocus autocomplete="username">
                         @error('email')
                             <small class="text-danger">{{ $message }}</small>
                         @enderror
@@ -426,14 +489,9 @@
                     <label for="password">Mot de Passe</label>
                     <div class="input-group-custom">
                         <!-- <i class="fas fa-lock"></i> -->
-                        <input
-                            type="password"
-                            class="form-control @error('password') is-invalid @enderror"
-                            id="password"
-                            name="password"
-                            placeholder="Entrez le mot de passe"
-                            required autocomplete="current-password"
-                        >
+                        <input type="password" class="form-control @error('password') is-invalid @enderror"
+                            id="password" name="password" placeholder="Entrez le mot de passe" required
+                            autocomplete="current-password">
                         @error('password')
                             <small class="text-danger">{{ $message }}</small>
                         @enderror
@@ -464,7 +522,7 @@
             </form>
 
             <div class="footer">
-                <p>Copyright  COFIMA &copy; {{ date('Y') }}. Tous droits réservés</p>
+                <p>Copyright COFIMA &copy; {{ date('Y') }}. Tous droits réservés</p>
             </div>
         </div>
     </div>
@@ -472,7 +530,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Gestion du formulaire
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
+        document.getElementById('loginForm').addEventListener('submit', function (e) {
             e.preventDefault();
 
             const email = document.getElementById('email').value;
@@ -502,4 +560,5 @@
         });
     </script>
 </body>
+
 </html>

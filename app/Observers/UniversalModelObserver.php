@@ -2,10 +2,6 @@
 
 namespace App\Observers;
 
-use App\Models\TimeEntry;
-use App\Models\DailyEntry;
-use App\Models\Dossier;
-use App\Models\Client;
 use App\Models\DemandeConge;
 use App\Models\SoldeConge;
 use App\Models\User;
@@ -121,19 +117,6 @@ class UniversalModelObserver
     private function getCustomMessage($model, string $action): ?string
     {
         return match (true) {
-            $model instanceof TimeEntry => match ($action) {
-                'created' => "Nouvelle saisie de temps de {$model->heures_reelles}h sur le dossier {$model->dossier?->nom}",
-                'updated' => "Modification saisie temps ({$model->heures_reelles}h) sur {$model->dossier?->nom}",
-                'deleted' => "Suppression saisie temps sur {$model->dossier?->nom}",
-                default => null,
-            },
-
-            $model instanceof DailyEntry => match ($action) {
-                'created' => "Nouvelle feuille de temps pour le {$model->jour?->format('d/m/Y')}",
-                'updated' => "Feuille modifiée ({$model->jour?->format('d/m/Y')}, Statut: {$model->statut})",
-                'deleted' => "Feuille supprimée pour {$model->jour?->format('d/m/Y')}",
-                default => null,
-            },
 
             $model instanceof DemandeConge => match ($action) {
                 'created' => "Nouvelle demande de congé soumise",
@@ -154,7 +137,7 @@ class UniversalModelObserver
         $recipients = [];
 
         // Cas feuille de temps
-        if ($model instanceof DailyEntry) {
+        if ($model instanceof DemandeConge) {
             // Si la feuille est soumise → notifier le manager/responsable de l'utilisateur
             if ($action === 'created' || ($action === 'updated' && $model->isDirty('statut') && $model->statut === 'soumis')) {
                 if ($model->user && $model->user->manager_id) {

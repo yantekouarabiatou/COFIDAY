@@ -3,12 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Mail\CertificatTravailMail;
-use App\Mail\DemissionAccepteeMail;
 use App\Mail\DemissionRefuseeMail;
-use App\Mail\DemissionReçueMail;
-use App\Mail\DemissionSoumiseMail;
 use App\Models\DemandeDemission;
 use App\Models\User;
+use App\Services\DemissionMailService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +16,7 @@ use RealRashid\SweetAlert\Facades\Alert;
 
 class DemissionController extends Controller
 {
-    // ── Formulaire de démission ──────────────────────────────────────────────
+    // ── Liste des demandes ──────────────────────────────────────────────────
 
     public function index()
     {
@@ -26,7 +24,9 @@ class DemissionController extends Controller
         $isAdmin = $user->hasAnyRole(['admin', 'rh', 'directeur-general']);
 
         $query = DemandeDemission::with('user', 'validateur')->orderByDesc('created_at');
-        if (!$isAdmin) $query->where('user_id', $user->id);
+        if (! $isAdmin) {
+            $query->where('user_id', $user->id);
+        }
 
         $demandes   = $query->paginate(15);
         $enAttente  = $isAdmin
@@ -38,11 +38,13 @@ class DemissionController extends Controller
 
         return view('pages.certificats.index', compact('demandes', 'isAdmin', 'enAttente', 'approuvees'));
     }
+
+    // ── Formulaire de création ──────────────────────────────────────────────
+
     public function create()
     {
         $user = Auth::user();
 
-        // Vérifier si l'employé a déjà une démission en cours
         $demissionActive = DemandeDemission::where('user_id', $user->id)
             ->where('statut', 'en_attente')
             ->exists();
@@ -50,13 +52,12 @@ class DemissionController extends Controller
         return view('pages.certificats.create', compact('user', 'demissionActive'));
     }
 
-    // ── Enregistrement de la lettre de démission ─────────────────────────────
+    // ── Enregistrement de la demande ─────────────────────────────────────────
 
     public function store(Request $request)
     {
         $user = Auth::user();
 
-        // Bloquer si une démission est déjà en cours
         $demissionActive = DemandeDemission::where('user_id', $user->id)
             ->where('statut', 'en_attente')
             ->exists();
@@ -86,47 +87,31 @@ class DemissionController extends Controller
         ]);
 
         try {
-            $emailSecretaire = config('cofima.email_secretaire', 'biroko@cofima.cc');
-            $emailDG = User::role('directeur-general')->value('email')
-                ?? config('cofima.email_dg', 'jmavande@cofima.cc');
-            $emailRH = User::role('rh')->value('email')
-                ?? config('cofima.email_rh');
-
-            $employeeCc = array_unique(array_filter([$emailSecretaire, $emailRH]));
-            Mail::to($user->email)
-                ->cc($employeeCc)
-                ->send(new DemissionSoumiseMail($demande));
-
-            $dgRecipients = array_unique(array_filter([$emailDG, $emailRH]));
-            if (!empty($dgRecipients)) {
-                Mail::to($dgRecipients)
-                    ->cc($emailSecretaire)
-                    ->send(new DemissionReçueMail($demande));
-            }
+            DemissionMailService::envoyerConfirmationSoumission($demande);
         } catch (\Exception $e) {
-            Log::error('Erreur envoi email démission : ' . $e->getMessage(), [
+            Log::error('Erreur lors de l\'envoi du mail de soumission de démission', [
                 'demande_id' => $demande->id,
+                'error'      => $e->getMessage(),
             ]);
-            Alert::warning('Attention', 'Votre lettre de démission a bien été enregistrée, mais l’envoi des emails a rencontré un problème.');
-            return redirect()->route('demissions.index');
+            Alert::warning('Attention', 'Votre lettre a bien été enregistrée, mais l’envoi des emails a rencontré un problème.');
         }
 
         Alert::success('Succès', 'Votre lettre de démission a été transmise à la Direction Générale.');
         return redirect()->route('demissions.index');
     }
 
-    // ── Détail ───────────────────────────────────────────────────────────────
+    // ── Détail d’une demande ────────────────────────────────────────────────
 
     public function show(DemandeDemission $demission)
     {
         $user = Auth::user();
-        if (!$user->hasAnyRole(['admin', 'rh', 'directeur-general']) && $demission->user_id !== $user->id) {
+        if (! $user->hasAnyRole(['admin', 'rh', 'directeur-general']) && $demission->user_id !== $user->id) {
             abort(403);
         }
         return view('pages.certificats.show', compact('demission'));
     }
 
-    // ── Interface validation DG ──────────────────────────────────────────────
+    // ── Interface de validation (DG / RH) ────────────────────────────────────
 
     public function validationIndex()
     {
@@ -141,28 +126,29 @@ class DemissionController extends Controller
         return view('pages.certificats.validation', compact('demandes', 'nbEnAttente'));
     }
 
-    // ── Traitement DG ────────────────────────────────────────────────────────
+    // ── Traitement de la demande (acceptation / refus) ───────────────────────
 
     public function traiter(Request $request, DemandeDemission $demission)
     {
         $this->authorizeAdmin();
 
+        if ($demission->statut !== 'en_attente') {
+            Alert::warning('Information', 'Cette demande a déjà été traitée.');
+            return back();
+        }
+
+        $request->validate([
+            'action'                => 'required|in:acceptee,refusee',
+            'commentaire'           => 'nullable|string|max:1000',
+            'date_depart_confirmee' => 'nullable|date|required_if:action,acceptee',
+        ]);
+
+        $action = $request->action;
+        $dgUser = Auth::user();
+
+        // 1. Enregistrement de la décision (transaction)
         DB::beginTransaction();
         try {
-            if ($demission->statut !== 'en_attente') {
-                Alert::warning('Information', 'Cette démission a déjà été traitée.');
-                return back();
-            }
-
-            $request->validate([
-                'action'                => 'required|in:acceptee,refusee',
-                'commentaire'           => 'nullable|string|max:1000',
-                'date_depart_confirmee' => 'nullable|date|required_if:action,acceptee',
-            ]);
-
-            $action = $request->action;
-            $dgUser = Auth::user();
-
             $demission->update([
                 'statut'          => $action,
                 'valide_par'      => $dgUser->id,
@@ -171,65 +157,83 @@ class DemissionController extends Controller
             ]);
 
             if ($action === 'acceptee') {
-                // ── Génération automatique du certificat de travail ──────────
                 $numeroCertificat = DemandeDemission::genererNumeroCertificat();
-
                 $demission->update([
                     'numero_certificat'           => $numeroCertificat,
                     'certificat_genere'            => true,
                     'date_generation_certificat'   => now(),
                 ]);
-
-                $emailSecretaire = config('cofima.email_secretaire', 'biroko@cofima.cc');
-
-                // Mail employé : acceptation + certificat de travail joint
-                try {
-                    Log::info('Tentative d\'envoi du certificat de travail', [
-                        'demande_id' => $demission->id,
-                        'user_email' => $demission->user->email,
-                        'numero_certificat' => $numeroCertificat,
-                        'date_depart_confirmee' => $request->date_depart_confirmee
-                    ]);
-
-                    Mail::to($demission->user->email)
-                        ->cc($emailSecretaire)
-                        ->send(new CertificatTravailMail($demission, $request->date_depart_confirmee));
-
-                    Log::info('Certificat de travail envoyé avec succès', [
-                        'demande_id' => $demission->id,
-                        'user_email' => $demission->user->email
-                    ]);
-                } catch (\Exception $mailException) {
-                    Log::error('Erreur lors de l\'envoi du certificat de travail', [
-                        'demande_id' => $demission->id,
-                        'user_email' => $demission->user->email,
-                        'error' => $mailException->getMessage(),
-                        'trace' => $mailException->getTraceAsString()
-                    ]);
-
-                    // Ne pas rollback la transaction, juste logger l'erreur
-                    Alert::warning('Attention', 'La démission a été acceptée mais l\'envoi du certificat par mail a échoué. Veuillez contacter le support technique.');
-                }
-            } else {
             }
 
             DB::commit();
-            Alert::success('Succès', $action === 'acceptee'
-                ? 'Démission acceptée. Le certificat de travail a été généré et envoyé par mail.'
-                : 'Démission refusée. L\'employé a été notifié.');
-
-            return redirect()->route('demissions.validation.index');
         } catch (\Exception $e) {
             DB::rollBack();
-            Alert::error('Erreur', 'Une erreur est survenue : ' . $e->getMessage());
+            Log::error('Erreur lors de l\'enregistrement de la décision de démission', [
+                'demande_id' => $demission->id,
+                'error'      => $e->getMessage(),
+            ]);
+            Alert::error('Erreur', 'Impossible d\'enregistrer la décision : ' . $e->getMessage());
             return back();
         }
+
+        // 2. Envoi des emails (après commit, pour ne pas annuler la décision en cas d'échec)
+        try {
+            $secretaire = config('cofima.email_secretaire', 'cofima@cofima.cc');
+            $rh         = $this->getRhEmail();
+            $dg         = $this->getDgEmail();
+            $ccList     = array_unique(array_filter([$secretaire, $rh, $dg]));
+
+            if ($action === 'acceptee') {
+                Mail::to($demission->user->email)
+                    ->cc($ccList)
+                    ->send(new CertificatTravailMail($demission, $request->date_depart_confirmee));
+                Alert::success('Succès', 'Démission acceptée. Le certificat de travail a été généré et envoyé par mail.');
+            } else {
+                Mail::to($demission->user->email)
+                    ->cc($ccList)
+                    ->send(new DemissionRefuseeMail($demission, $request->commentaire));
+                Alert::success('Succès', 'Démission refusée. L’employé a été notifié.');
+            }
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de l\'envoi de l\'email de traitement de démission', [
+                'demande_id' => $demission->id,
+                'action'     => $action,
+                'error'      => $e->getMessage(),
+            ]);
+            Alert::warning('Attention', 'La décision a été enregistrée mais l\'envoi de l\'email a échoué. Veuillez contacter le support.');
+        }
+
+        return redirect()->route('demissions.validation.index');
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
+    // ── Helpers pour la récupération des emails (RH et DG uniquement) ────────
+
+    private function getRhEmail(): ?string
+    {
+        $email = User::role('rh')->value('email');
+        if (! $email) {
+            $email = User::whereHas('poste', function ($query) {
+                $query->whereIn('intitule', ['RH', 'Ressources Humaines', 'Responsable RH', 'Responsable Ressources Humaines']);
+            })->value('email');
+        }
+        return $email ?: config('cofima.email_rh');
+    }
+
+    private function getDgEmail(): ?string
+    {
+        $email = User::role('directeur-general')->value('email');
+        if (! $email) {
+            $email = User::whereHas('poste', function ($query) {
+                $query->whereIn('intitule', ['DIRECTEUR GENERAL', 'DIRECTEUR GÉNÉRAL', 'DIRECTEUR GENERALE', 'DG']);
+            })->value('email');
+        }
+        return $email ?: config('cofima.email_dg');
+    }
 
     private function authorizeAdmin(): void
     {
-        if (!Auth::user()->hasAnyRole(['admin', 'rh', 'directeur-general'])) abort(403);
+        if (! Auth::user()->hasAnyRole(['admin', 'rh', 'directeur-general'])) {
+            abort(403, 'Accès non autorisé.');
+        }
     }
 }

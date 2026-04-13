@@ -70,12 +70,6 @@ class UserController extends Controller
             'poste',
             'creator',
             'roles', // Charger les rôles Spatie
-            'dailyEntries' => function ($query) {
-                $query->latest('jour')->limit(10);
-            },
-            'timeEntries' => function ($query) {
-                $query->with('dossier')->latest()->limit(10);
-            },
             'conges' => function ($query) {
                 $query->latest()->limit(5);
             }
@@ -189,14 +183,6 @@ class UserController extends Controller
     }
 
     /**
-     * Display the specified resource.
-     */
-    // public function show(string $id)
-    // {
-    //     //
-    // }
-
-    /**
      * Show the form for editing the specified resource.
      */
     public function edit(User $user)
@@ -204,7 +190,7 @@ class UserController extends Controller
         $postes = Poste::all();
         $roles = Role::all();
         $roleActuel = $user->roles->first(); // Le rôle actuel de l'utilisateur
-        
+
         return view('pages.users.edit', compact('user', 'postes', 'roles', 'roleActuel'));
     }
 
@@ -380,27 +366,7 @@ class UserController extends Controller
         $finMois = $now->copy()->endOfMonth();
 
         // Statistiques globales
-        $totalDailyEntries = $user->dailyEntries()->count();
-        $totalTimeEntries = $user->timeEntries()->count();
         $totalConges = $user->conges()->count();
-
-        // Heures du mois en cours
-        $heuresMoisEnCours = $user->dailyEntries()
-            ->whereBetween('jour', [$debutMois, $finMois])
-            ->sum('heures_reelles');
-
-        // Heures théoriques du mois
-        $heuresTheoriquesMois = $user->dailyEntries()
-            ->whereBetween('jour', [$debutMois, $finMois])
-            ->sum('heures_theoriques');
-
-        // Écart heures (réelles - théoriques)
-        $ecartHeures = $heuresMoisEnCours - $heuresTheoriquesMois;
-
-        // Taux de réalisation
-        $tauxRealisation = $heuresTheoriquesMois > 0
-            ? round(($heuresMoisEnCours / $heuresTheoriquesMois) * 100, 1)
-            : 0;
 
         // Jours de congés pris cette année (calculé depuis les dates)
         $debutAnnee = $now->copy()->startOfYear();
@@ -420,33 +386,11 @@ class UserController extends Controller
         $congesEnAttente = $user->conges()
             ->count();
 
-        // Dernière entrée de temps
-        $derniereEntree = $user->dailyEntries()
-            ->latest('jour')
-            ->first();
-
-        // Journées validées ce mois
-        $journeesValidees = $user->dailyEntries()
-            ->whereBetween('jour', [$debutMois, $finMois])
-            ->count();
-
-        // Journées en attente
-        $journeesEnAttente = $user->dailyEntries()
-            ->count();
 
         return [
-            'total_daily_entries' => $totalDailyEntries,
-            'total_time_entries' => $totalTimeEntries,
             'total_conges' => $totalConges,
-            'heures_mois_en_cours' => round($heuresMoisEnCours, 2),
-            'heures_theoriques_mois' => round($heuresTheoriquesMois, 2),
-            'ecart_heures' => round($ecartHeures, 2),
-            'taux_realisation' => $tauxRealisation,
             'conges_pris' => $congesPris,
             'conges_en_attente' => $congesEnAttente,
-            'derniere_entree' => $derniereEntree,
-            'journees_validees' => $journeesValidees,
-            'journees_en_attente' => $journeesEnAttente,
         ];
     }
 }

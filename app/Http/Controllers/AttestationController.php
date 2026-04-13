@@ -8,6 +8,7 @@ use App\Mail\AttestationRefuseeMail;
 use App\Mail\AttestationSoumiseMail;
 use App\Models\DemandeAttestation;
 use App\Models\User;
+use App\Services\AttestationMailService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -53,7 +54,12 @@ class AttestationController extends Controller
         $users         = $isAdmin ? User::orderBy('nom')->get() : collect();
 
         return view('pages.attestations.index', compact(
-            'demandes', 'isAdmin', 'totalDemandes', 'enAttente', 'approuvees', 'users'
+            'demandes',
+            'isAdmin',
+            'totalDemandes',
+            'enAttente',
+            'approuvees',
+            'users'
         ));
     }
 
@@ -115,13 +121,9 @@ class AttestationController extends Controller
             'statut'          => 'en_attente',
         ]);
 
-        // Envoyer un email de confirmation à l'employé, à la secrétaire et au Directeur Général
+        // Envoyer des emails différenciés à l'employé, à la secrétaire et au Directeur Général
         try {
-            ['secretaire' => $emailSecretaire, 'dg' => $emailDG] = $this->getSecretaireEtDgEmails();
-
-            Mail::to($user->email)
-                ->cc(array_unique(array_filter([$emailSecretaire, $emailDG])))
-                ->send(new AttestationSoumiseMail($demandeAttestation));
+              AttestationMailService::envoyerConfirmationSoumission($demandeAttestation);
         } catch (\Exception $e) {
             // Log l'erreur mais ne bloque pas la soumission
             Log::error('Erreur envoi email confirmation attestation: ' . $e->getMessage());
@@ -216,14 +218,14 @@ class AttestationController extends Controller
                         }
                     }
 
-                    // Avertir l’employé et la secrétaire que le RH le contactera
+                    // Avertir l’employé et copier la secrétaire
                     Mail::to($attestation->user->email)
-                        ->cc(array_unique(array_filter([$emailSecretaire, $emailDG])))
+                        ->cc(array_unique(array_filter([$emailSecretaire])))
                         ->send(new AttestationApprouvéeMail($attestation, true));
                 } else {
                     // Génération automatique + copie secrétaire
                     Mail::to($attestation->user->email)
-                        ->cc(array_unique(array_filter([$emailSecretaire, $emailDG])))
+                        ->cc(array_unique(array_filter([$emailSecretaire])))
                         ->send(new AttestationApprouvéeMail($attestation, false));
                 }
             } else { // refus
@@ -238,7 +240,6 @@ class AttestationController extends Controller
                 : 'Demande refusée. L’employé a été notifié.');
 
             return redirect()->route('attestations.validation.index');
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erreur lors du traitement de la demande d’attestation', [
@@ -272,23 +273,31 @@ class AttestationController extends Controller
 
     private function getSecretaireEtDgEmails(): array
     {
-        $contacts = User::whereHas('poste', function ($query) {
-            $query->whereIn('intitule', ['SECRETAIRE', 'DIRECTEUR GENERALE']);
-        })->with('poste')->get();
-
-        $emailSecretaire = $contacts
-            ->firstWhere('poste.intitule', 'SECRETAIRE')?->email
-            ?? config('cofima.email_secretaire');
-
-        $emailDG = $contacts
-            ->firstWhere('poste.intitule', 'DIRECTEUR GENERALE')?->email
-            ?? User::role('directeur-general')->value('email')
-            ?? config('cofima.email_dg');
-
         return [
-            'secretaire' => $emailSecretaire,
-            'dg' => $emailDG,
+            'secretaire' => config('cofima.email_secretaire', 'cofima@cofima.cc'),
+            'dg' => $this->getEmailByRoleOrPoste(
+                'directeur-general',
+                ['DIRECTEUR GENERAL', 'DIRECTEUR GÉNÉRAL', 'DIRECTEUR GENERALE', 'DG'],
+                'cofima.email_dg'
+            ),
         ];
+    }
+
+    private function getEmailByRoleOrPoste(string $role, array $posteTitles, string $configKey, array $excludeEmails = []): ?string
+    {
+        $email = User::role($role)
+            ->when(!empty($excludeEmails), fn($q) => $q->whereNotIn('email', $excludeEmails))
+            ->value('email');
+
+        if (!$email) {
+            $email = User::whereHas('poste', function ($query) use ($posteTitles) {
+                $query->whereIn('intitule', $posteTitles);
+            })
+                ->when(!empty($excludeEmails), fn($q) => $q->whereNotIn('email', $excludeEmails))
+                ->value('email');
+        }
+
+        return $email ?: config($configKey);
     }
 
     private function getRhEmail(): ?string

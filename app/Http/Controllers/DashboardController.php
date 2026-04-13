@@ -4,12 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
-use App\Models\TimeEntry;
-use App\Models\Dossier;
-use App\Models\DailyEntry;
+use App\Models\DemandeAttestation;
 use App\Models\DemandeConge;
-use App\Models\TypeConge;
-use App\Models\Client;
+use App\Models\DemandeDemission;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -32,107 +29,102 @@ class DashboardController extends Controller
         try {
             $user = auth()->user();
 
-            // Totaux personnels
+            // ── Totaux personnels ──────────────────────────────────────────────
             $totals = [
-                'mes_dossiers' => $this->getUserDossiersCount($user->id),
-                'dossiers_actifs' => $this->getUserDossiersActifsCount($user->id),
-                'heures_mois' => (float) (TimeEntry::where('user_id', $user->id)
-                    ->whereMonth('created_at', now()->month)
-                    ->whereYear('created_at', now()->year)
-                    ->sum('heures_reelles') ?? 0),
-                'mes_conges_en_cours' => DemandeConge::where('date_debut', '<=', now())
+                // Congés
+                'mes_conges_en_cours' => DemandeConge::where('user_id', $user->id)
+                    ->where('date_debut', '<=', now())
                     ->where('date_fin', '>=', now())
-                    ->where('user_id', $user->id)
                     ->where('statut', 'approuve')
                     ->count(),
-                'heures_totales' => (float) (TimeEntry::where('user_id', $user->id)->sum('heures_reelles') ?? 0),
-            ];
 
-            // Statistiques hebdomadaires (7 derniers jours)
-            $weekStart = now()->subDays(7);
-            $weeklyStats = [
-                'heures' => (float) (TimeEntry::where('user_id', $user->id)
-                    ->where('created_at', '>=', $weekStart)
-                    ->sum('heures_reelles') ?? 0),
-                'dossiers_travailles' => TimeEntry::where('user_id', $user->id)
-                    ->where('created_at', '>=', $weekStart)
-                    ->distinct('dossier_id')
-                    ->count('dossier_id'),
-            ];
+                'conges_en_attente' => DemandeConge::where('user_id', $user->id)
+                    ->where('statut', 'en_attente')
+                    ->count(),
 
-            // Statistiques du mois précédent
-            $lastMonthStart = now()->subMonth()->startOfMonth();
-            $lastMonthEnd = now()->subMonth()->endOfMonth();
-            $lastMonthStats = [
-                'heures' => (float) (TimeEntry::where('user_id', $user->id)
-                    ->whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])
-                    ->sum('heures_reelles') ?? 0),
-                'dossiers_travailles' => TimeEntry::where('user_id', $user->id)
-                    ->whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])
-                    ->distinct('dossier_id')
-                    ->count('dossier_id'),
-            ];
+                // Attestations
+                'attestations_en_attente' => DemandeAttestation::where('user_id', $user->id)
+                    ->where('statut', 'en_attente')
+                    ->count(),
 
-            // Statistiques mensuelles (mois en cours)
-            $monthlyStats = [
-                'heures' => $totals['heures_mois'],
-                'dossiers_travailles' => TimeEntry::where('user_id', $user->id)
+                'attestations_approuvees_mois' => DemandeAttestation::where('user_id', $user->id)
+                    ->where('statut', 'approuve')
                     ->whereMonth('created_at', now()->month)
                     ->whereYear('created_at', now()->year)
-                    ->distinct('dossier_id')
-                    ->count('dossier_id'),
-                'conges' => DemandeConge::where('user_id', $user->id)
+                    ->count(),
+
+                'attestations_totales' => DemandeAttestation::where('user_id', $user->id)->count(),
+
+                // Certificats (démissions acceptées avec certificat généré)
+                'certificats_generes' => DemandeDemission::where('user_id', $user->id)
+                    ->where('certificat_genere', true)
+                    ->count(),
+
+                'demission_en_attente' => DemandeDemission::where('user_id', $user->id)
+                    ->where('statut', 'en_attente')
+                    ->count(),
+            ];
+
+            // ── Statistiques hebdomadaires (7 derniers jours) ─────────────────
+            $weekStart = now()->subDays(7);
+            $weeklyStats = [
+                'conges'       => DemandeConge::where('user_id', $user->id)
+                    ->where('created_at', '>=', $weekStart)
+                    ->count(),
+                'attestations' => DemandeAttestation::where('user_id', $user->id)
+                    ->where('created_at', '>=', $weekStart)
+                    ->count(),
+            ];
+
+            // ── Statistiques du mois précédent (pour calcul d'évolution) ──────
+            $lastMonthStart = now()->subMonth()->startOfMonth();
+            $lastMonthEnd   = now()->subMonth()->endOfMonth();
+            $lastMonthStats = [
+                'conges'       => DemandeConge::where('user_id', $user->id)
+                    ->whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])
+                    ->count(),
+                'attestations' => DemandeAttestation::where('user_id', $user->id)
+                    ->whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])
+                    ->count(),
+            ];
+
+            // ── Statistiques du mois en cours ─────────────────────────────────
+            $monthlyStats = [
+                'conges'       => DemandeConge::where('user_id', $user->id)
                     ->whereMonth('date_debut', now()->month)
                     ->whereYear('date_debut', now()->year)
                     ->count(),
+                'attestations' => DemandeAttestation::where('user_id', $user->id)
+                    ->whereMonth('created_at', now()->month)
+                    ->whereYear('created_at', now()->year)
+                    ->count(),
+                'certificats'  => DemandeDemission::where('user_id', $user->id)
+                    ->where('certificat_genere', true)
+                    ->whereMonth('date_generation_certificat', now()->month)
+                    ->whereYear('date_generation_certificat', now()->year)
+                    ->count(),
             ];
 
-            // Calculer les pourcentages d'évolution
+            // ── Pourcentages d'évolution ───────────────────────────────────────
             $percentages = [
-                'heures' => $this->calculatePercentage($monthlyStats['heures'], $lastMonthStats['heures']),
-                'dossiers' => $this->calculatePercentage($monthlyStats['dossiers_travailles'], $lastMonthStats['dossiers_travailles']),
+                'conges'       => $this->calculatePercentage($monthlyStats['conges'],       $lastMonthStats['conges']),
+                'attestations' => $this->calculatePercentage($monthlyStats['attestations'], $lastMonthStats['attestations']),
             ];
 
-            // Mes heures sur les 30 derniers jours
-            $last30days = collect();
+            // ── Attestations sur les 30 derniers jours ─────────────────────────
+            $last30daysAttestations = collect();
             for ($i = 29; $i >= 0; $i--) {
-                $date = now()->subDays($i);
+                $date      = now()->subDays($i);
                 $dateLabel = $date->format('d/m');
-                
-                $heures = (float) (TimeEntry::where('user_id', $user->id)
+
+                $attestations = (int) DemandeAttestation::where('user_id', $user->id)
                     ->whereDate('created_at', $date)
-                    ->sum('heures_reelles') ?? 0);
-                
-                $last30days->put($dateLabel, [
-                    'heures' => round($heures, 2),
-                ]);
+                    ->count();
+
+                $last30daysAttestations->put($dateLabel, ['attestations' => $attestations]);
             }
 
-            // Mes dossiers les plus actifs (par heures) - Mois en cours
-            $mesDossiersActifs = Dossier::select('dossiers.id', 'dossiers.nom', 'dossiers.reference')
-                ->join('time_entries', 'dossiers.id', '=', 'time_entries.dossier_id')
-                ->where('time_entries.user_id', $user->id)
-                ->whereMonth('time_entries.created_at', now()->month)
-                ->whereYear('time_entries.created_at', now()->year)
-                ->groupBy('dossiers.id', 'dossiers.nom', 'dossiers.reference')
-                ->selectRaw('SUM(time_entries.heures_reelles) as total_heures')
-                ->orderByDesc('total_heures')
-                ->limit(5)
-                ->get();
-
-            // Répartition de mes heures par dossier (mois en cours)
-            $mesHeuresParDossier = Dossier::select('dossiers.nom', 'dossiers.reference')
-                ->join('time_entries', 'dossiers.id', '=', 'time_entries.dossier_id')
-                ->where('time_entries.user_id', $user->id)
-                ->whereMonth('time_entries.created_at', now()->month)
-                ->whereYear('time_entries.created_at', now()->year)
-                ->groupBy('dossiers.id', 'dossiers.nom', 'dossiers.reference')
-                ->selectRaw('SUM(time_entries.heures_reelles) as total_heures')
-                ->orderByDesc('total_heures')
-                ->limit(10)
-                ->get();
-
-            // Mes congés par type (année en cours)
+            // ── Congés par type (année en cours) ──────────────────────────────
             $mesCongesParType = DemandeConge::where('user_id', $user->id)
                 ->whereYear('date_debut', now()->year)
                 ->join('types_conges', 'demandes_conges.type_conge_id', '=', 'types_conges.id')
@@ -140,23 +132,14 @@ class DashboardController extends Controller
                 ->groupBy('types_conges.id', 'types_conges.libelle')
                 ->get();
 
-            // Mes daily entries récentes (7 derniers jours)
-            $mesDailyEntries = DailyEntry::where('user_id', $user->id)
-                ->where('jour', '>=', now()->subDays(7))
-                ->orderBy('jour', 'desc')
-                ->get()
-                ->map(function($entry) {
-                    return [
-                        'jour' => Carbon::parse($entry->jour)->format('d/m/Y'),
-                        'heures_reelles' => round($entry->heures_reelles, 2),
-                        'heures_theoriques' => round($entry->heures_theoriques, 2),
-                        'statut' => $entry->statut,
-                        'is_weekend' => $entry->is_weekend,
-                        'is_holiday' => $entry->is_holiday,
-                    ];
-                });
+            // ── Attestations par type (année en cours) ─────────────────────────
+            $mesAttestationsParType = DemandeAttestation::where('user_id', $user->id)
+                ->whereYear('created_at', now()->year)
+                ->select('type', DB::raw('count(*) as count'))
+                ->groupBy('type')
+                ->get();
 
-            // Mes congés à venir (prochains 30 jours)
+            // ── Congés à venir (prochains 30 jours) ───────────────────────────
             $mesCongesAVenir = DemandeConge::where('user_id', $user->id)
                 ->where('date_debut', '>', now())
                 ->where('date_debut', '<=', now()->addDays(30))
@@ -164,258 +147,146 @@ class DashboardController extends Controller
                 ->with('typeConge')
                 ->orderBy('date_debut')
                 ->get()
-                ->map(function($conge) {
-                    return [
-                        'type' => $conge->typeConge->libelle ?? 'N/A',
-                        'debut' => Carbon::parse($conge->date_debut)->format('d/m/Y'),
-                        'fin' => Carbon::parse($conge->date_fin)->format('d/m/Y'),
-                        'jours' => $conge->nombre_jours,
-                    ];
+                ->map(fn($conge) => [
+                    'type'  => $conge->typeConge->libelle ?? 'N/A',
+                    'debut' => Carbon::parse($conge->date_debut)->format('d/m/Y'),
+                    'fin'   => Carbon::parse($conge->date_fin)->format('d/m/Y'),
+                    'jours' => $conge->nombre_jours,
+                ]);
+
+            // ── Demandes récentes (toutes natures) ────────────────────────────
+            $demandes = collect();
+
+            // Attestations récentes
+            DemandeAttestation::where('user_id', $user->id)
+                ->orderBy('created_at', 'desc')
+                ->limit(5)
+                ->get()
+                ->each(function ($d) use (&$demandes) {
+                    $demandes->push([
+                        'date'   => Carbon::parse($d->created_at)->format('d/m/Y'),
+                        'nature' => $d->libelleType,
+                        'type'   => 'attestation',
+                        'statut' => $d->statut,
+                        'ref'    => $d->numero_reference ?? '—',
+                    ]);
                 });
+
+            // Congés récents
+            DemandeConge::where('user_id', $user->id)
+                ->with('typeConge')
+                ->orderBy('created_at', 'desc')
+                ->limit(5)
+                ->get()
+                ->each(function ($d) use (&$demandes) {
+                    $demandes->push([
+                        'date'   => Carbon::parse($d->created_at)->format('d/m/Y'),
+                        'nature' => $d->typeConge->libelle ?? 'Congé',
+                        'type'   => 'conge',
+                        'statut' => $d->statut,
+                        'ref'    => '—',
+                    ]);
+                });
+
+            // Certificats/démissions récents
+            DemandeDemission::where('user_id', $user->id)
+                ->orderBy('created_at', 'desc')
+                ->limit(3)
+                ->get()
+                ->each(function ($d) use (&$demandes) {
+                    $demandes->push([
+                        'date'   => Carbon::parse($d->created_at)->format('d/m/Y'),
+                        'nature' => 'Demande de démission',
+                        'type'   => 'demission',
+                        'statut' => $d->statut,
+                        'ref'    => $d->numero_reference ?? '—',
+                    ]);
+                });
+
+            // Trier par date décroissante, garder les 7 plus récentes
+            $demandesRecentes = $demandes
+                ->sortByDesc('date')
+                ->values()
+                ->take(7);
 
             return response()->json([
                 'user' => [
-                    'name' => $user->prenom . ' ' . $user->nom,
+                    'name'  => $user->prenom . ' ' . $user->nom,
                     'email' => $user->email,
                 ],
-                'totals' => $totals,
-                'weekly' => $weeklyStats,
-                'monthly' => $monthlyStats,
+                'totals'      => $totals,
+                'weekly'      => $weeklyStats,
+                'monthly'     => $monthlyStats,
                 'percentages' => $percentages,
-                'last30days' => [
-                    'dates' => $last30days->keys()->toArray(),
-                    'heures' => $last30days->pluck('heures')->toArray(),
-                ],
-                'mesDossiersActifs' => [
-                    'names' => $mesDossiersActifs->pluck('nom')->toArray(),
-                    'heures' => $mesDossiersActifs->pluck('total_heures')->map(fn($h) => round($h, 2))->toArray(),
-                ],
-                'mesHeuresParDossier' => [
-                    'dossiers' => $mesHeuresParDossier->pluck('nom')->toArray(),
-                    'heures' => $mesHeuresParDossier->pluck('total_heures')->map(fn($h) => round($h, 2))->toArray(),
+                'last30daysAttestations' => [
+                    'dates'        => $last30daysAttestations->keys()->toArray(),
+                    'attestations' => $last30daysAttestations->pluck('attestations')->toArray(),
                 ],
                 'mesCongesParType' => [
-                    'types' => $mesCongesParType->pluck('type_conge')->toArray(),
+                    'types'  => $mesCongesParType->pluck('type_conge')->toArray(),
                     'counts' => $mesCongesParType->pluck('count')->toArray(),
                 ],
-                'mesDailyEntries' => $mesDailyEntries,
-                'mesCongesAVenir' => $mesCongesAVenir,
+                'mesAttestationsParType' => [
+                    'types'  => $mesAttestationsParType->pluck('type')->map(fn($t) => match ($t) {
+                        'attestation_simple'    => 'Simple',
+                        'attestation_banque'    => 'Banque',
+                        'attestation_ambassade' => 'Ambassade',
+                        'attestation_autre'     => 'Autre',
+                        default                 => ucfirst($t),
+                    })->toArray(),
+                    'counts' => $mesAttestationsParType->pluck('count')->toArray(),
+                ],
+                'mesCongesAVenir'   => $mesCongesAVenir,
+                'demandesRecentes'  => $demandesRecentes,
             ]);
 
         } catch (\Exception $e) {
             Log::error('Erreur dashboard data: ' . $e->getMessage());
             Log::error($e->getTraceAsString());
-            
+
             return response()->json([
-                'error' => true,
-                'message' => 'Erreur lors du chargement des données: ' . $e->getMessage()
+                'error'   => true,
+                'message' => 'Erreur lors du chargement des données: ' . $e->getMessage(),
             ], 500);
         }
     }
 
     /**
-     * Compter les dossiers de l'utilisateur
+     * Calculer le pourcentage d'évolution entre deux valeurs
      */
-    private function getUserDossiersCount($userId)
-    {
-        return Dossier::whereHas('timeEntries', function($q) use ($userId) {
-            $q->where('user_id', $userId);
-        })->count();
-    }
-
-    /**
-     * Compter les dossiers actifs de l'utilisateur
-     */
-    private function getUserDossiersActifsCount($userId)
-    {
-        return Dossier::whereHas('timeEntries', function($q) use ($userId) {
-            $q->where('user_id', $userId);
-        })
-        ->whereIn('statut', ['ouvert', 'en_cours'])
-        ->count();
-    }
-
-    /**
-     * Calculer le pourcentage d'évolution
-     */
-    private function calculatePercentage($current, $previous)
+    private function calculatePercentage($current, $previous): string
     {
         if ($previous == 0) {
             return $current > 0 ? '+100' : '0';
         }
-        
+
         $percentage = (($current - $previous) / $previous) * 100;
         $sign = $percentage >= 0 ? '+' : '';
-        
+
         return $sign . number_format($percentage, 0);
     }
 
     /**
-     * Mes statistiques détaillées
-     */
-    public function myStats()
-    {
-        try {
-            $user = auth()->user();
-            
-            // Heures ce mois
-            $heuresMois = TimeEntry::where('user_id', $user->id)
-                ->whereMonth('created_at', now()->month)
-                ->whereYear('created_at', now()->year)
-                ->sum('heures_reelles') ?? 0;
-
-            // Heures totales
-            $heuresTotales = TimeEntry::where('user_id', $user->id)->sum('heures_reelles') ?? 0;
-
-            // Congés ce mois
-            $congesMois = DemandeConge::where('user_id', $user->id)
-                ->where(function($q) {
-                    $q->whereMonth('date_debut', now()->month)
-                      ->orWhereMonth('date_fin', now()->month);
-                })
-                ->whereYear('date_debut', now()->year)
-                ->count();
-
-            // Mes dossiers actifs
-            $dossiersActifs = $this->getUserDossiersActifsCount($user->id);
-
-            // Heures par jour (7 derniers jours)
-            $heuresJournalieres = collect();
-            for ($i = 6; $i >= 0; $i--) {
-                $date = now()->subDays($i);
-                $heures = TimeEntry::where('user_id', $user->id)
-                    ->whereDate('created_at', $date)
-                    ->sum('heures_reelles') ?? 0;
-                
-                $heuresJournalieres->put($date->format('d/m'), round($heures, 2));
-            }
-
-            // Moyenne d'heures par jour travaillé
-            $joursTravailles = DailyEntry::where('user_id', $user->id)
-                ->whereMonth('jour', now()->month)
-                ->whereYear('jour', now()->year)
-                ->where('heures_reelles', '>', 0)
-                ->count();
-
-            $moyenneHeuresJour = $joursTravailles > 0 ? $heuresMois / $joursTravailles : 0;
-
-            return response()->json([
-                'user' => [
-                    'name' => $user->prenom . ' ' . $user->nom,
-                    'email' => $user->email,
-                ],
-                'stats' => [
-                    'heures_mois' => round($heuresMois, 2),
-                    'heures_totales' => round($heuresTotales, 2),
-                    'conges_mois' => $congesMois,
-                    'dossiers_actifs' => $dossiersActifs,
-                    'moyenne_heures_jour' => round($moyenneHeuresJour, 2),
-                    'jours_travailles' => $joursTravailles,
-                ],
-                'heuresJournalieres' => [
-                    'dates' => $heuresJournalieres->keys()->toArray(),
-                    'heures' => $heuresJournalieres->values()->toArray(),
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Erreur myStats: ' . $e->getMessage());
-            return response()->json(['error' => 'Erreur lors du chargement des statistiques'], 500);
-        }
-    }
-
-    /**
-     * Statistiques par dossier
-     */
-    public function dossierStats($dossierId)
-    {
-        try {
-            $user = auth()->user();
-            $dossier = Dossier::with('client')->findOrFail($dossierId);
-            
-            // Vérifier que l'utilisateur a travaillé sur ce dossier
-            $hasWorked = TimeEntry::where('dossier_id', $dossierId)
-                ->where('user_id', $user->id)
-                ->exists();
-            
-            if (!$hasWorked) {
-                return response()->json(['message' => 'Vous n\'avez pas accès à ce dossier'], 403);
-            }
-            
-            // Mes heures sur ce dossier
-            $mesHeures = TimeEntry::where('dossier_id', $dossierId)
-                ->where('user_id', $user->id)
-                ->sum('heures_reelles') ?? 0;
-
-            // Mes heures ce mois sur ce dossier
-            $mesHeuresMois = TimeEntry::where('dossier_id', $dossierId)
-                ->where('user_id', $user->id)
-                ->whereMonth('created_at', now()->month)
-                ->whereYear('created_at', now()->year)
-                ->sum('heures_reelles') ?? 0;
-
-            // Mes dernières interventions
-            $mesDernieresInterventions = TimeEntry::where('dossier_id', $dossierId)
-                ->where('user_id', $user->id)
-                ->orderBy('created_at', 'desc')
-                ->limit(10)
-                ->get()
-                ->map(function($entry) {
-                    return [
-                        'date' => Carbon::parse($entry->created_at)->format('d/m/Y'),
-                        'heures' => round($entry->heures_reelles, 2),
-                        'debut' => $entry->heure_debut,
-                        'fin' => $entry->heure_fin,
-                        'travaux' => $entry->travaux,
-                    ];
-                });
-
-            return response()->json([
-                'dossier' => [
-                    'nom' => $dossier->nom,
-                    'reference' => $dossier->reference,
-                    'client' => $dossier->client->nom ?? 'N/A',
-                    'statut' => $dossier->statut,
-                ],
-                'mes_stats' => [
-                    'mes_heures_totales' => round($mesHeures, 2),
-                    'mes_heures_mois' => round($mesHeuresMois, 2),
-                    'budget' => $dossier->budget,
-                ],
-                'mesDernieresInterventions' => $mesDernieresInterventions,
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Erreur dossierStats: ' . $e->getMessage());
-            return response()->json(['error' => 'Erreur lors du chargement des statistiques du dossier'], 500);
-        }
-    }
-
-    /**
-     * Mes congés
+     * Mes congés détaillés
      */
     public function mesConges()
     {
         try {
             $user = auth()->user();
 
-            // Mes congés en cours
             $congesEnCours = DemandeConge::where('user_id', $user->id)
                 ->where('date_debut', '<=', now())
                 ->where('date_fin', '>=', now())
                 ->where('statut', 'approuve')
                 ->with('typeConge')
                 ->get()
-                ->map(function($conge) {
-                    return [
-                        'id' => $conge->id,
-                        'type' => $conge->typeConge->libelle ?? 'N/A',
-                        'debut' => Carbon::parse($conge->date_debut)->format('d/m/Y'),
-                        'fin' => Carbon::parse($conge->date_fin)->format('d/m/Y'),
-                    ];
-                });
+                ->map(fn($c) => [
+                    'id'    => $c->id,
+                    'type'  => $c->typeConge->libelle ?? 'N/A',
+                    'debut' => Carbon::parse($c->date_debut)->format('d/m/Y'),
+                    'fin'   => Carbon::parse($c->date_fin)->format('d/m/Y'),
+                ]);
 
-            // Mes congés à venir (prochains 90 jours)
             $congesAVenir = DemandeConge::where('user_id', $user->id)
                 ->where('date_debut', '>', now())
                 ->where('date_debut', '<=', now()->addDays(90))
@@ -423,17 +294,14 @@ class DashboardController extends Controller
                 ->with('typeConge')
                 ->orderBy('date_debut')
                 ->get()
-                ->map(function($conge) {
-                    return [
-                        'id' => $conge->id,
-                        'type' => $conge->typeConge->libelle ?? 'N/A',
-                        'debut' => Carbon::parse($conge->date_debut)->format('d/m/Y'),
-                        'fin' => Carbon::parse($conge->date_fin)->format('d/m/Y'),
-                        'jours' => $conge->nombre_jours,
-                    ];
-                });
+                ->map(fn($c) => [
+                    'id'    => $c->id,
+                    'type'  => $c->typeConge->libelle ?? 'N/A',
+                    'debut' => Carbon::parse($c->date_debut)->format('d/m/Y'),
+                    'fin'   => Carbon::parse($c->date_fin)->format('d/m/Y'),
+                    'jours' => $c->nombre_jours,
+                ]);
 
-            // Mes congés par type (année en cours)
             $congesParType = DemandeConge::where('user_id', $user->id)
                 ->whereYear('date_debut', now()->year)
                 ->join('types_conges', 'demandes_conges.type_conge_id', '=', 'types_conges.id')
@@ -441,17 +309,16 @@ class DashboardController extends Controller
                 ->groupBy('types_conges.id', 'types_conges.libelle')
                 ->get();
 
-            // Total de jours de congés cette année
             $totalJoursConges = DemandeConge::where('user_id', $user->id)
                 ->whereYear('date_debut', now()->year)
                 ->where('statut', 'approuve')
                 ->sum('nombre_jours');
 
             return response()->json([
-                'congesEnCours' => $congesEnCours,
-                'congesAVenir' => $congesAVenir,
-                'congesParType' => [
-                    'types' => $congesParType->pluck('type_conge')->toArray(),
+                'congesEnCours'    => $congesEnCours,
+                'congesAVenir'     => $congesAVenir,
+                'congesParType'    => [
+                    'types'  => $congesParType->pluck('type_conge')->toArray(),
                     'counts' => $congesParType->pluck('count')->toArray(),
                 ],
                 'totalJoursConges' => $totalJoursConges,
@@ -468,13 +335,13 @@ class DashboardController extends Controller
      */
     public function export(Request $request)
     {
-        $user = auth()->user();
-        $type = $request->get('type', 'excel');
+        $user    = auth()->user();
+        $type    = $request->get('type', 'excel');
         $periode = $request->get('periode', 'mois');
-        
+
         return response()->json([
             'message' => 'Export en cours de développement',
-            'type' => $type,
+            'type'    => $type,
             'periode' => $periode,
             'user_id' => $user->id,
         ]);
