@@ -1,0 +1,857 @@
+@extends('layaout')
+
+@section('title', 'Modifier la Demande de Congé')
+
+@section('content')
+<section class="section">
+    <div class="section-header">
+        <h1><i class="fas fa-edit"></i> Modifier la Demande de Congé</h1>
+        <div class="section-header-breadcrumb">
+            <div class="breadcrumb-item"><a href="{{ route('conges.index') }}">Congés</a></div>
+            <div class="breadcrumb-item"><a href="{{ route('conges.show', $demande) }}">Détails</a></div>
+            <div class="breadcrumb-item active">Modifier</div>
+        </div>
+    </div>
+
+    <div class="section-body">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4>Modifier la Demande</h4>
+                        <div class="card-header-action">
+                            <a href="{{ route('conges.show', $demande) }}" class="btn btn-icon icon-left btn-danger">
+                                <i class="fas fa-times"></i> Annuler
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="card-body">
+                        <!-- Avertissement si demande déjà traitée -->
+                        @if($demande->statut !== 'en_attente')
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            Cette demande a déjà été traitée ({{ $demande->statut }}) et ne peut plus être modifiée.
+                            <a href="{{ route('conges.show', $demande) }}" class="btn btn-sm btn-warning ml-2">
+                                <i class="fas fa-eye"></i> Voir les détails
+                            </a>
+                        </div>
+                        @endif
+
+                        <!-- Info solde -->
+                        @php
+                            $solde = \App\Models\SoldeConge::where('user_id', $demande->user_id)
+                                ->where('annee', now()->year)
+                                ->first();
+                        @endphp
+
+                        @if($solde)
+                        <div class="alert alert-info">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="fas fa-info-circle"></i>
+                                    <strong>Solde de congés annuels :</strong>
+                                </div>
+                                <div class="text-right">
+                                    <span class="badge badge-success">{{ $solde->jours_acquis }} jours acquis</span>
+                                    <span class="badge badge-warning">{{ $solde->jours_pris }} jours pris</span>
+                                    <span class="badge badge-primary">{{ $solde->jours_restants }} jours restants</span>
+                                </div>
+                            </div>
+                        </div>
+                        @endif
+
+                        <!-- Information sur le calcul -->
+                        <div class="alert alert-info">
+                            <i class="fas fa-calculator"></i>
+                            <strong>Mode de calcul :</strong>
+                            <ul class="mb-0 mt-1">
+                                <li>Seuls les <strong>jours ouvrés (lundi à vendredi)</strong> sont comptabilisés</li>
+                                <li>Les <strong>week-ends (samedi et dimanche)</strong> sont exclus du calcul</li>
+                                <li>Les <strong>jours fériés</strong> sont exclus du calcul</li>
+                                <li>Le nombre de jours affiché correspond aux <strong>jours ouvrés uniquement</strong></li>
+                            </ul>
+                        </div>
+
+                        @if($demande->statut === 'en_attente')
+                        <form action="{{ route('conges.update', $demande) }}" method="POST" id="demande-form" enctype="multipart/form-data">
+                            @csrf
+                            @method('PUT')
+
+                            <!-- Champ hidden pour envoyer le nombre de jours calculé -->
+                            <input type="hidden" name="nombre_jours" id="nombre_jours_hidden" value="{{ old('nombre_jours', $demande->nombre_jours) }}">
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Type de congé <span class="text-danger">*</span></label>
+                                        <select name="type_conge_id" id="type_conge_id"
+                                                class="form-control select2 @error('type_conge_id') is-invalid @enderror"
+                                                required>
+                                            <option value="">Sélectionner un type</option>
+                                            @foreach($typesConges as $type)
+                                                <option value="{{ $type->id }}"
+                                                        data-est-paye="{{ $type->est_paye ? '1' : '0' }}"
+                                                        data-est-annuel="{{ $type->est_annuel ? '1' : '0' }}"
+                                                        data-max-jours="{{ $type->nombre_jours_max }}"
+                                                        {{ old('type_conge_id', $demande->type_conge_id) == $type->id ? 'selected' : '' }}>
+                                                    {{ $type->libelle }}
+                                                    @if($type->est_annuel)
+                                                        <span class="text-success"> (Annuel - déduit du solde)</span>
+                                                    @elseif($type->est_paye)
+                                                        <span class="text-primary"> (Payé - non déduit)</span>
+                                                    @else
+                                                        <span class="text-warning"> (Non payé)</span>
+                                                    @endif
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        <small class="form-text text-muted" id="type-conge-info">
+                                            Sélectionnez un type pour voir les détails
+                                        </small>
+                                        @error('type_conge_id')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Nombre de jours <span class="text-danger">*</span></label>
+                                        <div class="input-group">
+                                            <input type="number" id="nombre_jours_display"
+                                                   class="form-control-plaintext"
+                                                   value="{{ old('nombre_jours', $demande->nombre_jours) }}"
+                                                   readonly>
+                                            <div class="input-group-append">
+                                                <span class="input-group-text">jours ouvrés</span>
+                                            </div>
+                                        </div>
+                                        <small class="form-text text-muted">
+                                            Calculé automatiquement (jours ouvrés uniquement)
+                                        </small>
+                                        @error('nombre_jours')
+                                            <div class="text-danger small">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Date de début <span class="text-danger">*</span></label>
+                                        <input type="date" name="date_debut" id="date_debut"
+                                               class="form-control @error('date_debut') is-invalid @enderror"
+                                               value="{{ old('date_debut', $demande->date_debut->format('Y-m-d')) }}"
+                                               min="{{ date('Y-m-d') }}"
+                                               required>
+                                        @error('date_debut')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                        <div id="date_debut_info" class="text-info small mt-1" style="display: none;"></div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Date de fin <span class="text-danger">*</span></label>
+                                        <input type="date" name="date_fin" id="date_fin"
+                                               class="form-control @error('date_fin') is-invalid @enderror"
+                                               value="{{ old('date_fin', $demande->date_fin->format('Y-m-d')) }}"
+                                               min="{{ date('Y-m-d') }}"
+                                               required>
+                                        @error('date_fin')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                        <div id="date_fin_info" class="text-info small mt-1" style="display: none;"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="superieur_hierarchique_id">
+                                            Supérieur hiérarchique <span class="text-danger">*</span>
+                                        </label>
+                                        <select
+                                            name="superieur_hierarchique_id"
+                                            id="superieur_hierarchique_id"
+                                            class="form-control select2 @error('superieur_hierarchique_id') is-invalid @enderror"
+                                            required
+                                        >
+                                            <option value="">Sélectionner un supérieur</option>
+                                            @foreach($users as $u)
+                                                @if($u->id !== auth()->id())
+                                                    <option
+                                                        value="{{ $u->id }}"
+                                                        {{ old('superieur_hierarchique_id', $demande->superieur_hierarchique_id) == $u->id ? 'selected' : '' }}
+                                                    >
+                                                        {{ $u->prenom }} {{ $u->nom }} — {{ $u->email }}
+                                                    </option>
+                                                @endif
+                                            @endforeach
+                                        </select>
+                                        <small class="form-text text-muted">
+                                            Vous pouvez rechercher par nom, prénom ou email
+                                        </small>
+                                        @error('superieur_hierarchique_id')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Motif</label>
+                                        <textarea name="motif" class="form-control @error('motif') is-invalid @enderror"
+                                                required rows="3" placeholder="Raison de votre demande de congé...">{{ old('motif', $demande->motif) }}</textarea>
+                                        <small class="form-text text-muted">
+                                            Maximum 1000 caractères
+                                        </small>
+                                        @error('motif')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- ── Fichier justificatif + attestation ────────────────────────── --}}
+                            <div class="row mt-4">
+
+                                {{-- Fichier d'appui --}}
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>
+                                            <i class="fas fa-paperclip"></i>
+                                            Fichier justificatif
+                                            <small class="text-muted">(facultatif)</small>
+                                        </label>
+
+                                        {{-- Fichier existant --}}
+                                        @if($demande->fichier_justificatif)
+                                        <div class="alert alert-info py-2 mb-2">
+                                            <i class="fas fa-file me-1"></i>
+                                            Fichier actuel :
+                                            <a href="{{ Storage::url($demande->fichier_justificatif) }}"
+                                            target="_blank" class="font-weight-bold">
+                                                Voir le fichier
+                                            </a>
+                                            <div class="form-check mt-1">
+                                                <input type="checkbox" class="form-check-input"
+                                                    name="supprimer_justificatif" id="supprimer_justificatif" value="1">
+                                                <label class="form-check-label text-danger" for="supprimer_justificatif">
+                                                    Supprimer ce fichier
+                                                </label>
+                                            </div>
+                                        </div>
+                                        @endif
+
+                                        <input type="file" name="fichier_justificatif" id="fichier_justificatif"
+                                            class="form-control @error('fichier_justificatif') is-invalid @enderror"
+                                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                                        <small class="text-muted">PDF, Word, Image — Max 5 Mo.</small>
+                                        @error('fichier_justificatif')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+
+                                {{-- Attestation --}}
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>
+                                            <i class="fas fa-file-alt"></i>
+                                            Attestation de congé
+                                        </label>
+                                        <div class="card border-0 bg-light p-3">
+                                            <div class="form-check">
+                                                <input type="hidden" name="demande_attestation" value="0">
+                                                <input class="form-check-input" type="checkbox"
+                                                    name="demande_attestation" id="demande_attestation"
+                                                    value="1"
+                                                    {{ old('demande_attestation', $demande->demande_attestation) ? 'checked' : '' }}>
+                                                <label class="form-check-label" for="demande_attestation">
+                                                    Je souhaite recevoir une attestation de congé
+                                                </label>
+                                            </div>
+                                            <small class="text-muted mt-2 d-block" id="attestation-info"
+                                                style="{{ old('demande_attestation', $demande->demande_attestation) ? '' : 'display:none' }}">
+                                                <i class="fas fa-info-circle me-1"></i>
+                                                Une attestation officielle sera générée et jointe à l'approbation.
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <!-- Informations sur la période -->
+                            <div id="periode-info" class="alert alert-light mt-3" style="display: none;">
+                                <i class="fas fa-info-circle text-primary"></i>
+                                <strong>Informations sur la période :</strong>
+                                <div id="jours-details" class="mt-1"></div>
+                            </div>
+
+                            <!-- Prévisualisation des changements -->
+                            <div class="card preview-card" style="display: none;" id="preview-card">
+                                <div class="card-header">
+                                    <h4>Récapitulatif des modifications</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <strong>Type :</strong>
+                                            <span id="preview-type">{{ $demande->typeConge->libelle }}</span>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <strong>Période :</strong>
+                                            <span id="preview-period">
+                                                {{ $demande->date_debut->format('d/m/Y') }} au {{ $demande->date_fin->format('d/m/Y') }}
+                                            </span>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <strong>Durée :</strong>
+                                            <span id="preview-duration">{{ $demande->nombre_jours }} jour(s)</span>
+                                        </div>
+                                    </div>
+                                    <div class="row mt-3">
+                                        <div class="col-md-12">
+                                            <strong>Solde après congé :</strong>
+                                            <span id="preview-solde">
+                                                @if($demande->typeConge->est_annuel)
+                                                    <span class="text-danger">-{{ $demande->nombre_jours }} jours (déduit)</span>
+                                                @else
+                                                    <span class="text-info">Aucun impact sur le solde annuel</span>
+                                                @endif
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="text-right">
+                                <a href="{{ route('conges.show', $demande) }}" class="btn btn-secondary btn-lg">
+                                    <i class="fas fa-times"></i> Annuler
+                                </a>
+                                <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+                                    <i class="fas fa-save"></i> Enregistrer les modifications
+                                </button>
+                            </div>
+                        </form>
+                        @else
+                        <div class="text-center py-5">
+                            <i class="fas fa-lock fa-3x text-warning mb-3"></i>
+                            <h4>Demande non modifiable</h4>
+                            <p class="text-muted">Cette demande ne peut plus être modifiée car elle a déjà été traitée.</p>
+                            <a href="{{ route('conges.show', $demande) }}" class="btn btn-primary">
+                                <i class="fas fa-eye"></i> Voir les détails
+                            </a>
+                            <a href="{{ route('conges.index') }}" class="btn btn-secondary">
+                                <i class="fas fa-list"></i> Retour à la liste
+                            </a>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+@endsection
+
+@push('styles')
+<link rel="stylesheet" href="{{ asset('assets/bundles/select2/dist/css/select2.min.css') }}">
+<style>
+    .select2-container--default .select2-selection--single {
+        height: 42px !important;
+        border: 1px solid #e3e6f0;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 40px;
+    }
+    .preview-card {
+        border-left: 4px solid #3B82F6;
+        margin-bottom: 20px;
+    }
+    .text-success { color: #28a745 !important; }
+    .text-warning { color: #ffc107 !important; }
+    .text-danger { color: #dc3545 !important; }
+    .text-info { color: #17a2b8 !important; }
+    .badge {
+        font-size: 0.8em;
+        padding: 0.35em 0.65em;
+    }
+    #jours-details ul {
+        margin-bottom: 0;
+    }
+    .form-control-plaintext {
+        background-color: #f8f9fa;
+        padding: 0.375rem 0.75rem;
+        border: 1px solid #ced4da;
+        border-radius: 0.25rem;
+        font-weight: 500;
+        color: #495057;
+    }
+</style>
+@endpush
+
+@push('scripts')
+<script src="{{ asset('assets/bundles/select2/dist/js/select2.full.min.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+$(document).ready(function() {
+    // Initialiser Select2
+    $('.select2').select2({
+        placeholder: "Sélectionner...",
+        allowClear: true
+    });
+
+    // Définir la date minimale à aujourd'hui
+    var today = new Date().toISOString().split('T')[0];
+    $('#date_debut').attr('min', today);
+    $('#date_fin').attr('min', today);
+
+    // Charger les jours fériés et initialiser
+    var joursFeries = [];
+    loadJoursFeries();
+
+    // Calcul initial
+    if ($('#date_debut').val() && $('#date_fin').val()) {
+        setTimeout(function() {
+            analyzePeriod();
+        }, 500);
+    }
+
+    // Attestation : afficher/cacher l'info
+    $('#demande_attestation').on('change', function () {
+        $('#attestation-info').toggle($(this).is(':checked'));
+    });
+});
+
+// Variables pour stocker les valeurs originales
+var originalTypeId = {{ $demande->type_conge_id }};
+var originalEstAnnuel = {{ $demande->typeConge->est_annuel ? '1' : '0' }};
+var originalEstPaye = {{ $demande->typeConge->est_paye ? '1' : '0' }};
+var originalNombreJours = {{ $demande->nombre_jours }};
+var soldeRestant = {{ $solde ? $solde->jours_restants : 0 }};
+
+// Charger les jours fériés depuis le serveur
+function loadJoursFeries() {
+    $.ajax({
+        url: '{{ route("conges.get-feries") }}',
+        method: 'GET',
+        success: function(data) {
+            joursFeries = data.jours_feries || [];
+        },
+        error: function() {
+            joursFeries = [];
+        }
+    });
+}
+
+// Vérifier si un jour est un week-end
+function isWeekend(dateStr) {
+    var date = new Date(dateStr);
+    var day = date.getDay(); // 0 = dimanche, 6 = samedi
+    return day === 0 || day === 6;
+}
+
+// Vérifier si un jour est férié
+function isJourFerie(dateStr) {
+    if (!joursFeries || !Array.isArray(joursFeries)) return false;
+    
+    var date = new Date(dateStr);
+    var mois = (date.getMonth() + 1).toString().padStart(2, '0');
+    var jour = date.getDate().toString().padStart(2, '0');
+    var dateFormatted = mois + '-' + jour;
+    
+    return joursFeries.some(function(ferie) {
+        return ferie.date === dateFormatted;
+    });
+}
+
+// Obtenir le nom d'un jour férié
+function getNomJourFerie(dateStr) {
+    if (!joursFeries || !Array.isArray(joursFeries)) return 'Jour férié';
+    
+    var date = new Date(dateStr);
+    var mois = (date.getMonth() + 1).toString().padStart(2, '0');
+    var jour = date.getDate().toString().padStart(2, '0');
+    var dateFormatted = mois + '-' + jour;
+    
+    var ferie = joursFeries.find(function(f) {
+        return f.date === dateFormatted;
+    });
+    
+    return ferie ? ferie.nom : 'Jour férié';
+}
+
+// Obtenir le nom du jour de la semaine
+function getJourSemaine(dateStr) {
+    var jours = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+    var date = new Date(dateStr);
+    return jours[date.getDay()];
+}
+
+// Formater une date en français
+function formatDateFr(dateStr) {
+    var date = new Date(dateStr);
+    return date.toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+}
+
+// Analyser la période sélectionnée
+function analyzePeriod() {
+    var dateDebut = $('#date_debut').val();
+    var dateFin = $('#date_fin').val();
+    
+    // Masquer les infos précédentes
+    $('#date_debut_info').hide().empty();
+    $('#date_fin_info').hide().empty();
+    $('#periode-info').hide();
+    $('#jours-details').empty();
+    $('#preview-card').hide();
+    $('#submit-btn').prop('disabled', true);
+    
+    if (!dateDebut || !dateFin) {
+        return false;
+    }
+    
+    // Vérifier que la date de fin est après la date de début
+    if (new Date(dateFin) < new Date(dateDebut)) {
+        $('#date_fin_info').text('La date de fin doit être postérieure à la date de début').show();
+        return false;
+    }
+    
+    // Afficher des infos sur les dates sélectionnées
+    var debutJour = getJourSemaine(dateDebut);
+    var finJour = getJourSemaine(dateFin);
+    
+    if (isWeekend(dateDebut)) {
+        $('#date_debut_info').text(debutJour + ' (week-end - non comptabilisé)').show();
+    } else if (isJourFerie(dateDebut)) {
+        var nomFerie = getNomJourFerie(dateDebut);
+        $('#date_debut_info').text(debutJour + ' (' + nomFerie + ' - non comptabilisé)').show();
+    }
+    
+    if (isWeekend(dateFin)) {
+        $('#date_fin_info').text(finJour + ' (week-end - non comptabilisé)').show();
+    } else if (isJourFerie(dateFin)) {
+        var nomFerie = getNomJourFerie(dateFin);
+        $('#date_fin_info').text(finJour + ' (' + nomFerie + ' - non comptabilisé)').show();
+    }
+    
+    // Analyser tous les jours de la période
+    var startDate = new Date(dateDebut);
+    var endDate = new Date(dateFin);
+    var joursOuvrables = 0;
+    var joursNonOuvrables = [];
+    var currentDate = new Date(startDate);
+    
+    while (currentDate <= endDate) {
+        var dateStr = currentDate.toISOString().split('T')[0];
+        var jourSemaine = getJourSemaine(dateStr);
+        
+        if (isWeekend(dateStr)) {
+            joursNonOuvrables.push({
+                date: formatDateFr(dateStr),
+                raison: 'Week-end (' + jourSemaine + ')',
+                type: 'weekend'
+            });
+        } else if (isJourFerie(dateStr)) {
+            var nomFerie = getNomJourFerie(dateStr);
+            joursNonOuvrables.push({
+                date: formatDateFr(dateStr),
+                raison: nomFerie,
+                type: 'ferie'
+            });
+        } else {
+            joursOuvrables++;
+        }
+        
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    // Mettre à jour le nombre de jours ouvrés
+    if (joursOuvrables > 0) {
+        $('#nombre_jours_display').val(joursOuvrables);
+        $('#nombre_jours_hidden').val(joursOuvrables);
+        $('#submit-btn').prop('disabled', false);
+        
+        // Afficher les détails de la période
+        var totalJours = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+        var message = '<div class="mb-2">';
+        message += '<strong>Période totale :</strong> ' + totalJours + ' jour(s) calendaire(s)<br>';
+        message += '<strong>Jours ouvrés :</strong> ' + joursOuvrables + ' jour(s)<br>';
+        message += '<strong>Jours exclus :</strong> ' + joursNonOuvrables.length + ' jour(s)</div>';
+        
+        if (joursNonOuvrables.length > 0) {
+            message += '<details>';
+            message += '<summary class="text-primary"><small>Voir les jours exclus du calcul</small></summary>';
+            message += '<ul class="mt-2 mb-0 pl-3">';
+            joursNonOuvrables.forEach(function(jour) {
+                var icon = jour.type === 'weekend' ? '🏖️' : '🎉';
+                message += '<li><small>' + icon + ' ' + jour.date + ' (' + jour.raison + ')</small></li>';
+            });
+            message += '</ul>';
+            message += '</details>';
+        }
+        
+        $('#jours-details').html(message);
+        $('#periode-info').show();
+        
+        // Mettre à jour la prévisualisation
+        updatePreview();
+        checkSolde();
+        
+        return true;
+    } else {
+        $('#jours-details').html('La période sélectionnée ne contient aucun jour ouvrable. Veuillez modifier les dates.');
+        $('#periode-info').show();
+        return false;
+    }
+}
+
+// Mettre à jour la prévisualisation
+function updatePreview() {
+    var typeText = $('#type_conge_id option:selected').text();
+    var dateDebut = $('#date_debut').val();
+    var dateFin = $('#date_fin').val();
+    var nombreJours = $('#nombre_jours_hidden').val();
+    var selectedOption = $('#type_conge_id option:selected');
+    var estPaye = selectedOption.data('est-paye');
+    var estAnnuel = selectedOption.data('est-annuel');
+
+    if (!typeText || !dateDebut || !dateFin || !nombreJours) {
+        $('#preview-card').hide();
+        return;
+    }
+
+    $('#preview-type').html(typeText);
+    $('#preview-period').html(formatDateFr(dateDebut) + ' au ' + formatDateFr(dateFin));
+    $('#preview-duration').html(nombreJours + ' jour(s) ouvrable(s)');
+
+    // Afficher l'impact sur le solde selon le type
+    if (estAnnuel == '1') {
+        $('#preview-solde').html('<span class="text-danger">-' + nombreJours + ' jours (déduit du solde annuel)</span>');
+    } else if (estPaye == '1') {
+        $('#preview-solde').html('<span class="text-info">Congé payé (non déduit du solde annuel)</span>');
+    } else {
+        $('#preview-solde').html('<span class="text-secondary">Congé non payé</span>');
+    }
+
+    $('#preview-card').show();
+}
+
+// Vérifier le solde
+function checkSolde() {
+    var typeCongeId = $('#type_conge_id').val();
+    var nombreJours = parseFloat($('#nombre_jours_hidden').val()) || 0;
+
+    if (!typeCongeId || !nombreJours) {
+        $('#submit-btn').prop('disabled', true);
+        return;
+    }
+
+    var selectedOption = $('#type_conge_id option:selected');
+    var estAnnuel = selectedOption.data('est-annuel');
+    var maxJours = selectedOption.data('max-jours');
+
+    // Vérifier le maximum de jours
+    if (maxJours && nombreJours > maxJours) {
+        $('#submit-btn').prop('disabled', true);
+        Swal.fire({
+            icon: 'warning',
+            title: 'Dépassement',
+            text: 'Le nombre de jours demandé (' + nombreJours + ') dépasse le maximum autorisé (' + maxJours + ' jours) pour ce type de congé.',
+        });
+        return;
+    }
+
+    // Vérifier uniquement pour les congés annuels
+    if (estAnnuel == '1') {
+        // Calculer la différence de jours
+        var differenceJours = nombreJours - originalNombreJours;
+        
+        // Si changement de type (non-annuel -> annuel)
+        if (originalEstAnnuel != '1') {
+            // Nouveau congé annuel - vérifier toute la durée
+            if (nombreJours > soldeRestant) {
+                $('#submit-btn').prop('disabled', true);
+                
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Solde insuffisant',
+                    html: '<div class="text-left">' +
+                          '<p>Vous changez vers un congé annuel.</p>' +
+                          '<p>Durée demandée : <strong>' + nombreJours + ' jours</strong></p>' +
+                          '<p>Solde disponible : <strong>' + soldeRestant + ' jours</strong></p>' +
+                          '<p class="text-danger">Manquant : <strong>' + (nombreJours - soldeRestant) + ' jours</strong></p>' +
+                          '</div>',
+                    confirmButtonText: 'Compris'
+                });
+            } else {
+                $('#submit-btn').prop('disabled', false);
+            }
+        }
+        // Si reste annuel mais augmentation de durée
+        else if (differenceJours > 0) {
+            if (differenceJours > soldeRestant) {
+                $('#submit-btn').prop('disabled', true);
+                
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Solde insuffisant',
+                    html: '<div class="text-left">' +
+                          '<p>Augmentation de la durée : <strong>+' + differenceJours + ' jours</strong></p>' +
+                          '<p>Solde disponible : <strong>' + soldeRestant + ' jours</strong></p>' +
+                          '<p class="text-danger">Manquant : <strong>' + (differenceJours - soldeRestant) + ' jours</strong></p>' +
+                          '</div>',
+                    confirmButtonText: 'Compris'
+                });
+            } else {
+                $('#submit-btn').prop('disabled', false);
+            }
+        }
+        // Réduction de durée ou pas de changement - OK
+        else {
+            $('#submit-btn').prop('disabled', false);
+        }
+    } else {
+        // Pour les congés non-annuels, activer le bouton
+        $('#submit-btn').prop('disabled', false);
+    }
+}
+
+// Validation du formulaire
+$('#demande-form').on('submit', function(e) {
+    e.preventDefault();
+    
+    var typeCongeId = $('#type_conge_id').val();
+    var dateDebut = $('#date_debut').val();
+    var dateFin = $('#date_fin').val();
+    var nombreJours = parseFloat($('#nombre_jours_hidden').val()) || 0;
+    var selectedOption = $('#type_conge_id option:selected');
+    var estAnnuel = selectedOption.data('est-annuel');
+    var maxJours = selectedOption.data('max-jours');
+    
+    // Validation basique
+    if (!typeCongeId || !dateDebut || !dateFin || !nombreJours) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Champs obligatoires',
+            text: 'Veuillez remplir tous les champs obligatoires',
+        });
+        return false;
+    }
+    
+    // Vérifier la date de fin
+    if (new Date(dateFin) < new Date(dateDebut)) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Dates invalides',
+            text: 'La date de fin doit être postérieure à la date de début',
+        });
+        return false;
+    }
+    
+    // Vérifier si au moins 1 jour ouvrable
+    if (nombreJours <= 0) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Durée invalide',
+            text: 'La période sélectionnée ne contient aucun jour ouvrable.',
+        });
+        return false;
+    }
+    
+    // Vérifier le maximum de jours
+    if (maxJours && nombreJours > maxJours) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Dépassement',
+            text: 'Le nombre de jours demandé dépasse le maximum autorisé pour ce type de congé.',
+        });
+        return false;
+    }
+    
+    // Vérifier le solde pour les congés annuels
+    if (estAnnuel == '1') {
+        var differenceJours = nombreJours - originalNombreJours;
+        
+        // Cas 1: Changement vers annuel (était non-annuel)
+        if (originalEstAnnuel != '1') {
+            if (nombreJours > soldeRestant) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Solde insuffisant',
+                    html: 'Vous n\'avez pas assez de jours de congés annuels disponibles.<br>' +
+                          'Solde restant : <strong>' + soldeRestant + ' jours</strong><br>' +
+                          'Demandé : <strong>' + nombreJours + ' jours</strong>',
+                });
+                return false;
+            }
+        }
+        // Cas 2: Augmentation de durée d'un congé annuel
+        else if (differenceJours > 0 && differenceJours > soldeRestant) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Solde insuffisant',
+                html: 'Vous n\'avez pas assez de jours de congés annuels disponibles pour augmenter la durée.<br>' +
+                      'Augmentation : <strong>+' + differenceJours + ' jours</strong><br>' +
+                      'Solde restant : <strong>' + soldeRestant + ' jours</strong>',
+            });
+            return false;
+        }
+    }
+    
+    // Demander confirmation
+    var confirmationMessage = '<div class="text-left">';
+    confirmationMessage += '<p><strong>Type :</strong> ' + $('#type_conge_id option:selected').text() + '</p>';
+    confirmationMessage += '<p><strong>Période :</strong> ' + formatDateFr(dateDebut) + ' au ' + formatDateFr(dateFin) + '</p>';
+    confirmationMessage += '<p><strong>Durée :</strong> ' + nombreJours + ' jour(s) ouvrable(s)</p>';
+    
+    if (estAnnuel == '1') {
+        var impactSolde = (originalEstAnnuel == '1') ? 
+            'Modification : ' + (nombreJours - originalNombreJours) + ' jours' :
+            'Nouveau impact : -' + nombreJours + ' jours';
+        confirmationMessage += '<p><strong>Impact sur solde :</strong> ' + impactSolde + '</p>';
+    }
+    
+    confirmationMessage += '</div>';
+
+    Swal.fire({
+        title: 'Confirmer la modification',
+        html: confirmationMessage,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Oui, modifier',
+        cancelButtonText: 'Annuler',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Soumettre le formulaire
+            $(this).off('submit').submit();
+        }
+    });
+
+    return false;
+});
+
+// Événements de changement
+$('#date_debut, #date_fin').on('change', function() {
+    analyzePeriod();
+});
+
+$('#type_conge_id').on('change', function() {
+    if ($('#date_debut').val() && $('#date_fin').val()) {
+        analyzePeriod();
+    }
+});
+</script>
+@endpush
