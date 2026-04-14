@@ -1311,4 +1311,16 @@ class CongeController extends Controller
 
         return view('pages.conges.validation-finale', compact('demandes'));
     }
+
+    private function getLogoBase64(): string
+    {
+        $path = public_path('storage/photos/logo-cofima-bon.jpg');
+        if (!file_exists($path)) {
+            // Fallback si le logo n'est pas trouvé
+            return '';
+        }
+        $type = pathinfo($path, PATHINFO_EXTENSION);
+        $data = file_get_contents($path);
+        return 'data:image/' . $type . ';base64,' . base64_encode($data);
+    }
 }

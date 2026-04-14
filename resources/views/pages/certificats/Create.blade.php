@@ -61,7 +61,9 @@
 
                         <form action="{{ route('demissions.store') }}" method="POST" id="demission-form">
                             @csrf
-                            <div class="row d-flex align-items-center mb-4 ">
+
+                            {{-- En-tête de section --}}
+                            <div class="row mb-3">
                                 <div class="col-md-8">
                                     <h5 class="mb-0"><i class="fas fa-info-circle"></i> Informations sur la démission</h5>
                                 </div>
@@ -70,46 +72,50 @@
                                         <i class="fas fa-info"></i> Veuillez remplir tous les champs obligatoires
                                     </span>
                                 </div>
-                            <div class="form-group">
-                                <label class="font-weight-bold">
-                                    <i class="fas fa-calendar-day mr-1 text-danger"></i>
-                                    Date de départ souhaitée <span class="text-danger">*</span>
-                                </label>
-                                <input type="date"
-                                       name="date_depart_souhaitee"
-                                       class="form-control @error('date_depart_souhaitee') is-invalid @enderror"
-                                       value="{{ old('date_depart_souhaitee') }}"
-                                       min="{{ now()->addDay()->format('Y-m-d') }}"
-                                       style="max-width:240px;">
-                                @error('date_depart_souhaitee')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                                <small class="form-text text-muted">
-                                    Respectez le délai de préavis prévu dans votre contrat.
-                                </small>
                             </div>
 
-                            {{-- Date d'embauche --}}
-                            <div class="form-group">
-                                <label class="font-weight-bold">
-                                    <i class="fas fa-calendar-alt mr-1 text-primary"></i>
-                                    Date d'embauche <span class="text-danger">*</span>
-                                </label>
-                                <input type="date"
-                                       name="date_embauche"
-                                       class="form-control @error('date_embauche') is-invalid @enderror"
-                                       value="{{ old('date_embauche') }}"
-                                       max="{{ now()->format('Y-m-d') }}"
-                                       style="max-width:240px;">
-                                @error('date_embauche')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                                <small class="form-text text-muted">
-                                    Indiquez la date de votre embauche dans le cabinet.
-                                </small>
-                            </div>
-                        </div>                            {{-- Date de départ souhaitée --}}
+                            {{-- Ligne des deux dates --}}
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="font-weight-bold">
+                                            <i class="fas fa-calendar-day mr-1 text-danger"></i>
+                                            Date de départ souhaitée <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="date"
+                                            name="date_depart_souhaitee"
+                                            class="form-control @error('date_depart_souhaitee') is-invalid @enderror"
+                                            value="{{ old('date_depart_souhaitee') }}"
+                                            min="{{ now()->addDay()->format('Y-m-d') }}">
+                                        @error('date_depart_souhaitee')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                        <small class="form-text text-muted">
+                                            Respectez le délai de préavis prévu dans votre contrat.
+                                        </small>
+                                    </div>
+                                </div>
 
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="font-weight-bold">
+                                            <i class="fas fa-calendar-alt mr-1 text-primary"></i>
+                                            Date d'embauche <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="date"
+                                            name="date_embauche"
+                                            class="form-control @error('date_embauche') is-invalid @enderror"
+                                            value="{{ old('date_embauche') }}"
+                                            max="{{ now()->format('Y-m-d') }}">
+                                        @error('date_embauche')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                        <small class="form-text text-muted">
+                                            Indiquez la date de votre embauche dans le cabinet.
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
 
                             {{-- Corps de la lettre --}}
                             <div class="form-group">
