@@ -36,7 +36,6 @@ class UserController extends Controller
             ->only(['create', 'store']);
 
         // Modification : Formulaire et Mise à jour
-        // Note : On peut aussi inclure 'assigner des rôles' ici si c'est géré dans l'update
         $this->middleware('permission:modifier les utilisateurs')
             ->only(['edit', 'update']);
 
@@ -69,17 +68,18 @@ class UserController extends Controller
         $user = User::with([
             'poste',
             'creator',
-            'roles', // Charger les rôles Spatie
-            'conges' => function ($query) {
-                $query->latest()->limit(5);
-            }
+            'roles',
+            'manager.roles',
+            'conges',            // Charger les congés
+            'certificats',       // Charger les certificats
+            'attestations',      // Charger les attestations
         ])->findOrFail($id);
 
         // Récupérer la liste des postes
         $postes = Poste::orderBy('intitule')->get();
 
-        // Calculer les statistiques
-        $statistiques = $this->calculerStatistiquesTemps($user);
+        // Calculer les statistiques documentaires
+        $statistiques = $this->calculerStatistiquesDocuments($user);
 
         return view('profile.show', compact('user', 'postes', 'statistiques'));
     }
@@ -89,9 +89,15 @@ class UserController extends Controller
      */
     public function create()
     {
-        $postes = Poste::orderBy('intitule')->get(); // Tous les postes pour le select
-        $roles = Role::orderBy('name')->get(); // Tous les postes pour le select
-        return view('pages.users.create', compact('postes', 'roles'));
+        $postes = Poste::orderBy('intitule')->get();
+        $roles = Role::orderBy('name')->get();
+        $managers = User::whereDoesntHave('roles', function($query) {
+                        $query->where('name', 'collaborateur');
+                    })
+                    ->where('id', '!=', auth()->id()) // Exclure l'utilisateur connecté
+                    ->orderBy('nom')
+                    ->get();
+        return view('pages.users.create', compact('postes', 'roles', 'managers'));
     }
 
     /**
@@ -112,6 +118,7 @@ class UserController extends Controller
             'role_id' => 'required|exists:roles,id',
             'is_active' => 'required|in:0,1',
             'photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'manager_id' => 'nullable|exists:users,id',
         ], [
             'nom.required' => 'Le nom est obligatoire',
             'prenom.required' => 'Le prénom est obligatoire',
@@ -131,7 +138,10 @@ class UserController extends Controller
             'photo.image' => 'Le fichier doit être une image',
             'photo.mimes' => 'La photo doit être au format JPG, JPEG ou PNG',
             'photo.max' => 'La photo ne doit pas dépasser 2 Mo',
+            'manager_id.exists' => "Le manager sélectionné n'existe pas",
         ]);
+
+        
 
         try {
             // Gestion de la photo
@@ -155,24 +165,20 @@ class UserController extends Controller
                 'is_active' => $validated['is_active'],
                 'photo' => $photoPath,
                 'created_by' => auth()->id(),
+                'manager_id' => $validated['manager_id'] ?? null,
             ]);
 
-            // 2. ASSIGNATION SPATIE (C'est ici que la magie opère)
-            // =========================================================
-            // On récupère l'objet Rôle depuis son ID
+            // 2. ASSIGNATION SPATIE
             $role = Role::findById($validated['role_id']);
-
-            $roleName = $role->name; // Récupérer le nom du rôle pour le message
-            // On l'assigne à l'utilisateur (remplit la table model_has_roles)
+            $roleName = $role->name;
             $user->assignRole($role);
 
-            // après User::create(...)
+            // Envoi de l'email de bienvenue
             Mail::to($user->email)->send(new UserCreatedMail($user, $roleName));
 
             Alert::success('Succès', 'Utilisateur créé avec succès !')->persistent('OK');
             return redirect()->back();
         } catch (Exception $e) {
-
             if (isset($photoPath) && Storage::disk('public')->exists($photoPath)) {
                 Storage::disk('public')->delete($photoPath);
             }
@@ -189,9 +195,15 @@ class UserController extends Controller
     {
         $postes = Poste::all();
         $roles = Role::all();
-        $roleActuel = $user->roles->first(); // Le rôle actuel de l'utilisateur
+        $roleActuel = $user->roles->first();
+        $managers = User::whereDoesntHave('roles', function($query) {
+                        $query->where('name', 'collaborateur');
+                    })
+                    ->where('id', '!=', $user->id) // Exclure l'utilisateur lui-même
+                    ->orderBy('nom')
+                    ->get();
 
-        return view('pages.users.edit', compact('user', 'postes', 'roles', 'roleActuel'));
+        return view('pages.users.edit', compact('user', 'postes', 'roles', 'roleActuel', 'managers'));
     }
 
     /**
@@ -212,6 +224,7 @@ class UserController extends Controller
             'password' => 'nullable|string|min:8|confirmed',
             'role_id' => 'required|exists:roles,id',
             'photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'manager_id' => 'nullable|exists:users,id',
         ], [
             'nom.required' => 'Le nom est obligatoire',
             'prenom.required' => 'Le prénom est obligatoire',
@@ -230,7 +243,9 @@ class UserController extends Controller
             'photo.image' => 'Le fichier doit être une image',
             'photo.mimes' => 'La photo doit être au format JPG, JPEG ou PNG',
             'photo.max' => 'La photo ne doit pas dépasser 2 Mo',
+            'manager_id.exists' => "Le manager sélectionné n'existe pas",
         ]);
+
         try {
             $oldPhotoPath = $user->photo;
             $newPhotoPath = null;
@@ -256,6 +271,7 @@ class UserController extends Controller
                 'telephone' => $validated['telephone'] ?? null,
                 'sexe' => $validated['sexe'] ?? null,
                 'is_active' => $validated['is_active'],
+                'manager_id' => $validated['manager_id'] ?? null,
             ];
 
             if ($newPhotoPath) {
@@ -268,78 +284,57 @@ class UserController extends Controller
 
             $user->update($updateData);
 
-            // =========================================================
-            // 2. SYNCHRONISATION SPATIE
-            // =========================================================
-            // On récupère le nouveau rôle choisi
+            // Synchronisation du rôle Spatie
             $role = Role::findById($validated['role_id']);
-
-            $roleName = $role->name; // Récupérer le nom du rôle pour le message
-            // On remplace tous les anciens rôles par celui-ci
+            $roleName = $role->name;
             $user->syncRoles($role);
 
-            // Envoyer un mail à l'utilisateur
+            // Envoi de l'email de mise à jour
             Mail::to($user->email)->send(new UserUpdateMail($user, auth()->user()->nom . ' ' . auth()->user()->prenom, $roleName));
+
             Alert::success('Succès', "L'utilisateur a été mis à jour avec succès.");
             return redirect()->route('users.index');
         } catch (\Exception $e) {
-
             if (isset($newPhotoPath) && Storage::disk('public')->exists($newPhotoPath)) {
                 Storage::disk('public')->delete($newPhotoPath);
             }
 
             Alert::error('Erreur', 'Erreur lors de la modification : ' . $e->getMessage());
-            return redirect()->back()
-                ->withInput();
+            return redirect()->back()->withInput();
         }
     }
 
     /**
      * Remove the specified resource from storage.
      */
-
     public function destroy(User $user)
     {
         try {
             // 1. Vérifier que l'utilisateur ne se supprime pas lui-même
             if (auth()->id() === $user->id) {
-                return redirect()->back()
-                    ->with('error', '❌ Vous ne pouvez pas supprimer votre propre compte !');
+                Alert::error('Erreur', '❌ Vous ne pouvez pas supprimer votre propre compte !');
+                return redirect()->back();
             }
 
-            // 2. Vérifier les permissions (optionnel - si vous avez un système de rôles)
-            // if (auth()->user()->role !== 'admin') {
-            //     return redirect()->back()
-            //         ->with('error', '❌ Vous n\'avez pas les permissions pour supprimer un utilisateur !');
-            // }
-
-            // 3. Sauvegarder les informations pour le message
+            // 2. Sauvegarder les informations pour le message
             $userName = $user->nom . ' ' . $user->prenom;
             $photoPath = $user->photo;
 
-            // 4. Gérer les relations avant suppression (si nécessaire)
-            // Exemple : réassigner les enregistrements créés par cet utilisateur
-            // User::where('created_by', $user->id)->update(['created_by' => null]);
-            // CadeauInvitation::where('user_id', $user->id)->update(['user_id' => null]);
-
-            // 5. Supprimer la photo de profil si elle existe
+            // 3. Supprimer la photo de profil si elle existe
             if ($photoPath && Storage::disk('public')->exists($photoPath)) {
                 Storage::disk('public')->delete($photoPath);
             }
 
-            // 6. Supprimer l'utilisateur de la base de données
+            // 4. Supprimer l'utilisateur de la base de données
             $user->delete();
 
-            // 7. Message de succès
+            // 5. Message de succès
             Alert::success('Succès', "✅ L'utilisateur {$userName} a été supprimé avec succès !");
             return redirect()->route('users.index');
         } catch (Exception $e) {
-            // Log de l'erreur
             Log::error('Erreur suppression utilisateur: ' . $e->getMessage());
             Log::error('Stack trace: ' . $e->getTraceAsString());
 
-            // Message d'erreur
-            // Retour avec message d'erreur
             Alert::error('Erreur', '❌ Erreur lors de la suppression : ' . $e->getMessage());
             return redirect()->back();
         }
@@ -357,25 +352,20 @@ class UserController extends Controller
     }
 
     /**
-     * Calculer les statistiques de temps pour un utilisateur
+     * Calculer les statistiques documentaires (congés, certificats, attestations)
      */
-    private function calculerStatistiquesTemps($user)
+    private function calculerStatistiquesDocuments($user)
     {
         $now = Carbon::now();
-        $debutMois = $now->copy()->startOfMonth();
-        $finMois = $now->copy()->endOfMonth();
-
-        // Statistiques globales
-        $totalConges = $user->conges()->count();
-
-        // Jours de congés pris cette année (calculé depuis les dates)
         $debutAnnee = $now->copy()->startOfYear();
+
+        // Congés pris cette année (approuvés)
         $congesApprouves = $user->conges()
+            ->where('statut', 'approuvé')
             ->whereBetween('date_debut', [$debutAnnee, $now])
             ->get();
 
-        // Calculer le total des jours de congé
-        $congesPris = $congesApprouves->sum(function ($conge) {
+        $congesPris = $congesApprouves->sum(function($conge) {
             if ($conge->date_debut && $conge->date_fin) {
                 return $conge->date_debut->diffInDays($conge->date_fin) + 1;
             }
@@ -384,13 +374,28 @@ class UserController extends Controller
 
         // Congés en attente
         $congesEnAttente = $user->conges()
+            ->where('statut', 'en_attente')
             ->count();
 
+        // Nombre total de certificats
+        $certificatsCount = $user->certificats()->count();
+
+        // Nombre total d'attestations
+        $attestationsCount = $user->attestations()->count();
+
+        // Dernier certificat
+        $dernierCertificat = $user->certificats()->latest()->first();
+
+        // Dernière attestation
+        $derniereAttestation = $user->attestations()->latest()->first();
 
         return [
-            'total_conges' => $totalConges,
-            'conges_pris' => $congesPris,
-            'conges_en_attente' => $congesEnAttente,
+            'conges_pris'          => $congesPris,
+            'conges_en_attente'    => $congesEnAttente,
+            'certificats_count'    => $certificatsCount,
+            'attestations_count'   => $attestationsCount,
+            'dernier_certificat'   => $dernierCertificat,
+            'derniere_attestation' => $derniereAttestation,
         ];
     }
 }

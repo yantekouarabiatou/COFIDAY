@@ -144,31 +144,36 @@
                     </div>
                 </div>
 
-                <!-- Dernière activité -->
-                @if($statistiques['derniere_entree'])
+                <!-- Dernier document (certificat ou attestation) -->
+                @if(isset($statistiques['dernier_certificat']) || isset($statistiques['derniere_attestation']))
                 <div class="card card-primary mt-4">
                     <div class="card-header">
-                        <h5><i class="fas fa-clock mr-2"></i>Dernière saisie</h5>
+                        <h5><i class="fas fa-file-alt mr-2"></i>Dernier document</h5>
                     </div>
                     <div class="card-body">
-                        <div class="text-center">
-                            <h4 class="text-info mb-2">
-                                {{ $statistiques['derniere_entree']->jour->format('d/m/Y') }}
-                            </h4>
-                            <p class="mb-1">
-                                @php
-                                    $heures_reelles_derniere = floor($statistiques['derniere_entree']->heures_reelles);
-                                    $minutes_reelles_derniere = round(($statistiques['derniere_entree']->heures_reelles - $heures_reelles_derniere) * 60);
-                                    $heures_theoriques_derniere = floor($statistiques['derniere_entree']->heures_theoriques);
-                                    $minutes_theoriques_derniere = round(($statistiques['derniere_entree']->heures_theoriques - $heures_theoriques_derniere) * 60);
-                                @endphp
-                                <strong>{{ $heures_reelles_derniere }}h{{ $minutes_reelles_derniere > 0 ? $minutes_reelles_derniere . 'min' : '' }}</strong>
-                                / {{ $heures_theoriques_derniere }}h{{ $minutes_theoriques_derniere > 0 ? $minutes_theoriques_derniere . 'min' : '' }}
-                            </p>
-                            <span class="badge badge-{{ $statistiques['derniere_entree']->statut == 'validé' ? 'success' : ($statistiques['derniere_entree']->statut == 'soumis' ? 'info' : 'warning') }}">
-                                {{ ucfirst($statistiques['derniere_entree']->statut) }}
-                            </span>
-                        </div>
+                        @if(isset($statistiques['dernier_certificat']))
+                            <div class="text-center">
+                                <i class="fas fa-file-medical fa-2x text-success mb-2"></i>
+                                <p class="mb-1">
+                                    <strong>Certificat</strong><br>
+                                    {{ $statistiques['dernier_certificat']->created_at->format('d/m/Y') }}
+                                </p>
+                                <a href="{{ route('demissions.show', $statistiques['dernier_certificat']->id) }}" class="btn btn-sm btn-outline-primary">
+                                    Voir le certificat
+                                </a>
+                            </div>
+                        @elseif(isset($statistiques['derniere_attestation']))
+                            <div class="text-center">
+                                <i class="fas fa-file-contract fa-2x text-info mb-2"></i>
+                                <p class="mb-1">
+                                    <strong>Attestation de travail</strong><br>
+                                    {{ $statistiques['derniere_attestation']->created_at->format('d/m/Y') }}
+                                </p>
+                                <a href="{{ route('attestations.show', $statistiques['derniere_attestation']->id) }}" class="btn btn-sm btn-outline-primary">
+                                    Voir l'attestation
+                                </a>
+                            </div>
+                        @endif
                     </div>
                 </div>
                 @endif
@@ -176,121 +181,17 @@
 
             <!-- Colonne droite: Statistiques et activités -->
             <div class="col-lg-8">
-                <!-- Statistiques de temps -->
+                <!-- Statistiques globales (congés, certificats, attestations) -->
                 <div class="row mb-4">
-                    <!-- Heures du mois -->
-                    <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
-                        <div class="card card-statistic-2">
-                            <div class="card-icon bg-primary">
-                                <i class="fas fa-clock"></i>
-                            </div>
-                            <div class="card-wrap">
-                                @php
-                                    $heures_mois = floor($statistiques['heures_mois_en_cours']);
-                                    $minutes_mois = round(($statistiques['heures_mois_en_cours'] - $heures_mois) * 60);
-                                @endphp
-                                <div class="card-header"><h6>Heures ce mois</h6></div>
-                                <div class="card-body">
-                                    <h4>{{ $heures_mois }}h{{ $minutes_mois > 0 ? ' ' . $minutes_mois . 'min' : '' }}</h4>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Taux de réalisation -->
-                    <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
-                        <div class="card card-statistic-2">
-                            <div class="card-icon {{ $statistiques['taux_realisation'] >= 100 ? 'bg-success' : 'bg-warning' }}">
-                                <i class="fas fa-percentage"></i>
-                            </div>
-                            <div class="card-wrap">
-                                <div class="card-header"><h6>Taux réalisation</h6></div>
-                                <div class="card-body h4">{{ $statistiques['taux_realisation'] }}%</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Écart heures -->
-                    <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
-                        <div class="card card-statistic-2">
-                            <div class="card-icon {{ $statistiques['ecart_heures'] >= 0 ? 'bg-success' : 'bg-danger' }}">
-                                <i class="fas fa-balance-scale"></i>
-                            </div>
-                            <div class="card-wrap">
-                                <div class="card-header"><h6>Écart heures</h6></div>
-                                <div class="card-body h4">
-                                    @php
-                                        $heures_ecart = floor(abs($statistiques['ecart_heures']));
-                                        $minutes_ecart = round((abs($statistiques['ecart_heures']) - $heures_ecart) * 60);
-                                        $signe_ecart = $statistiques['ecart_heures'] > 0 ? '+' : ($statistiques['ecart_heures'] < 0 ? '-' : '');
-                                    @endphp
-                                    {{ $signe_ecart }}{{ $heures_ecart }}h{{ $minutes_ecart > 0 ? $minutes_ecart . 'min' : '' }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Journées validées -->
-                    <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
-                        <div class="card card-statistic-2">
-                            <div class="card-icon bg-success">
-                                <i class="fas fa-check-circle"></i>
-                            </div>
-                            <div class="card-wrap">
-                                <div class="card-header"><h6>Journées validées</h6></div>
-                                <div class="card-body h4">{{ $statistiques['journees_validees'] }}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Journées en attente -->
-                    <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
-                        <div class="card card-statistic-2">
-                            <div class="card-icon bg-info">
-                                <i class="fas fa-hourglass-half"></i>
-                            </div>
-                            <div class="card-wrap">
-                                <div class="card-header"><h6>En attente</h6></div>
-                                <div class="card-body h4">{{ $statistiques['journees_en_attente'] }}</div>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Congés pris -->
                     <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
                         <div class="card card-statistic-2">
-                            <div class="card-icon bg-warning">
+                            <div class="card-icon bg-primary">
                                 <i class="fas fa-umbrella-beach"></i>
                             </div>
                             <div class="card-wrap">
                                 <div class="card-header"><h6>Congés pris</h6></div>
-                                <div class="card-body h4">{{ $statistiques['conges_pris'] }} jours</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Total saisies -->
-                    <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
-                        <div class="card card-statistic-2">
-                            <div class="card-icon bg-secondary">
-                                <i class="fas fa-calendar-alt"></i>
-                            </div>
-                            <div class="card-wrap">
-                                <div class="card-header"><h6>Total journées</h6></div>
-                                <div class="card-body h4">{{ $statistiques['total_daily_entries'] }}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Total TimeEntries -->
-                    <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
-                        <div class="card card-statistic-2">
-                            <div class="card-icon bg-info">
-                                <i class="fas fa-tasks"></i>
-                            </div>
-                            <div class="card-wrap">
-                                <div class="card-header"><h6>Saisies temps</h6></div>
-                                <div class="card-body h4">{{ $statistiques['total_time_entries'] }}</div>
+                                <div class="card-body h4">{{ $statistiques['conges_pris'] ?? 0 }} jours</div>
                             </div>
                         </div>
                     </div>
@@ -298,151 +199,88 @@
                     <!-- Congés en attente -->
                     <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
                         <div class="card card-statistic-2">
-                            <div class="card-icon bg-danger">
-                                <i class="fas fa-clipboard-list"></i>
+                            <div class="card-icon bg-warning">
+                                <i class="fas fa-hourglass-half"></i>
                             </div>
                             <div class="card-wrap">
                                 <div class="card-header"><h6>Congés en attente</h6></div>
-                                <div class="card-body h4">{{ $statistiques['conges_en_attente'] }}</div>
+                                <div class="card-body h4">{{ $statistiques['conges_en_attente'] ?? 0 }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Certificats délivrés -->
+                    <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
+                        <div class="card card-statistic-2">
+                            <div class="card-icon bg-success">
+                                <i class="fas fa-file-medical"></i>
+                            </div>
+                            <div class="card-wrap">
+                                <div class="card-header"><h6>Certificats délivrés</h6></div>
+                                <div class="card-body h4">{{ $statistiques['certificats_count'] ?? 0 }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Attestations de travail -->
+                    <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
+                        <div class="card card-statistic-2">
+                            <div class="card-icon bg-info">
+                                <i class="fas fa-file-contract"></i>
+                            </div>
+                            <div class="card-wrap">
+                                <div class="card-header"><h6>Attestations de travail</h6></div>
+                                <div class="card-body h4">{{ $statistiques['attestations_count'] ?? 0 }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Total documents (optionnel) -->
+                    <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
+                        <div class="card card-statistic-2">
+                            <div class="card-icon bg-secondary">
+                                <i class="fas fa-folder-open"></i>
+                            </div>
+                            <div class="card-wrap">
+                                <div class="card-header"><h6>Total documents</h6></div>
+                                <div class="card-body h4">
+                                    {{ ($statistiques['certificats_count'] ?? 0) + ($statistiques['attestations_count'] ?? 0) }}
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Activités récentes -->
+                <!-- Activités récentes : onglets Congés / Certificats / Attestations -->
                 <div class="card">
                     <div class="card-header">
-                        <h4><i class="fas fa-history mr-2"></i>Activités récentes</h4>
+                        <h4><i class="fas fa-history mr-2"></i>Documents et demandes récentes</h4>
                     </div>
                     <div class="card-body">
                         <ul class="nav nav-tabs" id="activityTab" role="tablist">
                             <li class="nav-item">
-                                <a class="nav-link active" id="daily-tab" data-toggle="tab" href="#daily" role="tab">
-                                    <i class="fas fa-calendar-day mr-1"></i> Journées
-                                    <span class="badge badge-primary ml-2">{{ $user->dailyEntries->count() }}</span>
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" id="time-tab" data-toggle="tab" href="#time" role="tab">
-                                    <i class="fas fa-clock mr-1"></i> Saisies temps
-                                    <span class="badge badge-info ml-2">{{ $user->timeEntries->count() }}</span>
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" id="conges-tab" data-toggle="tab" href="#conges" role="tab">
+                                <a class="nav-link active" id="conges-tab" data-toggle="tab" href="#conges" role="tab">
                                     <i class="fas fa-umbrella-beach mr-1"></i> Congés
-                                    <span class="badge badge-warning ml-2">{{ $user->conges->count() }}</span>
+                                    <span class="badge badge-primary ml-2">{{ $user->conges->count() }}</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="certificats-tab" data-toggle="tab" href="#certificats" role="tab">
+                                    <i class="fas fa-file-medical mr-1"></i> Certificats
+                                    <span class="badge badge-success ml-2">{{ $user->certificats->count() ?? 0 }}</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="attestations-tab" data-toggle="tab" href="#attestations" role="tab">
+                                    <i class="fas fa-file-contract mr-1"></i> Attestations
+                                    <span class="badge badge-info ml-2">{{ $user->attestations->count() ?? 0 }}</span>
                                 </a>
                             </li>
                         </ul>
 
                         <div class="tab-content mt-4">
-                            <!-- Onglet Journées -->
-                            <div class="tab-pane fade show active" id="daily" role="tabpanel">
-                                @if($user->dailyEntries->count() > 0)
-                                    <div class="table-responsive">
-                                        <table class="table table-striped table-hover">
-                                            <thead>
-                                                <tr>
-                                                    <th>Date</th>
-                                                    <th>Heures réelles</th>
-                                                    <th>Heures théoriques</th>
-                                                    <th>Écart</th>
-                                                    <th>Statut</th>
-                                                    <th>Actions</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach($user->dailyEntries as $entry)
-                                                    @php
-                                                        $heures_reelles = floor($entry->heures_reelles);
-                                                        $minutes_reelles = round(($entry->heures_reelles - $heures_reelles) * 60);
-                                                        $heures_theoriques = floor($entry->heures_theoriques);
-                                                        $minutes_theoriques = round(($entry->heures_theoriques - $heures_theoriques) * 60);
-                                                        $heures_ecart_entry = floor(abs($entry->ecart));
-                                                        $minutes_ecart_entry = round((abs($entry->ecart) - $heures_ecart_entry) * 60);
-                                                        $signe_ecart_entry = $entry->ecart > 0 ? '+' : ($entry->ecart < 0 ? '-' : '');
-                                                    @endphp
-                                                    <tr>
-                                                        <td>{{ $entry->jour->format('d/m/Y') }}</td>
-                                                        <td><strong>{{ $heures_reelles }}h{{ $minutes_reelles > 0 ? $minutes_reelles . 'min' : '' }}</strong></td>
-                                                        <td>{{ $heures_theoriques }}h{{ $minutes_theoriques > 0 ? $minutes_theoriques . 'min' : '' }}</td>
-                                                        <td>
-                                                            <span class="badge badge-{{ $entry->ecart >= 0 ? 'success' : 'danger' }}">
-                                                                {{ $signe_ecart_entry }}{{ $heures_ecart_entry }}h{{ $minutes_ecart_entry > 0 ? $minutes_ecart_entry . 'min' : '' }}
-                                                            </span>
-                                                        </td>
-                                                        <td>{!! $entry->statut_badge !!}</td>
-                                                        <td>
-                                                            <a href="{{ route('daily-entries.show', $entry->id) }}"
-                                                               class="btn btn-sm btn-info" title="Voir détails">
-                                                                <i class="fas fa-eye"></i>
-                                                            </a>
-                                                        </td>
-                                                    </tr>
-                                                @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                @else
-                                    <div class="text-center text-muted py-4">
-                                        <i class="fas fa-calendar-times fa-3x mb-3"></i>
-                                        <p>Aucune journée enregistrée</p>
-                                    </div>
-                                @endif
-                            </div>
-
-                            <!-- Onglet Saisies temps -->
-                            <div class="tab-pane fade" id="time" role="tabpanel">
-                                @if($user->timeEntries->count() > 0)
-                                    <div class="table-responsive">
-                                        <table class="table table-striped table-hover">
-                                            <thead>
-                                                <tr>
-                                                    <th>Date</th>
-                                                    <th>Dossier</th>
-                                                    <th>Heures</th>
-                                                    <th>Plage horaire</th>
-                                                    <th>Travaux</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach($user->timeEntries as $timeEntry)
-                                                    @php
-                                                        $heures_reelles_time = floor($timeEntry->heures_reelles);
-                                                        $minutes_reelles_time = round(($timeEntry->heures_reelles - $heures_reelles_time) * 60);
-                                                    @endphp
-                                                    <tr>
-                                                        <td>{{ $timeEntry->dailyEntry->jour->format('d/m/Y') }}</td>
-                                                        <td>
-                                                            @if($timeEntry->dossier)
-                                                                <a href="{{ route('dossiers.show', $timeEntry->dossier_id) }}">
-                                                                    {{ $timeEntry->dossier->nom }}
-                                                                </a>
-                                                            @else
-                                                                <span class="text-muted">-</span>
-                                                            @endif
-                                                        </td>
-                                                        <td><strong>{{ $heures_reelles_time }}h{{ $minutes_reelles_time > 0 ? $minutes_reelles_time . 'min' : '' }}</strong></td>
-                                                        <td>{{ $timeEntry->plage }}</td>
-                                                        <td>
-                                                            <small>{{ Str::limit($timeEntry->travaux, 50) }}</small>
-                                                        </td>
-                                                    </tr>
-                                                @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                @else
-                                    <div class="text-center text-muted py-4">
-                                        <i class="fas fa-clock fa-3x mb-3"></i>
-                                        <p>Aucune saisie de temps enregistrée</p>
-                                    </div>
-                                @endif
-                            </div>
-
                             <!-- Onglet Congés -->
-                            <div class="tab-pane fade" id="conges" role="tabpanel">
+                            <div class="tab-pane fade show active" id="conges" role="tabpanel">
                                 @if($user->conges->count() > 0)
                                     <div class="table-responsive">
                                         <table class="table table-striped table-hover">
@@ -459,12 +297,12 @@
                                             <tbody>
                                                 @foreach($user->conges as $conge)
                                                     <tr>
-                                                        <td>{{ ucfirst($conge->typeConge->libelle) }}</td>
+                                                        <td>{{ ucfirst($conge->typeConge->libelle ?? $conge->type) }}</td>
                                                         <td>{{ $conge->date_debut->format('d/m/Y') }}</td>
                                                         <td>{{ $conge->date_fin->format('d/m/Y') }}</td>
                                                         <td><strong>{{ $conge->nombre_jours }}</strong></td>
                                                         <td>
-                                                            <span class="badge badge-{{ $conge->statut == 'approuvé' ? 'success' : ($conge->statut == 'en_attente' ? 'warning' : 'success') }}">
+                                                            <span class="badge badge-{{ $conge->statut == 'approuvé' ? 'success' : ($conge->statut == 'en_attente' ? 'warning' : 'secondary') }}">
                                                                 {{ ucfirst($conge->statut) }}
                                                             </span>
                                                         </td>
@@ -482,7 +320,95 @@
                                 @else
                                     <div class="text-center text-muted py-4">
                                         <i class="fas fa-umbrella-beach fa-3x mb-3"></i>
-                                        <p>Aucun congé enregistré</p>
+                                        <p>Aucune demande de congé</p>
+                                    </div>
+                                @endif
+                            </div>
+
+                            <!-- Onglet Certificats -->
+                            <div class="tab-pane fade" id="certificats" role="tabpanel">
+                                @if(isset($user->certificats) && $user->certificats->count() > 0)
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Référence</th>
+                                                    <th>Date d'émission</th>
+                                                    <th>Type</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach($user->certificats as $certificat)
+                                                    <tr>
+                                                        <td>{{ $certificat->reference ?? 'N°'.$certificat->id }}</td>
+                                                        <td>{{ $certificat->date_generation_certificat->format('d/m/Y') }}</td>
+                                                        <td>{{ ucfirst($certificat->type_certificat ?? 'Médical') }}</td>
+                                                        <td>
+                                                            <a href="{{ route('demissions.show', $certificat->id) }}"
+                                                               class="btn btn-sm btn-info">
+                                                                <i class="fas fa-eye"></i> Voir
+                                                            </a>
+                                                            @if($certificat->fichier)
+                                                                <a href="{{ asset('storage/'.$certificat->fichier) }}"
+                                                                   class="btn btn-sm btn-secondary" download>
+                                                                    <i class="fas fa-download"></i>
+                                                                </a>
+                                                            @endif
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                @else
+                                    <div class="text-center text-muted py-4">
+                                        <i class="fas fa-file-medical fa-3x mb-3"></i>
+                                        <p>Aucun certificat enregistré</p>
+                                    </div>
+                                @endif
+                            </div>
+
+                            <!-- Onglet Attestations -->
+                            <div class="tab-pane fade" id="attestations" role="tabpanel">
+                                @if(isset($user->attestations) && $user->attestations->count() > 0)
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Référence</th>
+                                                    <th>Date d'émission</th>
+                                                    <th>Motif</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach($user->attestations as $attestation)
+                                                    <tr>
+                                                        <td>{{ $attestation->reference ?? 'N°'.$attestation->id }}</td>
+                                                        <td>{{ $attestation->date_emission->format('d/m/Y') }}</td>
+                                                        <td>{{ ucfirst($attestation->motif ?? 'Travail') }}</td>
+                                                        <td>
+                                                            <a href="{{ route('attestations.show', $attestation->id) }}"
+                                                               class="btn btn-sm btn-info">
+                                                                <i class="fas fa-eye"></i> Voir
+                                                            </a>
+                                                            @if($attestation->fichier)
+                                                                <a href="{{ asset('storage/'.$attestation->fichier) }}"
+                                                                   class="btn btn-sm btn-secondary" download>
+                                                                    <i class="fas fa-download"></i>
+                                                                </a>
+                                                            @endif
+                                                         </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                @else
+                                    <div class="text-center text-muted py-4">
+                                        <i class="fas fa-file-contract fa-3x mb-3"></i>
+                                        <p>Aucune attestation de travail</p>
                                     </div>
                                 @endif
                             </div>
@@ -502,11 +428,11 @@
                             </a>
 
                             @if(auth()->user()->hasRole('admin|super-admin'))
-                                <a href="{{ route('user-profile.export-temps', ['id' => $user->id, 'format' => 'pdf']) }}"
+                                <a href="{{ route('user-profile.export-documents', ['id' => $user->id, 'format' => 'pdf']) }}"
                                    class="btn btn-danger">
-                                    <i class="fas fa-file-pdf"></i> Export PDF
+                                    <i class="fas fa-file-pdf"></i> Export PDF (documents)
                                 </a>
-                                <a href="{{ route('user-profile.export-temps', ['id' => $user->id, 'format' => 'excel']) }}"
+                                <a href="{{ route('user-profile.export-documents', ['id' => $user->id, 'format' => 'excel']) }}"
                                    class="btn btn-success">
                                     <i class="fas fa-file-excel"></i> Export Excel
                                 </a>
@@ -541,17 +467,6 @@
 
         // Initialisation des tooltips
         $('[data-toggle="tooltip"]').tooltip();
-
-        // Animation du pourcentage de réalisation
-        const tauxElement = $('.card-statistic-2 .h4:contains("%")');
-        if (tauxElement.length > 0) {
-            const taux = parseFloat(tauxElement.text());
-            if (taux >= 100) {
-                tauxElement.closest('.card-statistic-2').addClass('border-success');
-            } else if (taux >= 80) {
-                tauxElement.closest('.card-statistic-2').addClass('border-warning');
-            }
-        }
     });
 </script>
 @endsection
@@ -581,14 +496,6 @@
 
     .table td {
         vertical-align: middle;
-    }
-
-    .border-success {
-        border-left: 4px solid #28a745 !important;
-    }
-
-    .border-warning {
-        border-left: 4px solid #ffc107 !important;
     }
 </style>
 @endsection

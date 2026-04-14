@@ -210,63 +210,63 @@ class CongeController extends Controller
     {
         $user  = Auth::user();
         $isAdmin = $user->hasRole('admin') || $user->hasRole('manager');
- 
+
         $query = DemandeConge::with(['user', 'typeConge', 'validePar']);
- 
+
         // Restriction de base : non-admin ne voit que ses propres demandes
         if (!$isAdmin) {
             $query->where('user_id', $user->id);
         }
- 
+
         // ── Filtres server-side ──────────────────────────────────────────────
- 
+
         // Type de congé
         if ($request->filled('type_conge_id')) {
             $query->where('type_conge_id', $request->type_conge_id);
         }
- 
+
         // Statut
         if ($request->filled('statut')) {
             $query->where('statut', $request->statut);
         }
- 
+
         // Collaborateur (admin / manager uniquement)
         if ($request->filled('user_id') && $isAdmin) {
             $query->where('user_id', $request->user_id);
         }
- 
+
         // Recherche texte libre (motif)
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('motif', 'like', "%{$search}%")
-                  ->orWhereHas('user', function ($q2) use ($search) {
-                      $q2->where('prenom', 'like', "%{$search}%")
-                         ->orWhere('nom',   'like', "%{$search}%");
-                  });
+                    ->orWhereHas('user', function ($q2) use ($search) {
+                        $q2->where('prenom', 'like', "%{$search}%")
+                            ->orWhere('nom',   'like', "%{$search}%");
+                    });
             });
         }
- 
+
         // Date début (à partir de)
         if ($request->filled('date_debut')) {
             $query->whereDate('date_debut', '>=', $request->date_debut);
         }
- 
+
         // Date fin (jusqu'à)
         if ($request->filled('date_fin')) {
             $query->whereDate('date_fin', '<=', $request->date_fin);
         }
- 
+
         // ── Statistiques (sur la même base sans pagination) ──────────────────
         $statsQuery    = clone $query;
         $totalDemandes = (clone $statsQuery)->count();
         $enAttente     = (clone $statsQuery)->where('statut', 'en_attente')->count();
         $approuves     = (clone $statsQuery)->where('statut', 'approuve')->count();
         $refuses       = (clone $statsQuery)->where('statut', 'refuse')->count();
- 
+
         $demandes    = $query->latest()->paginate(20)->withQueryString();
         $typesConges = TypeConge::where('actif', true)->get();
- 
+
         // Liste des collaborateurs pour le select (admin / manager uniquement)
         $users = collect();
         if ($isAdmin) {
@@ -274,7 +274,7 @@ class CongeController extends Controller
                 ->orderBy('prenom')
                 ->get(['id', 'prenom', 'nom']);
         }
- 
+
         return view('pages.conges.index', compact(
             'demandes',
             'typesConges',
@@ -290,6 +290,8 @@ class CongeController extends Controller
     // =========================================================================
     //  CREATE
     // =========================================================================
+
+    // Dans CongeController.php, méthode create()
 
     public function create()
     {
@@ -307,21 +309,18 @@ class CongeController extends Controller
             $solde = $this->creerSoldeInitial($user->id, $anneeCourante);
         }
 
-        // Total disponible toutes années confondues
         $totalJoursDisponibles = $this->getTotalJoursDisponibles($user->id);
+        $soldesParAnnee        = $this->getSoldesDisponibles($user->id);
 
-        // Détail par année pour affichage dans la vue
-        $soldesParAnnee = $this->getSoldesDisponibles($user->id);
-
-        $users = User::select('id', 'nom', 'prenom', 'email')
-            ->orderBy('nom')->orderBy('prenom')->get();
+        // Récupérer le supérieur hiérarchique (manager) de l'utilisateur
+        $manager = $user->manager; // relation définie dans User
 
         return view('pages.conges.create', compact(
             'typesConges',
             'solde',
-            'users',
             'totalJoursDisponibles',
-            'soldesParAnnee'
+            'soldesParAnnee',
+            'manager' // on passe le manager au lieu de $users
         ));
     }
 
@@ -347,6 +346,14 @@ class CongeController extends Controller
                 'fichier_justificatif'       => 'nullable|file|max:5120|mimes:pdf,jpg,jpeg,png,doc,docx',
                 'demande_attestation'        => 'nullable|boolean',
             ]);
+
+            $user = Auth::user();
+
+            // Vérifier que le supérieur sélectionné est bien le manager de l'utilisateur
+            if ($request->superieur_hierarchique_id != $user->manager_id) {
+                Alert::error('Erreur', 'Le supérieur hiérarchique ne correspond pas à votre manager.');
+                return back()->withInput();
+            }
 
             $dateDebut   = Carbon::parse($request->date_debut);
             $dateFin     = Carbon::parse($request->date_fin);
@@ -758,7 +765,6 @@ class CongeController extends Controller
 
                 Mail::to($grandSuperieur->email)
                     ->send(new RequestFinalValidationMail($demande, $user, $grandSuperieur, $request->commentaire));
-
             } else {
                 Mail::to($demandeur->email)->send(new LeaveRejectedMail($demande, $request->commentaire));
             }
@@ -769,7 +775,6 @@ class CongeController extends Controller
 
             Alert::success('Succès', $message);
             return redirect()->route('conges.index');
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erreur traitement congé: ' . $e->getMessage());
@@ -1253,8 +1258,8 @@ class CongeController extends Controller
 
                 // ── Numéro de note ────────────────────────────────────────────────
                 $numeroNote = str_pad($demande->id, 3, '0', STR_PAD_LEFT)
-                            . '/COFIMA/SA/JCA/GAT/'
-                            . now()->year;
+                    . '/COFIMA/SA/JCA/GAT/'
+                    . now()->year;
 
                 // Mail::to($demande->user->email)
                 //     ->send(new LeaveApprovedMail(

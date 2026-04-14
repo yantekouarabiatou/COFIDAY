@@ -61,8 +61,15 @@
 
                         <form action="{{ route('demissions.store') }}" method="POST" id="demission-form">
                             @csrf
-
-                            {{-- Date de départ souhaitée --}}
+                            <div class="row d-flex align-items-center mb-4 ">
+                                <div class="col-md-8">
+                                    <h5 class="mb-0"><i class="fas fa-info-circle"></i> Informations sur la démission</h5>
+                                </div>
+                                <div class="col-md-4 text-md-right">
+                                    <span class="badge badge-info p-2">
+                                        <i class="fas fa-info"></i> Veuillez remplir tous les champs obligatoires
+                                    </span>
+                                </div>
                             <div class="form-group">
                                 <label class="font-weight-bold">
                                     <i class="fas fa-calendar-day mr-1 text-danger"></i>
@@ -101,6 +108,8 @@
                                     Indiquez la date de votre embauche dans le cabinet.
                                 </small>
                             </div>
+                        </div>                            {{-- Date de départ souhaitée --}}
+
 
                             {{-- Corps de la lettre --}}
                             <div class="form-group">

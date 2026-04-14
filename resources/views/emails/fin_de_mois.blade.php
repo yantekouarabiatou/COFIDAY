@@ -113,7 +113,7 @@
 
             <p style="margin-top:20px;">
                 Merci de votre diligence,<br>
-                <strong>COFTIME</strong>
+                <strong>COFIDAY</strong>
             </p>
         </div>
     </div>

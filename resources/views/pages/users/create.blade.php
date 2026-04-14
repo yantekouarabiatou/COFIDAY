@@ -43,7 +43,7 @@
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <label>Nom <span class="text-danger">*</span></label>
-                                            <input type="text" name="nom" class="form-control @error('nom') is-invalid @enderror" 
+                                            <input type="text" name="nom" class="form-control @error('nom') is-invalid @enderror"
                                                 value="{{ old('nom') }}" placeholder="Ex: Dupont" required autofocus>
                                             @error('nom')
                                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -54,7 +54,7 @@
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <label>Prénom <span class="text-danger">*</span></label>
-                                            <input type="text" name="prenom" class="form-control @error('prenom') is-invalid @enderror" 
+                                            <input type="text" name="prenom" class="form-control @error('prenom') is-invalid @enderror"
                                                 value="{{ old('prenom') }}" placeholder="Ex: Jean" required>
                                             @error('prenom')
                                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -67,7 +67,7 @@
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <label>Nom d'utilisateur <span class="text-danger">*</span></label>
-                                            <input type="text" name="username" class="form-control @error('username') is-invalid @enderror" 
+                                            <input type="text" name="username" class="form-control @error('username') is-invalid @enderror"
                                                 value="{{ old('username') }}" placeholder="Ex: jean.dupont" required>
                                             @error('username')
                                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -81,7 +81,7 @@
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <label>Email <span class="text-danger">*</span></label>
-                                            <input type="email" name="email" class="form-control @error('email') is-invalid @enderror" 
+                                            <input type="email" name="email" class="form-control @error('email') is-invalid @enderror"
                                                 value="{{ old('email') }}" placeholder="exemple@email.com" required>
                                             @error('email')
                                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -111,7 +111,7 @@
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <label>Téléphone</label>
-                                            <input type="tel" name="telephone" class="form-control @error('telephone') is-invalid @enderror" 
+                                            <input type="tel" name="telephone" class="form-control @error('telephone') is-invalid @enderror"
                                                 value="{{ old('telephone') }}" placeholder="+229 XX XX XX XX XX">
                                             @error('telephone')
                                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -217,11 +217,34 @@
                                             </select>
                                         </div>
                                     </div>
+
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Supérieur hiérarchique</label>
+                                            <select name="manager_id" class="form-control select2 @error('superieur_id') is-invalid @enderror">
+                                                <option value="">-- Aucun supérieur --</option>
+                                                @foreach($managers as $manager)
+                                                    <option value="{{ $manager->id }}" {{ old('superieur_id') == $manager->id ? 'selected' : '' }}>
+                                                        {{ $manager->nom }} {{ $manager->prenom }}
+                                                        @if($manager->roles->isNotEmpty())
+                                                            — {{ $manager->roles->first()->name }}
+                                                        @endif
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                            @error('superieur_id')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                            <small class="text-muted">
+                                                <i class="fas fa-sitemap"></i> Responsable direct de cet utilisateur
+                                            </small>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div class="form-group">
                                     <label>Photo de profil</label>
-                                    <input type="file" name="photo" class="form-control @error('photo') is-invalid @enderror" 
+                                    <input type="file" name="photo" class="form-control @error('photo') is-invalid @enderror"
                                         accept=".jpg,.jpeg,.png">
                                     @error('photo')
                                         <div class="invalid-feedback">{{ $message }}</div>
@@ -233,7 +256,7 @@
 
                                 <!-- <div class="form-group">
                                     <label>Notes / Observations</label>
-                                    <textarea name="notes" class="form-control" rows="3" 
+                                    <textarea name="notes" class="form-control" rows="3"
                                         placeholder="Informations complémentaires...">{{ old('notes') }}</textarea>
                                 </div> -->
 

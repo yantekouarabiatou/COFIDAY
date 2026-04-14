@@ -46,7 +46,7 @@
                                     <div class="col-12">
                                         <div class="text-center">
                                             <label class="d-block">Photo actuelle</label>
-                                            <img src="{{ Storage::url($user->photo) }}" alt="{{ $user->nom }}" 
+                                            <img src="{{ Storage::url($user->photo) }}" alt="{{ $user->nom }}"
                                                 class="rounded-circle" style="width: 100px; height: 100px; object-fit: cover;">
                                         </div>
                                     </div>
@@ -57,7 +57,7 @@
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <label>Nom <span class="text-danger">*</span></label>
-                                            <input type="text" name="nom" class="form-control @error('nom') is-invalid @enderror" 
+                                            <input type="text" name="nom" class="form-control @error('nom') is-invalid @enderror"
                                                 value="{{ old('nom', $user->nom) }}" placeholder="Ex: Dupont" required autofocus>
                                             @error('nom')
                                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -68,7 +68,7 @@
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <label>Prénom <span class="text-danger">*</span></label>
-                                            <input type="text" name="prenom" class="form-control @error('prenom') is-invalid @enderror" 
+                                            <input type="text" name="prenom" class="form-control @error('prenom') is-invalid @enderror"
                                                 value="{{ old('prenom', $user->prenom) }}" placeholder="Ex: Jean" required>
                                             @error('prenom')
                                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -81,7 +81,7 @@
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <label>Nom d'utilisateur <span class="text-danger">*</span></label>
-                                            <input type="text" name="username" class="form-control @error('username') is-invalid @enderror" 
+                                            <input type="text" name="username" class="form-control @error('username') is-invalid @enderror"
                                                 value="{{ old('username', $user->username) }}" placeholder="Ex: jean.dupont" required>
                                             @error('username')
                                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -95,7 +95,7 @@
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <label>Email <span class="text-danger">*</span></label>
-                                            <input type="email" name="email" class="form-control @error('email') is-invalid @enderror" 
+                                            <input type="email" name="email" class="form-control @error('email') is-invalid @enderror"
                                                 value="{{ old('email', $user->email) }}" placeholder="exemple@email.com" required>
                                             @error('email')
                                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -111,7 +111,7 @@
                                             <select name="poste_id" class="form-control select2 @error('poste_id') is-invalid @enderror" required>
                                                 <option value="">-- Choisir un poste --</option>
                                                 @foreach($postes as $poste)
-                                                    <option value="{{ $poste->id }}" 
+                                                    <option value="{{ $poste->id }}"
                                                         {{ old('poste_id', $user->poste_id) == $poste->id ? 'selected' : '' }}>
                                                         {{ $poste->libelle ?? $poste->intitule }}
                                                     </option>
@@ -125,7 +125,7 @@
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <label>Téléphone</label>
-                                            <input type="tel" name="telephone" class="form-control @error('telephone') is-invalid @enderror" 
+                                            <input type="tel" name="telephone" class="form-control @error('telephone') is-invalid @enderror"
                                                 value="{{ old('telephone', $user->telephone) }}" placeholder="+229 XX XX XX XX XX">
                                             @error('telephone')
                                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -213,7 +213,7 @@
                                             <select name="role_id" class="form-control select2 @error('role_id') is-invalid @enderror">
                                                 <option value="">-- Choisir un rôle --</option>
                                                 @foreach($roles as $role)
-                                                    <option value="{{ $role->id }}" 
+                                                    <option value="{{ $role->id }}"
                                                         {{ $roleActuel?->id == $role->id ? 'selected' : '' }}>
                                                         {{ $role->name }}
                                                     </option>
@@ -238,12 +238,37 @@
                                             @enderror
                                         </div>
                                     </div>
+
+                                    {{-- Supérieur hiérarchique --}}
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Supérieur hiérarchique</label>
+                                            <select name="manager_id" class="form-control select2 @error('manager_id') is-invalid @enderror">
+                                                <option value="">-- Aucun supérieur --</option>
+                                                @foreach($managers as $manager)
+                                                    <option value="{{ $manager->id }}"
+                                                        {{ old('manager_id', $user->manager_id) == $manager->id ? 'selected' : '' }}>
+                                                        {{ $manager->nom }} {{ $manager->prenom }}
+                                                        @if($manager->roles->isNotEmpty())
+                                                            — {{ $manager->roles->first()->name }}
+                                                        @endif
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                            @error('manager_id')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                            <small class="text-muted">
+                                                <i class="fas fa-sitemap"></i> Responsable direct de cet utilisateur
+                                            </small>
+                                        </div>
+                                    </div>
                                 </div>
 
 
                                 <div class="form-group">
                                     <label>Photo de profil</label>
-                                    <input type="file" name="photo" class="form-control @error('photo') is-invalid @enderror" 
+                                    <input type="file" name="photo" class="form-control @error('photo') is-invalid @enderror"
                                         accept=".jpg,.jpeg,.png" id="photo-input">
                                     @error('photo')
                                         <div class="invalid-feedback">{{ $message }}</div>
@@ -256,7 +281,7 @@
                                 <!-- Preview de la nouvelle photo -->
                                 <div id="photo-preview" class="mb-3" style="display: none;">
                                     <label class="d-block">Aperçu de la nouvelle photo</label>
-                                    <img id="preview-image" src="" alt="Preview" 
+                                    <img id="preview-image" src="" alt="Preview"
                                         class="rounded-circle" style="width: 100px; height: 100px; object-fit: cover;">
                                 </div>
 
@@ -270,14 +295,14 @@
                                     <button type="submit" class="btn btn-primary btn-lg px-5">
                                         <i class="fas fa-save"></i> Mettre à jour
                                     </button>
-                                    @endcan     
-                            </div>                                                                            
+                                    @endcan
+                            </div>
                         </form>
-                    </div>  
-                </div>  
-            </div>  
-        </div>  
-    </div> 
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </section>
 @endsection
 
@@ -395,7 +420,7 @@
             let pwd = generatePassword(12);
             document.getElementById("password").value = pwd;
             document.getElementById("password_confirmation").value = pwd;
-            
+
             Swal.fire({
                 icon: 'success',
                 title: 'Mot de passe généré',

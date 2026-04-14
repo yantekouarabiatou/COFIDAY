@@ -223,41 +223,11 @@
                         </div>
                     </div>
 
-                    <!-- Statistiques de temps -->
+                    <!-- Statistiques : Congés, Certificats, Attestations -->
                     <div class="row mt-4">
                         <div class="col-md-4">
                             <div class="card card-statistic-1">
                                 <div class="card-icon bg-primary">
-                                    <i class="fas fa-clock"></i>
-                                </div>
-                                <div class="card-wrap">
-                                    <div class="card-header">
-                                        <h4>Heures ce mois</h4>
-                                    </div>
-                                    <div class="card-body">
-                                        {{ $statistiques['heures_mois_en_cours'] ?? 0 }}h
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="card card-statistic-1">
-                                <div class="card-icon bg-success">
-                                    <i class="fas fa-calendar-check"></i>
-                                </div>
-                                <div class="card-wrap">
-                                    <div class="card-header">
-                                        <h4>Journées validées</h4>
-                                    </div>
-                                    <div class="card-body">
-                                        {{ $statistiques['journees_validees'] ?? 0 }}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="card card-statistic-1">
-                                <div class="card-icon bg-warning">
                                     <i class="fas fa-umbrella-beach"></i>
                                 </div>
                                 <div class="card-wrap">
@@ -266,6 +236,36 @@
                                     </div>
                                     <div class="card-body">
                                         {{ $statistiques['conges_pris'] ?? 0 }} jours
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card card-statistic-1">
+                                <div class="card-icon bg-success">
+                                    <i class="fas fa-file-medical"></i>
+                                </div>
+                                <div class="card-wrap">
+                                    <div class="card-header">
+                                        <h4>Certificats délivrés</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        {{ $statistiques['certificats_count'] ?? 0 }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card card-statistic-1">
+                                <div class="card-icon bg-warning">
+                                    <i class="fas fa-file-contract"></i>
+                                </div>
+                                <div class="card-wrap">
+                                    <div class="card-header">
+                                        <h4>Attestations de travail</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        {{ $statistiques['attestations_count'] ?? 0 }}
                                     </div>
                                 </div>
                             </div>

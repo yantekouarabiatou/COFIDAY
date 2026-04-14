@@ -93,7 +93,7 @@
                                 <i class="fas fa-certificate"></i>
                                 <strong>Certificat de travail généré</strong><br>
                                 Référence : <strong>{{ $demission->certificat_reference }}</strong><br>
-                                <small>Généré le {{ $demission->certificat_genere_le->isoFormat('D MMMM YYYY [à] HH:mm') }}</small>
+                                <small>Généré le {{ $demission->date_generation_certificat->isoFormat('D MMMM YYYY [à] HH:mm') }}</small>
                             </div>
                             <div class="alert alert-warning">
                                 <i class="fas fa-info-circle"></i>

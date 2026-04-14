@@ -91,6 +91,7 @@
     {{-- LOGO --}}
 
     <div class="logo-container">
+        
         <img src="file://{{ public_path('storage/photos/logo-cofima-bon.jpg') }}" class="logo">
     </div>
 

@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Poste;
-use App\Models\DailyEntry;
-use App\Models\TimeEntry;
 use App\Models\Conge;
+use App\Models\Certificat;
+use App\Models\Attestation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
@@ -20,35 +20,32 @@ use Carbon\Carbon;
 class UserProfileController extends Controller
 {
     /**
-     * Afficher et éditer le profil de l'utilisateur connecté
+     * Afficher le formulaire d'édition du profil (pour l'utilisateur connecté)
      */
     public function editUser($id)
     {
         $user = Auth::user();
 
-        // Charger les relations nécessaires pour la gestion du temps
+        // Charger les relations nécessaires pour les documents
         $user->load([
             'poste',
             'creator',
-            'dailyEntries' => function($query) {
-                $query->latest('jour')->limit(10);
-            },
-            'timeEntries' => function($query) {
-                $query->latest()->limit(10);
-            },
             'conges' => function($query) {
+                $query->latest()->limit(5);
+            },
+            'certificats' => function($query) {
+                $query->latest()->limit(5);
+            },
+            'attestations' => function($query) {
                 $query->latest()->limit(5);
             }
         ]);
 
-        // Récupérer la liste des postes pour le formulaire
         $postes = Poste::orderBy('intitule')->get();
-
-        // Récupérer les rôles Spatie pour le formulaire (admin uniquement)
         $roles = Role::orderBy('name')->get();
 
-        // Calculer les statistiques de temps
-        $statistiques = $this->calculerStatistiquesTemps($user);
+        // Statistiques documentaires
+        $statistiques = $this->calculerStatistiquesDocuments($user);
 
         return view('profile.edit', compact('user', 'postes', 'roles', 'statistiques'));
     }
@@ -66,66 +63,38 @@ class UserProfileController extends Controller
         $user = User::with([
             'poste',
             'creator',
-            'roles', // Charger les rôles Spatie
-            'dailyEntries' => function($query) {
-                $query->latest('jour')->limit(10);
-            },
-            'timeEntries' => function($query) {
-                $query->with('dossier')->latest()->limit(10);
-            },
+            'roles',
             'conges' => function($query) {
-                $query->latest()->limit(5);
+                $query->latest();
+            },
+            'certificats' => function($query) {
+                $query->latest();
+            },
+            'attestations' => function($query) {
+                $query->latest();
             }
         ])->findOrFail($id);
 
-        // Récupérer la liste des postes
         $postes = Poste::orderBy('intitule')->get();
-
-        // Calculer les statistiques
-        $statistiques = $this->calculerStatistiquesTemps($user);
+        $statistiques = $this->calculerStatistiquesDocuments($user);
 
         return view('profile.show', compact('user', 'postes', 'statistiques'));
     }
 
     /**
-     * Calculer les statistiques de temps pour un utilisateur
+     * Calculer les statistiques liées aux congés, certificats et attestations
      */
-    private function calculerStatistiquesTemps($user)
+    private function calculerStatistiquesDocuments($user)
     {
         $now = Carbon::now();
-        $debutMois = $now->copy()->startOfMonth();
-        $finMois = $now->copy()->endOfMonth();
-
-        // Statistiques globales
-        $totalDailyEntries = $user->dailyEntries()->count();
-        $totalTimeEntries = $user->timeEntries()->count();
-        $totalConges = $user->conges()->count();
-
-        // Heures du mois en cours
-        $heuresMoisEnCours = $user->dailyEntries()
-            ->whereBetween('jour', [$debutMois, $finMois])
-            ->sum('heures_reelles');
-
-        // Heures théoriques du mois
-        $heuresTheoriquesMois = $user->dailyEntries()
-            ->whereBetween('jour', [$debutMois, $finMois])
-            ->sum('heures_theoriques');
-
-        // Écart heures (réelles - théoriques)
-        $ecartHeures = $heuresMoisEnCours - $heuresTheoriquesMois;
-
-        // Taux de réalisation
-        $tauxRealisation = $heuresTheoriquesMois > 0
-            ? round(($heuresMoisEnCours / $heuresTheoriquesMois) * 100, 1)
-            : 0;
-
-        // Jours de congés pris cette année (calculé depuis les dates)
         $debutAnnee = $now->copy()->startOfYear();
+
+        // Congés pris cette année (approuvés)
         $congesApprouves = $user->conges()
+            ->where('statut', 'approuvé')
             ->whereBetween('date_debut', [$debutAnnee, $now])
             ->get();
 
-        // Calculer le total des jours de congé
         $congesPris = $congesApprouves->sum(function($conge) {
             if ($conge->date_debut && $conge->date_fin) {
                 return $conge->date_debut->diffInDays($conge->date_fin) + 1;
@@ -135,35 +104,28 @@ class UserProfileController extends Controller
 
         // Congés en attente
         $congesEnAttente = $user->conges()
+            ->where('statut', 'en_attente')
             ->count();
 
-        // Dernière entrée de temps
-        $derniereEntree = $user->dailyEntries()
-            ->latest('jour')
-            ->first();
+        // Nombre total de certificats
+        $certificatsCount = $user->certificats()->count();
 
-        // Journées validées ce mois
-        $journeesValidees = $user->dailyEntries()
-            ->whereBetween('jour', [$debutMois, $finMois])
-            ->count();
+        // Nombre total d'attestations
+        $attestationsCount = $user->attestations()->count();
 
-        // Journées en attente
-        $journeesEnAttente = $user->dailyEntries()
-            ->count();
+        // Dernier certificat
+        $dernierCertificat = $user->certificats()->latest()->first();
+
+        // Dernière attestation
+        $derniereAttestation = $user->attestations()->latest()->first();
 
         return [
-            'total_daily_entries' => $totalDailyEntries,
-            'total_time_entries' => $totalTimeEntries,
-            'total_conges' => $totalConges,
-            'heures_mois_en_cours' => round($heuresMoisEnCours, 2),
-            'heures_theoriques_mois' => round($heuresTheoriquesMois, 2),
-            'ecart_heures' => round($ecartHeures, 2),
-            'taux_realisation' => $tauxRealisation,
-            'conges_pris' => $congesPris,
-            'conges_en_attente' => $congesEnAttente,
-            'derniere_entree' => $derniereEntree,
-            'journees_validees' => $journeesValidees,
-            'journees_en_attente' => $journeesEnAttente,
+            'conges_pris'          => $congesPris,
+            'conges_en_attente'    => $congesEnAttente,
+            'certificats_count'    => $certificatsCount,
+            'attestations_count'   => $attestationsCount,
+            'dernier_certificat'   => $dernierCertificat,
+            'derniere_attestation' => $derniereAttestation,
         ];
     }
 
@@ -210,22 +172,18 @@ class UserProfileController extends Controller
 
         try {
             $user = Auth::user();
-
-            // Mettre à jour le mot de passe
             $user->update([
                 'password' => Hash::make($request->new_password)
             ]);
 
-            // Déconnecter toutes les autres sessions
             Auth::logoutOtherDevices($request->current_password);
 
-            // Journaliser le changement de mot de passe
             activity()
                 ->causedBy($user)
                 ->log('Mot de passe modifié');
 
             Alert::success('Succès', 'Mot de passe changé avec succès!');
-            return redirect()->route('user-profile.show');
+            return redirect()->route('user-profile.show', $user->id);
 
         } catch (\Exception $e) {
             return redirect()->back()
@@ -248,7 +206,7 @@ class UserProfileController extends Controller
             'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'username' => 'nullable|string|max:255|unique:users,username,' . $id,
             'email' => 'nullable|email|max:255|unique:users,email,' . $id,
-            'role_name' => 'nullable|string|exists:roles,name', // Validation du nom du rôle Spatie
+            'role_name' => 'nullable|string|exists:roles,name',
         ]);
 
         if ($validator->fails()) {
@@ -259,7 +217,6 @@ class UserProfileController extends Controller
         }
 
         try {
-            // Préparation du tableau de données
             $data = [
                 'nom' => $request->nom,
                 'prenom' => $request->prenom,
@@ -267,37 +224,29 @@ class UserProfileController extends Controller
                 'poste_id' => $request->poste_id,
             ];
 
-            // Username
             if ($request->filled('username')) {
                 $data['username'] = $request->username;
             }
 
-            // Email
             if ($request->filled('email')) {
                 $data['email'] = $request->email;
             }
 
-            // Statut actif (uniquement pour admin)
             if (Auth::user()->hasRole('admin|super-admin')) {
                 $data['is_active'] = $request->has('is_active')
                     ? $request->is_active
                     : $user->is_active;
             }
 
-            // Photo
             if ($request->hasFile('photo')) {
-                // Supprimer l'ancienne photo
                 if ($user->photo && Storage::disk('public')->exists($user->photo)) {
                     Storage::disk('public')->delete($user->photo);
                 }
-
                 $data['photo'] = $request->file('photo')->store('photos/users', 'public');
             }
 
-            // Mise à jour
             $user->update($data);
 
-            // Synchroniser le rôle Spatie (uniquement pour admin)
             if (Auth::user()->hasRole('admin|super-admin') && $request->filled('role_name')) {
                 $user->syncRoles([$request->role_name]);
             }
@@ -322,7 +271,6 @@ class UserProfileController extends Controller
 
         $user = User::findOrFail($id);
 
-        // Empêcher la désactivation de soi-même
         if ($user->id === Auth::id()) {
             Alert::warning('Attention', 'Vous ne pouvez pas désactiver votre propre compte.');
             return redirect()->back();
@@ -371,20 +319,18 @@ class UserProfileController extends Controller
     }
 
     /**
-     * Exporter le récapitulatif de temps de l'utilisateur (PDF/Excel)
-     * À implémenter selon vos besoins
+     * Exporter les documents (congés, certificats, attestations) de l'utilisateur
      */
-    public function exportTemps($id, $format = 'pdf')
+    public function exportDocuments($id, $format = 'pdf')
     {
         $user = User::findOrFail($id);
 
-        // Vérifier les permissions
         if (!Auth::user()->hasRole('admin|super-admin') && Auth::id() != $id) {
             abort(403, 'Accès non autorisé');
         }
 
-        // TODO: Implémenter l'export selon le format demandé
-        // Exemple: return PDF::loadView('exports.temps', compact('user'))->download();
+        // À implémenter selon vos besoins (ex: génération PDF/Excel)
+        // Exemple : return PDF::loadView('exports.documents', compact('user'))->download();
 
         Alert::info('Info', 'Fonctionnalité d\'export en cours de développement.');
         return redirect()->back();

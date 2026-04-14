@@ -209,7 +209,7 @@
 
                 <p style="margin-top:20px;">
                     Cordialement,<br>
-                    <strong>COFTIME</strong>
+                    <strong>COFIDAY</strong>
                 </p>
 
 

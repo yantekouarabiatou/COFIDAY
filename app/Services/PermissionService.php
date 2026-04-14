@@ -24,9 +24,8 @@ class PermissionService
         return [
             'utilisateurs'          => 'Gestion des Utilisateurs',
             'rôles'                 => 'Rôles et Permissions (Système)',
-            'Clients'               => 'Gestion des Clients',
-            'Dossiers'              => 'Gestion des Dossiers',
-            'Temps'                 => 'Gestion du Temps',
+            'Attestation de Travail' => 'Gestion des Attestations de Travail',
+            'Certificats de Travail' => 'Gestion des Certificats de Travail',
             'Congés'                => 'Gestion des Congés',
             'postes'                => 'Gestion des Postes',
             'statistiques'          => 'Statistiques et Rapports',

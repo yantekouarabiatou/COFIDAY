@@ -13,7 +13,7 @@ class TestMail extends Command
     public function handle()
     {
         try {
-            Mail::raw('Test email from COFTIME', function ($message) {
+            Mail::raw('Test email from COFIDAY', function ($message) {
                 $message->to('adisiroko@gmail.com')
                         ->subject('Test Email Configuration');
             });

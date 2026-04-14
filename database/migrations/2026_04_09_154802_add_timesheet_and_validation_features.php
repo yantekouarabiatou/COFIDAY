@@ -8,14 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Ajouter le manager (supérieur hiérarchique) sur les utilisateurs
-        Schema::table('users', function (Blueprint $table) {
-            $table->foreignId('manager_id')
-                ->nullable()
-                ->after('poste_id')
-                ->constrained('users')
-                ->nullOnDelete();
-        });
+        
 
         // Ajouter la semaine ISO et marquer les jours manquants
         Schema::table('daily_entries', function (Blueprint $table) {
@@ -65,9 +58,5 @@ return new class extends Migration
             $table->dropColumn(['semaine', 'annee_semaine', 'est_manquant']);
         });
 
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropForeign(['manager_id']);
-            $table->dropColumn('manager_id');
-        });
     }
 };

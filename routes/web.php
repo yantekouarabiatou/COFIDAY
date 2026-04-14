@@ -266,6 +266,8 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
     });
 
     Route::middleware(['auth', 'role:admin'])->group(function () {
+        Route::get('/user-profile/{id}/export-documents/{format}', [UserProfileController::class, 'exportDocuments'])
+            ->name('user-profile.export-documents');
         Route::post('/conges/solde/{user}/ajuster', [CongeController::class, 'ajusterSolde'])->name('conges.ajuster-solde');
     });
 

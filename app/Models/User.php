@@ -16,8 +16,18 @@ class User extends Authenticatable implements MustVerifyEmail
     use HasFactory, Notifiable, HasRoles, SoftDeletes;
 
     protected $fillable = [
-        'nom', 'prenom', 'username', 'email', 'photo', 'password',
-        'poste_id', 'manager_id', 'created_by', 'telephone', 'sexe', 'is_active',
+        'nom',
+        'prenom',
+        'username',
+        'email',
+        'photo',
+        'password',
+        'poste_id',
+        'manager_id',
+        'created_by',
+        'telephone',
+        'sexe',
+        'is_active',
     ];
 
     protected $hidden = ['password', 'remember_token', 'otp_code'];
@@ -39,19 +49,6 @@ class User extends Authenticatable implements MustVerifyEmail
         return trim("{$this->prenom} {$this->nom}");
     }
 
-    // ── Relations hiérarchie ─────────────────────────────────────
-    /** Supérieur direct */
-    public function manager()
-    {
-        return $this->belongsTo(User::class, 'manager_id');
-    }
-
-    /** Collaborateurs directs (subordonnés) */
-    public function subordinates()
-    {
-        return $this->hasMany(User::class, 'manager_id');
-    }
-
     /** Vérifie si $this est le manager de $userId */
     public function isManagerOf(int $userId): bool
     {
@@ -59,14 +56,30 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     // ── Autres relations ─────────────────────────────────────────
-    public function creator()       { return $this->belongsTo(User::class, 'created_by'); }
-    public function createdUsers()  { return $this->hasMany(User::class, 'created_by'); }
-    public function poste()         { return $this->belongsTo(Poste::class); }
-    public function legacyRole()    { return $this->belongsTo(Role::class, 'role_id'); }
-    public function dailyEntries()  { return $this->hasMany(DailyEntry::class); }
-    public function timeEntries()   { return $this->hasMany(TimeEntry::class); }
-    public function conges()        { return $this->hasMany(DemandeConge::class, 'user_id'); }
-    public function weeklyValidations() { return $this->hasMany(WeeklyValidation::class); }
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+    public function createdUsers()
+    {
+        return $this->hasMany(User::class, 'created_by');
+    }
+    public function poste()
+    {
+        return $this->belongsTo(Poste::class);
+    }
+    public function legacyRole()
+    {
+        return $this->belongsTo(Role::class, 'role_id');
+    }
+    public function conges()
+    {
+        return $this->hasMany(DemandeConge::class, 'user_id');
+    }
+    public function weeklyValidations()
+    {
+        return $this->hasMany(WeeklyValidation::class);
+    }
 
     public function dossiersCollaborations()
     {
@@ -93,5 +106,27 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->belongsToMany(Dossier::class, 'collaborateur_dossier')
             ->withPivot('role', 'is_active', 'added_at', 'removed_at')
             ->wherePivot('is_active', true);
+    }
+
+    public function certificats()
+    {
+        return $this->hasMany(DemandeDemission::class);
+    }
+
+    public function attestations()
+    {
+        return $this->hasMany(DemandeAttestation::class);
+    }
+
+    // Dans app/Models/User.php
+
+    public function manager()
+    {
+        return $this->belongsTo(User::class, 'manager_id');
+    }
+
+    public function subordinates()
+    {
+        return $this->hasMany(User::class, 'manager_id');
     }
 }
