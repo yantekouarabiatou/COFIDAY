@@ -2,11 +2,9 @@
 
 namespace App\Providers;
 
-use App\Models\Client;
-use App\Models\DailyEntry;
-use App\Models\Dossier;
-use App\Models\TimeEntry;
 use App\Models\DemandeConge;
+use App\Models\DemandeAttestation;
+use App\Models\DemandeDemission;
 use App\Models\LogActivite;
 use App\Models\SoldeConge;
 use App\Models\User;
@@ -96,13 +94,11 @@ class AppServiceProvider extends ServiceProvider
             // Observateur universel pour TOUS les modèles importants
             $models = [
                 LogActivite::class,  // Logs d'activité
-                TimeEntry::class,     // Saisies de temps
-                DailyEntry::class,    // Feuilles de temps
-                Dossier::class,       // Dossiers
-                Client::class,        // Clients
+                DemandeAttestation::class,     // Saisies de temps
+                DemandeDemission::class,    // Feuilles de temps
                 DemandeConge::class,  // Demandes de congés
                 SoldeConge::class,    // Soldes de congés
-                \App\Models\User::class,          // Utilisateurs
+                User::class,          // Utilisateurs
             ];
 
             foreach ($models as $modelClass) {

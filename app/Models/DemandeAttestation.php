@@ -11,11 +11,19 @@ class DemandeAttestation extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'user_id', 'type', 'motif', 'destinataire',
-        'salaire_net', 'inclure_salaire',
-        'date_embauche', 'poste',
-        'statut', 'valide_par', 'date_validation',
-        'commentaire_dg', 'numero_reference',
+        'user_id',
+        'type',
+        'motif',
+        'destinataire',
+        'salaire_net',
+        'inclure_salaire',
+        'date_embauche',
+        'poste',
+        'statut',
+        'valide_par',
+        'date_validation',
+        'commentaire_dg',
+        'numero_reference',
     ];
 
     protected $casts = [
@@ -72,13 +80,14 @@ class DemandeAttestation extends Model
         };
     }
 
-    public function getStatutBadgeAttribute(): string
+    public function getStatutBadgeAttribute()
     {
         return match ($this->statut) {
-            'en_attente' => '<span class="badge badge-warning"><i class="fas fa-clock"></i> En attente</span>',
-            'approuve'   => '<span class="badge badge-success"><i class="fas fa-check-circle"></i> Approuvé</span>',
-            'refuse'     => '<span class="badge badge-danger"><i class="fas fa-times-circle"></i> Refusé</span>',
-            default      => '<span class="badge badge-secondary">' . e($this->statut) . '</span>',
+            'approuve' => '<span class="badge-approuve"><i class="fas fa-check-circle"></i>Approuvé</span>',
+            'en_attente' => '<span class="badge-en_attente"><i class="fas fa-clock"></i>En attente</span>',
+            'refuse' => '<span class="badge-refuse"><i class="fas fa-times-circle"></i>Refusé</span>',
+            'acceptee' => '<span class="badge-acceptee"><i class="fas fa-check"></i>Accepté</span>',
+            default => '<span class="badge-default">—</span>',
         };
     }
 

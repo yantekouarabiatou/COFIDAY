@@ -302,6 +302,7 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
         Route::resource('soldes', SoldeCongeController::class);
     });
 
+
     Route::post('/clients/import', [ClientImportController::class, 'import'])
         ->name('clients.import')
         ->middleware('auth'); // si besoin
@@ -318,5 +319,20 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
             'html' => view('partials.personnel-details', compact('personnel'))->render()
         ]);
     });
+});
+
+// ================= STATISTIQUES GLOBALES (ADMIN) =================
+Route::middleware(['auth', 'otp.verified'])->prefix('admin')->name('admin.')->group(function () {
+    // Page principale
+    Route::get('/statistics', [StatisticsController::class, 'index'])->name('stats.index');
+
+    // API pour les données (KPI, graphiques, tableau)
+    Route::get('/statistics/data', [StatisticsController::class, 'globalStats'])->name('stats.data');
+
+    // Liste des employés pour le filtre Select2
+    Route::get('/statistics/employes', [StatisticsController::class, 'getEmployes'])->name('stats.employes');
+
+    // Export (optionnel)
+    Route::get('/statistics/export', [StatisticsController::class, 'export'])->name('stats.export');
 });
 require __DIR__ . '/auth.php';

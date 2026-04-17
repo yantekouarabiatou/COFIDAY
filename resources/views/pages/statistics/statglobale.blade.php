@@ -1,652 +1,549 @@
-@php
-use App\Helpers\UserHelper;
-@endphp
-
 @extends('layaout')
 
-@section('title', 'Statistiques Globales - Admin')
+@section('title', 'Statistiques Globales — Administration')
 
 @section('content')
-    <section class="section">
+<div class="stats-wrapper">
 
-        {{-- ===== EN-TÊTE ===== --}}
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card gradient-card">
-                    <div class="card-body p-4">
-                        <div class="row align-items-center">
-                            <div class="col-md-6">
-                                <h4 class="text-white mb-2">
-                                    <i class="fas fa-chart-line"></i> Statistiques Globales
-                                </h4>
-                                <p class="text-white mb-0 opacity-75">Tableau de bord administrateur</p>
-                            </div>
-                            <div class="col-md-6 text-right">
-                                <button class="btn btn-light rounded-pill mr-2" onclick="refreshStats()">
-                                    <i class="fas fa-sync-alt"></i> Actualiser
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+    {{-- ═══ EN-TÊTE ═══ --}}
+    <div class="stats-header">
+        <div class="header-content">
+            <div class="header-left">
+                <div class="header-icon-ring">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div>
+                    <h1 class="header-title">Statistiques Globales</h1>
+                    <p class="header-sub">Tableau de bord administrateur · <span id="periode-label">Ce mois</span></p>
+                </div>
+            </div>
+            <div class="header-right">
+                <button class="btn-header" onclick="refreshStats()">
+                    <i class="fas fa-sync-alt" id="refresh-icon"></i> Actualiser
+                </button>
+            </div>
+        </div>
+        <div class="header-line"></div>
+    </div>
+
+    {{-- ═══ FILTRES ═══ --}}
+    <div class="filters-panel">
+        <div class="filters-title"><i class="fas fa-sliders-h"></i> Filtres</div>
+        <div class="filters-row">
+            <div class="filter-group">
+                <label class="filter-label">Période</label>
+                <select class="filter-select" id="filtre-periode">
+                    <option value="jour">Aujourd'hui</option>
+                    <option value="semaine">Cette semaine</option>
+                    <option value="mois" selected>Ce mois</option>
+                    <option value="annee">Cette année</option>
+                    <option value="personnalise">Personnalisée</option>
+                </select>
+            </div>
+            <div class="filter-group custom-date" id="filtre-dates" style="display:none;">
+                <label class="filter-label">Début</label>
+                <input type="date" class="filter-select" id="date-debut">
+            </div>
+            <div class="filter-group custom-date" id="filtre-dates-fin" style="display:none;">
+                <label class="filter-label">Fin</label>
+                <input type="date" class="filter-select" id="date-fin">
+            </div>
+            <div class="filter-group filter-employe">
+                <label class="filter-label">Employé</label>
+                <select class="filter-select select2" id="filtre-employe">
+                    <option value="">Tous les employés</option>
+                </select>
+            </div>
+            <div class="filter-group filter-action">
+                <label class="filter-label">&nbsp;</label>
+                <button class="btn-apply" onclick="applyFilters()">
+                    <i class="fas fa-search"></i> Appliquer
+                </button>
+            </div>
+        </div>
+        <div id="filtre-info" style="display:none;" class="filter-active-bar">
+            <i class="fas fa-info-circle"></i>
+            <strong>Filtres actifs :</strong> <span id="filtre-details"></span>
+            <button class="btn-reset" onclick="resetFilters()"><i class="fas fa-times"></i> Réinitialiser</button>
+        </div>
+    </div>
+
+    {{-- ═══ CARTES KPI (sans les heures) ═══ --}}
+    <div class="kpi-grid">
+
+        {{-- Employés --}}
+        <div class="kpi-card kpi-blue" style="animation-delay:.05s">
+            <div class="kpi-bg-icon"><i class="fas fa-users"></i></div>
+            <div class="kpi-inner">
+                <div class="kpi-icon"><i class="fas fa-users"></i></div>
+                <div class="kpi-info">
+                    <span class="kpi-label">Employés</span>
+                    <span class="kpi-value" id="stat-employes"><i class="fas fa-spinner fa-spin"></i></span>
+                    <span class="kpi-sub"><span id="stat-employes-actifs">--</span> actifs sur la période</span>
                 </div>
             </div>
         </div>
 
-        {{-- ===== FILTRES ===== --}}
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card modern-card">
-                    <div class="card-header">
-                        <h5><i class="fas fa-filter"></i> Filtres</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-3">
-                                <label>Période</label>
-                                <select class="form-control" id="filtre-periode">
-                                    <option value="jour">Aujourd'hui</option>
-                                    <option value="semaine">Cette semaine</option>
-                                    <option value="mois" selected>Ce mois</option>
-                                    <option value="annee">Cette année</option>
-                                    <option value="personnalise">Personnalisée</option>
-                                </select>
-                            </div>
-                            <div class="col-md-3" id="filtre-dates" style="display:none;">
-                                <label>Date de début</label>
-                                <input type="date" class="form-control" id="date-debut">
-                            </div>
-                            <div class="col-md-3" id="filtre-dates-fin" style="display:none;">
-                                <label>Date de fin</label>
-                                <input type="date" class="form-control" id="date-fin">
-                            </div>
-                            <div class="col-md-3">
-                                <label>Employé</label>
-                                <select class="form-control select2" id="filtre-employe">
-                                    <option value="">Tous les employés</option>
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <label>&nbsp;</label>
-                                <button class="btn btn-primary btn-block" onclick="applyFilters()">
-                                    <i class="fas fa-search"></i> Appliquer
-                                </button>
-                            </div>
-                        </div>
-                        <div class="row mt-3" id="filtre-info" style="display:none;">
-                            <div class="col-12">
-                                <div class="alert alert-info mb-0">
-                                    <i class="fas fa-info-circle"></i>
-                                    <strong>Filtres actifs :</strong> <span id="filtre-details"></span>
-                                    <button class="btn btn-sm btn-light float-right" onclick="resetFilters()">
-                                        <i class="fas fa-times"></i> Réinitialiser
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        {{-- Congés --}}
+        <div class="kpi-card kpi-amber" style="animation-delay:.10s">
+            <div class="kpi-bg-icon"><i class="fas fa-calendar-alt"></i></div>
+            <div class="kpi-inner">
+                <div class="kpi-icon"><i class="fas fa-calendar-alt"></i></div>
+                <div class="kpi-info">
+                    <span class="kpi-label">Congés</span>
+                    <span class="kpi-value" id="stat-conges"><i class="fas fa-spinner fa-spin"></i></span>
+                    <span class="kpi-sub"><span id="stat-conges-cours">--</span> en cours actuellement</span>
                 </div>
             </div>
         </div>
 
-        {{-- ===== CARTES STATS GÉNÉRALES ===== --}}
-        <div class="row g-4 mb-4">
-
-            {{-- Employés --}}
-            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 mt-4">
-                <div class="card card-statistic border-0 shadow-lg hover-lift h-100 position-relative overflow-hidden">
-                    <div class="card-icon-bg position-absolute top-0 end-0 opacity-10">
-                        <i class="fas fa-users fa-4x"></i>
-                    </div>
-                    <div class="card-body pt-4 pb-4 px-4">
-                        <div class="d-flex align-items-center mb-3">
-                            <div class="icon-wrapper rounded-circle bg-gradient-primary p-3 me-3">
-                                <i class="fas fa-users fa-lg text-white"></i>
-                            </div>
-                            <div class="flex-grow-1">
-                                <h5 class="card-title text-muted mb-1 fw-normal">Employés</h5>
-                                <h2 id="stat-employes" class="mb-0 fw-bold">
-                                    <i class="fas fa-spinner fa-spin"></i>
-                                </h2>
-                            </div>
-                        </div>
-                        <div class="mt-3">
-                            <span class="badge bg-light text-dark px-3 py-1 rounded-pill">
-                                <i class="fas fa-user-check me-1"></i>
-                                <span id="stat-employes-actifs">--</span> actifs
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Heures --}}
-            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 mt-4">
-                <div class="card card-statistic border-0 shadow-lg hover-lift h-100 position-relative overflow-hidden">
-                    <div class="card-icon-bg position-absolute top-0 end-0 opacity-10">
-                        <i class="fas fa-clock fa-4x"></i>
-                    </div>
-                    <div class="card-body pt-4 pb-4 px-4">
-                        <div class="d-flex align-items-center mb-3">
-                            <div class="icon-wrapper rounded-circle bg-gradient-success p-3 me-3">
-                                <i class="fas fa-clock fa-lg text-white"></i>
-                            </div>
-                            <div class="flex-grow-1">
-                                <h5 class="card-title text-muted mb-1 fw-normal">Heures</h5>
-                                <h2 id="stat-heures" class="mb-0 fw-bold">
-                                    <i class="fas fa-spinner fa-spin"></i>
-                                </h2>
-                            </div>
-                        </div>
-                        <div class="mt-3">
-                            <span class="badge bg-light text-dark px-3 py-1 rounded-pill">
-                                <i class="fas fa-chart-line me-1"></i>
-                                <span id="stat-moyenne">--</span> moy.
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Congés --}}
-            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 mt-4">
-                <div class="card card-statistic border-0 shadow-lg hover-lift h-100 position-relative overflow-hidden">
-                    <div class="card-icon-bg position-absolute top-0 end-0 opacity-10">
-                        <i class="fas fa-umbrella-beach fa-4x"></i>
-                    </div>
-                    <div class="card-body pt-4 pb-4 px-4">
-                        <div class="d-flex align-items-center mb-3">
-                            <div class="icon-wrapper rounded-circle bg-gradient-warning p-3 me-3">
-                                <i class="fas fa-umbrella-beach fa-lg text-white"></i>
-                            </div>
-                            <div class="flex-grow-1">
-                                <h5 class="card-title text-muted mb-1 fw-normal">Congés</h5>
-                                <h2 id="stat-conges" class="mb-0 fw-bold">
-                                    <i class="fas fa-spinner fa-spin"></i>
-                                </h2>
-                            </div>
-                        </div>
-                        <div class="mt-3">
-                            <span class="badge bg-light text-dark px-3 py-1 rounded-pill">
-                                <i class="fas fa-running me-1"></i>
-                                <span id="stat-conges-cours">--</span> en cours
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Clients --}}
-            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 mt-4">
-                <div class="card card-statistic border-0 shadow-lg hover-lift h-100 position-relative overflow-hidden">
-                    <div class="card-icon-bg position-absolute top-0 end-0 opacity-10">
-                        <i class="fas fa-user-tie fa-4x"></i>
-                    </div>
-                    <div class="card-body pt-4 pb-4 px-4">
-                        <div class="d-flex align-items-center mb-3">
-                            <div class="icon-wrapper rounded-circle bg-gradient-secondary p-3 me-3">
-                                <i class="fas fa-user-tie fa-lg text-white"></i>
-                            </div>
-                            <div class="flex-grow-1">
-                                <h5 class="card-title text-muted mb-1 fw-normal">Clients</h5>
-                                <h2 id="stat-clients" class="mb-0 fw-bold">
-                                    <i class="fas fa-spinner fa-spin"></i>
-                                </h2>
-                            </div>
-                        </div>
-                        <div class="mt-3">
-                            <span class="badge bg-light text-dark px-3 py-1 rounded-pill">
-                                <i class="fas fa-handshake me-1"></i> Partenaires
-                            </span>
-                        </div>
-                    </div>
+        {{-- Attestations --}}
+        <div class="kpi-card kpi-violet" style="animation-delay:.15s">
+            <div class="kpi-bg-icon"><i class="fas fa-file-alt"></i></div>
+            <div class="kpi-inner">
+                <div class="kpi-icon"><i class="fas fa-file-alt"></i></div>
+                <div class="kpi-info">
+                    <span class="kpi-label">Attestations</span>
+                    <span class="kpi-value" id="stat-attestations"><i class="fas fa-spinner fa-spin"></i></span>
+                    <span class="kpi-sub"><span id="stat-attestations-validees">--</span> approuvées</span>
                 </div>
             </div>
         </div>
 
-        {{-- ===== SECTION DOSSIERS ===== --}}
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card modern-card">
-                    <div class="card-header d-flex align-items-center justify-content-between">
-                        <div>
-                            <h5 class="mb-0"><i class="fas fa-folder-open text-info mr-2"></i> Dossiers</h5>
-                            <small class="text-muted">Vue globale du système + résultat selon les filtres actifs</small>
-                        </div>
-                        <span class="badge badge-info px-3 py-2" id="badge-periode-dossiers">Ce mois</span>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-
-                            {{-- Colonne gauche : stats globales (fixes) --}}
-                            <div class="col-md-6">
-                                <div class="dossier-section-label">
-                                    <i class="fas fa-globe-europe mr-1"></i>
-                                    Système complet
-                                    <span class="text-muted small ml-1">(tous les dossiers, sans filtre)</span>
-                                </div>
-                                <div class="row mt-3">
-                                    <div class="col-6">
-                                        <div class="dossier-stat-card dossier-global">
-                                            <div class="dossier-stat-icon bg-gradient-info">
-                                                <i class="fas fa-folder fa-lg text-white"></i>
-                                            </div>
-                                            <div class="dossier-stat-body">
-                                                <div class="dossier-stat-label">Total dossiers</div>
-                                                <div class="dossier-stat-value" id="stat-total-dossiers-global">
-                                                    <i class="fas fa-spinner fa-spin"></i>
-                                                </div>
-                                                <div class="dossier-stat-sub">dans le système</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="dossier-stat-card dossier-global">
-                                            <div class="dossier-stat-icon bg-gradient-success">
-                                                <i class="fas fa-folder-open fa-lg text-white"></i>
-                                            </div>
-                                            <div class="dossier-stat-body">
-                                                <div class="dossier-stat-label">Dossiers actifs</div>
-                                                <div class="dossier-stat-value" id="stat-dossiers-actifs-global">
-                                                    <i class="fas fa-spinner fa-spin"></i>
-                                                </div>
-                                                <div class="dossier-stat-sub">ouverts / en cours</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {{-- Séparateur vertical --}}
-                            <div class="col-md-1 d-none d-md-flex align-items-center justify-content-center">
-                                <div class="dossier-separator"></div>
-                            </div>
-
-                            {{-- Colonne droite : stats filtrées --}}
-                            <div class="col-md-5">
-                                <div class="dossier-section-label">
-                                    <i class="fas fa-filter mr-1"></i>
-                                    Selon les filtres
-                                    <span class="text-muted small ml-1" id="label-periode-dossiers"></span>
-                                </div>
-                                <div class="row mt-3">
-                                    <div class="col-6">
-                                        <div class="dossier-stat-card dossier-filtre">
-                                            <div class="dossier-stat-icon bg-gradient-primary">
-                                                <i class="fas fa-calendar-alt fa-lg text-white"></i>
-                                            </div>
-                                            <div class="dossier-stat-body">
-                                                <div class="dossier-stat-label">Sur la période</div>
-                                                <div class="dossier-stat-value text-danger" id="stat-total-dossiers">
-                                                    <i class="fas fa-spinner fa-spin"></i>
-                                                </div>
-                                                <div class="dossier-stat-sub">dossiers concernés</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="dossier-stat-card dossier-filtre">
-                                            <div class="dossier-stat-icon bg-gradient-warning">
-                                                <i class="fas fa-tasks fa-lg text-white"></i>
-                                            </div>
-                                            <div class="dossier-stat-body">
-                                                <div class="dossier-stat-label">Actifs filtrés</div>
-                                                <div class="dossier-stat-value text-warning" id="stat-dossiers-actifs">
-                                                    <i class="fas fa-spinner fa-spin"></i>
-                                                </div>
-                                                <div class="dossier-stat-sub">ouverts / en cours</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
+        {{-- Certificats --}}
+        <div class="kpi-card kpi-rose" style="animation-delay:.20s">
+            <div class="kpi-bg-icon"><i class="fas fa-certificate"></i></div>
+            <div class="kpi-inner">
+                <div class="kpi-icon"><i class="fas fa-certificate"></i></div>
+                <div class="kpi-info">
+                    <span class="kpi-label">Certificats de travail</span>
+                    <span class="kpi-value" id="stat-certificats"><i class="fas fa-spinner fa-spin"></i></span>
+                    <span class="kpi-sub"><span id="stat-certificats-acceptes">--</span> acceptés</span>
                 </div>
             </div>
         </div>
+    </div>
 
-        {{-- ===== GRAPHIQUES PRINCIPAUX ===== --}}
-        <div class="row">
-            <div class="col-lg-8">
-                <div class="card modern-card">
-                    <div class="card-header">
-                        <h4><i class="fas fa-chart-area text-primary"></i> Évolution des Heures</h4>
-                        <small class="text-muted">Tendance sur la période</small>
-                    </div>
-                    <div class="card-body">
-                        <canvas id="chartEvolution" height="80"></canvas>
-                    </div>
+    {{-- ═══ GRAPHIQUES ═══ --}}
+    <div class="charts-grid">
+        <div class="chart-card">
+            <div class="chart-header">
+                <div class="chart-title-wrap">
+                    <span class="chart-dot dot-violet"></span>
+                    <h3 class="chart-title">Attestations par type</h3>
                 </div>
+                <span class="chart-badge">Donut</span>
             </div>
-            <div class="col-lg-4">
-                <div class="card modern-card">
-                    <div class="card-header">
-                        <h4><i class="fas fa-calendar-week text-info"></i> Heures par Jour de Semaine</h4>
-                        <small class="text-muted">Distribution hebdomadaire</small>
-                    </div>
-                    <div class="card-body">
-                        <canvas id="chartJoursSemaine" height="200"></canvas>
-                    </div>
+            <div class="chart-body">
+                <div id="no-attest-types" class="chart-empty" style="display:none;">
+                    <i class="fas fa-chart-pie"></i>
+                    <p>Aucune donnée</p>
                 </div>
+                <canvas id="chartAttestationsTypes"></canvas>
             </div>
         </div>
 
-        {{-- ===== GRAPHIQUES SECONDAIRES ===== --}}
-        <div class="row">
-            <div class="col-lg-6">
-                <div class="card modern-card">
-                    <div class="card-header">
-                        <h4><i class="fas fa-chart-bar text-success"></i> Top 10 Dossiers</h4>
-                        <small class="text-muted">Par nombre d'heures travaillées</small>
-                    </div>
-                    <div class="card-body">
-                        <canvas id="chartDossiers" height="250"></canvas>
-                    </div>
+        <div class="chart-card">
+            <div class="chart-header">
+                <div class="chart-title-wrap">
+                    <span class="chart-dot dot-blue"></span>
+                    <h3 class="chart-title">Évolution des demandes</h3>
                 </div>
+                <span class="chart-badge">Ligne</span>
             </div>
-            <div class="col-lg-6">
-                <div class="card modern-card">
-                    <div class="card-header">
-                        <h4><i class="fas fa-chart-pie text-warning"></i> Congés — Répartition</h4>
-                        <small class="text-muted">Par type et statut</small>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <canvas id="chartCongesTypes" height="200"></canvas>
-                            </div>
-                            <div class="col-md-6">
-                                <canvas id="chartCongesStatuts" height="200"></canvas>
-                            </div>
-                        </div>
-                    </div>
+            <div class="chart-body">
+                <div id="no-evolution" class="chart-empty" style="display:none;">
+                    <i class="fas fa-chart-line"></i>
+                    <p>Aucune donnée</p>
                 </div>
+                <canvas id="chartEvolutionDemandes"></canvas>
             </div>
         </div>
+    </div>
 
-        {{-- ===== TAUX DE VALIDATION ===== --}}
-        <div class="col-lg-12 justify-content-center">
-            <div class="card modern-card">
-                <div class="card-header">
-                    <h4><i class="fas fa-check-circle text-success"></i> Taux de Validation</h4>
-                    <small class="text-muted">Statut des feuilles de temps</small>
-                </div>
-                <div class="card-body">
-                    <canvas id="chartValidation" height="200"></canvas>
-                </div>
+    {{-- ═══ TABLEAU DERNIÈRES DEMANDES ═══ --}}
+    <div class="table-card">
+        <div class="table-card-header">
+            <div class="chart-title-wrap">
+                <span class="chart-dot dot-teal"></span>
+                <h3 class="chart-title">Dernières attestations &amp; certificats</h3>
             </div>
+            <span class="table-count" id="table-count"></span>
         </div>
-
-        {{-- ===== SOLDES CONGÉS ===== --}}
-        <div class="row">
-            <div class="col-lg-12">
-                <div class="card modern-card">
-                    <div class="card-header">
-                        <h4><i class="fas fa-balance-scale text-info"></i> Top 10 Soldes de Congés</h4>
-                        <small class="text-muted">Jours restants pour l'année en cours</small>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead class="thead-light">
-                                    <tr>
-                                        <th width="50">#</th>
-                                        <th>Employé</th>
-                                        <th class="text-center">Jours acquis</th>
-                                        <th class="text-center">Jours pris</th>
-                                        <th class="text-center">Jours restants</th>
-                                        <th class="text-center">Jours reportés</th>
-                                        <th class="text-center">Taux d'utilisation</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="soldes-conges">
-                                    <tr>
-                                        <td colspan="7" class="text-center py-4">
-                                            <i class="fas fa-spinner fa-spin"></i> Chargement...
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="table-responsive">
+            <table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Employé</th>
+                        <th>Date</th>
+                        <th>Statut</th>
+                        <th>Référence</th>
+                    </tr>
+                </thead>
+                <tbody id="table-demandes">
+                    <tr>
+                        <td colspan="5" class="table-loading">
+                            <i class="fas fa-spinner fa-spin"></i> Chargement en cours…
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
+    </div>
 
-        {{-- ===== ACTIVITÉS PAR HEURE ===== --}}
-        <div class="row">
-            <div class="col-lg-12">
-                <div class="card modern-card">
-                    <div class="card-header">
-                        <h4><i class="fas fa-clock text-secondary"></i> Activités par Heure de la Journée</h4>
-                        <small class="text-muted">Distribution horaire des activités</small>
-                    </div>
-                    <div class="card-body">
-                        <canvas id="chartActivitesHeure" height="80"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    </section>
+</div><!-- /.stats-wrapper -->
 @endsection
 
 @push('styles')
 <style>
-/* ===== CARTE GRADIENT EN-TÊTE ===== */
-.gradient-card {
-    background: linear-gradient(135deg, #244584 0%, #4b79c8 100%);
-    border: none;
-    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+/* ═══════════════════════════════════════════════
+   THEME CLAIR (LIGHT)
+═══════════════════════════════════════════════ */
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+
+:root {
+    --c-bg:        #f8f9fc;
+    --c-surface:   #ffffff;
+    --c-surface2:  #f1f3f8;
+    --c-border:    #e9edf2;
+    --c-text:      #1e293b;
+    --c-muted:     #64748b;
+
+    --c-blue:      #3b7fff;
+    --c-blue-glow: rgba(59,127,255,.12);
+    --c-teal:      #0ecfc5;
+    --c-teal-glow: rgba(14,207,197,.12);
+    --c-amber:     #f5a623;
+    --c-amber-glow:rgba(245,166,35,.12);
+    --c-violet:    #a259ff;
+    --c-violet-glow:rgba(162,89,255,.12);
+    --c-rose:      #ff5277;
+    --c-rose-glow: rgba(255,82,119,.12);
+
+    --radius:      14px;
+    --shadow:      0 8px 30px rgba(0,0,0,.05);
+    --trans:       .22s cubic-bezier(.4,0,.2,1);
 }
 
-/* ===== CARTES STATISTIQUES GÉNÉRALES ===== */
-.card-statistic {
-    border-radius: 16px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+.stats-wrapper {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--c-bg);
+    min-height: 100vh;
+    padding: 32px 28px 60px;
+    color: var(--c-text);
 }
-.card-statistic:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 12px 40px rgba(0,0,0,.15) !important;
-}
-.card-statistic:hover .icon-wrapper {
-    transform: scale(1.1);
-}
-.card-icon-bg {
-    color: rgba(255,255,255,.05);
-    transform: translate(20px,-20px);
-}
-.icon-wrapper { transition: all 0.3s ease; }
 
-/* Gradients réutilisables */
-.bg-gradient-primary   { background: linear-gradient(135deg,#667eea,#764ba2) !important; }
-.bg-gradient-success   { background: linear-gradient(135deg,#11998e,#38ef7d) !important; }
-.bg-gradient-info      { background: linear-gradient(135deg,#3abaf4,#1572E8) !important; }
-.bg-gradient-warning   { background: linear-gradient(135deg,#ffa426,#f3545d) !important; }
-.bg-gradient-secondary { background: linear-gradient(135deg,#6c757d,#343a40) !important; }
-.bg-gradient-danger    { background: linear-gradient(135deg,#fc544b,#ffa426) !important; }
+/* HEADER */
+.stats-header { margin-bottom: 28px; }
+.header-content { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; }
+.header-left { display:flex; align-items:center; gap:18px; }
+.header-icon-ring {
+    width:52px; height:52px; border-radius:50%;
+    background: linear-gradient(135deg, var(--c-blue), var(--c-violet));
+    display:grid; place-items:center;
+    font-size:20px; color:#fff;
+    box-shadow: 0 0 0 8px var(--c-blue-glow);
+}
+.header-title {
+    font-family:'Syne',sans-serif;
+    font-size:1.6rem; font-weight:700; margin:0;
+    color: var(--c-text);
+    background: none;
+    -webkit-text-fill-color: initial;
+}
+.header-sub { margin:0; color:var(--c-muted); font-size:.85rem; }
+.btn-header {
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    color: var(--c-text);
+    padding:10px 20px; border-radius:50px;
+    cursor:pointer; font-size:.85rem; font-family:inherit;
+    transition: var(--trans);
+    display:inline-flex; align-items:center; gap:8px;
+}
+.btn-header:hover { background:var(--c-blue); border-color:var(--c-blue); color:#fff; box-shadow:0 4px 12px var(--c-blue-glow); }
+.header-line { height:1px; background:var(--c-border); margin-top:20px; }
 
-/* Animations d'entrée */
-@keyframes fadeInUp {
-    from { opacity:0; transform:translateY(20px); }
+/* FILTRES */
+.filters-panel {
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    padding: 22px 24px 20px;
+    margin-bottom: 28px;
+    box-shadow: var(--shadow);
+}
+.filters-title {
+    font-family:'Syne',sans-serif;
+    font-size:.8rem; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--c-muted); margin-bottom:16px;
+    display:flex; align-items:center; gap:8px;
+}
+.filters-row { display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end; }
+.filter-group { display:flex; flex-direction:column; gap:6px; min-width:150px; flex:1; }
+.filter-group.filter-employe { flex:2; min-width:200px; }
+.filter-group.filter-action { flex:0 0 auto; min-width:120px; }
+.filter-label { font-size:.75rem; color:var(--c-muted); text-transform:uppercase; letter-spacing:.06em; }
+.filter-select {
+    background: var(--c-surface2);
+    border: 1px solid var(--c-border);
+    border-radius: 8px;
+    color: var(--c-text);
+    padding: 10px 14px;
+    font-size:.9rem; font-family:inherit;
+    transition: var(--trans); outline:none;
+    width:100%;
+}
+.filter-select:focus { border-color:var(--c-blue); box-shadow:0 0 0 3px var(--c-blue-glow); }
+.btn-apply {
+    background: linear-gradient(135deg, var(--c-blue), var(--c-violet));
+    border:none; border-radius:8px; color:#fff;
+    padding:10px 18px; cursor:pointer; font-family:inherit;
+    font-size:.9rem; font-weight:500; width:100%;
+    transition:var(--trans); display:flex; align-items:center; justify-content:center; gap:6px;
+}
+.btn-apply:hover { filter:brightness(1.05); box-shadow:0 4px 14px var(--c-blue-glow); transform:translateY(-1px); }
+.filter-active-bar {
+    margin-top:14px; padding:10px 16px; border-radius:8px;
+    background: rgba(59,127,255,.08); border:1px solid rgba(59,127,255,.2);
+    font-size:.85rem; display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    color: #1e40af;
+}
+.btn-reset {
+    margin-left:auto; background:transparent; border:1px solid var(--c-border);
+    border-radius:6px; color:var(--c-muted); padding:4px 12px;
+    cursor:pointer; font-size:.8rem; font-family:inherit; transition:var(--trans);
+    display:flex; align-items:center; gap:4px;
+}
+.btn-reset:hover { color:var(--c-text); border-color:var(--c-text); }
+
+/* KPI GRID (4 cartes) */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    margin-bottom: 28px;
+}
+.kpi-card {
+    position:relative; overflow:hidden;
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    padding: 24px 20px;
+    transition: var(--trans);
+    animation: kpiFadeUp .4s ease both;
+    box-shadow: var(--shadow);
+}
+.kpi-card:hover { transform:translateY(-4px); box-shadow: 0 12px 28px rgba(0,0,0,.08); }
+
+@keyframes kpiFadeUp {
+    from { opacity:0; transform:translateY(16px); }
     to   { opacity:1; transform:translateY(0); }
 }
-.card-statistic {
-    animation: fadeInUp 0.5s ease forwards;
-    animation-delay: calc(var(--ao,1) * 0.1s);
-    opacity: 0;
-}
-.card-statistic:nth-child(1) { --ao:1; }
-.card-statistic:nth-child(2) { --ao:2; }
-.card-statistic:nth-child(3) { --ao:3; }
-.card-statistic:nth-child(4) { --ao:4; }
 
-/* ===== SECTION DOSSIERS ===== */
-.dossier-section-label {
-    font-size: .78rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .6px;
-    color: #6c757d;
-    border-bottom: 2px solid #f0f0f0;
-    padding-bottom: 8px;
-    margin-bottom: 0;
+.kpi-bg-icon {
+    position:absolute; top:-10px; right:-10px;
+    font-size:72px; opacity:.04;
+    pointer-events:none; line-height:1;
+}
+.kpi-inner { display:flex; align-items:center; gap:16px; }
+.kpi-icon {
+    width:44px; height:44px; border-radius:12px;
+    display:grid; place-items:center; font-size:18px;
+    flex-shrink:0;
+}
+.kpi-info { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.kpi-label { font-size:.72rem; text-transform:uppercase; letter-spacing:.1em; color:var(--c-muted); }
+.kpi-value { font-family:'Syne',sans-serif; font-size:1.8rem; font-weight:700; line-height:1; }
+.kpi-sub { font-size:.75rem; color:var(--c-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* Card colors (light theme) */
+.kpi-blue  { border-top:3px solid var(--c-blue); }
+.kpi-blue  .kpi-icon { background:rgba(59,127,255,.1); color:var(--c-blue); }
+.kpi-blue  .kpi-value { color:var(--c-blue); }
+
+.kpi-amber { border-top:3px solid var(--c-amber); }
+.kpi-amber .kpi-icon { background:rgba(245,166,35,.1); color:var(--c-amber); }
+.kpi-amber .kpi-value { color:var(--c-amber); }
+
+.kpi-violet{ border-top:3px solid var(--c-violet); }
+.kpi-violet .kpi-icon { background:rgba(162,89,255,.1); color:var(--c-violet); }
+.kpi-violet .kpi-value { color:var(--c-violet); }
+
+.kpi-rose  { border-top:3px solid var(--c-rose); }
+.kpi-rose  .kpi-icon { background:rgba(255,82,119,.1); color:var(--c-rose); }
+.kpi-rose  .kpi-value { color:var(--c-rose); }
+
+/* CHARTS */
+.charts-grid {
+    display:grid; grid-template-columns:1fr 1fr;
+    gap:20px; margin-bottom:28px;
+}
+@media (max-width:900px) { .charts-grid { grid-template-columns:1fr; } }
+
+.chart-card {
+    background:var(--c-surface);
+    border:1px solid var(--c-border);
+    border-radius:var(--radius);
+    overflow:hidden;
+    box-shadow: var(--shadow);
+}
+.chart-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 22px 14px;
+    border-bottom:1px solid var(--c-border);
+}
+.chart-title-wrap { display:flex; align-items:center; gap:10px; }
+.chart-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.dot-violet { background:var(--c-violet); }
+.dot-blue   { background:var(--c-blue); }
+.dot-teal   { background:var(--c-teal); }
+.chart-title { font-family:'Syne',sans-serif; font-size:.95rem; font-weight:600; margin:0; color:var(--c-text); }
+.chart-badge {
+    font-size:.68rem; text-transform:uppercase; letter-spacing:.1em;
+    background:var(--c-surface2); border:1px solid var(--c-border);
+    color:var(--c-muted); border-radius:20px; padding:3px 10px;
+}
+.chart-body { padding:20px 16px; position:relative; }
+.chart-empty {
+    display:flex; flex-direction:column; align-items:center;
+    justify-content:center; padding:40px 0; color:var(--c-muted);
+}
+.chart-empty i { font-size:32px; margin-bottom:10px; opacity:.5; }
+
+/* TABLE */
+.table-card {
+    background:var(--c-surface);
+    border:1px solid var(--c-border);
+    border-radius:var(--radius);
+    overflow:hidden;
+    box-shadow: var(--shadow);
+}
+.table-card-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 22px 14px;
+    border-bottom:1px solid var(--c-border);
+}
+.table-count {
+    font-size:.78rem; color:var(--c-muted);
+    background:var(--c-surface2); border:1px solid var(--c-border);
+    border-radius:20px; padding:4px 12px;
+}
+.stats-table {
+    width:100%; border-collapse:collapse;
+    font-size:.875rem;
+}
+.stats-table thead tr {
+    background:var(--c-surface2);
+}
+.stats-table th {
+    padding:12px 18px; text-align:left;
+    font-size:.7rem; text-transform:uppercase; letter-spacing:.1em;
+    color:var(--c-muted); font-weight:500; white-space:nowrap;
+    border-bottom:1px solid var(--c-border);
+}
+.stats-table td {
+    padding:13px 18px;
+    border-bottom:1px solid var(--c-border);
+    color:var(--c-text); vertical-align:middle;
+}
+.stats-table tbody tr { transition:background var(--trans); }
+.stats-table tbody tr:hover { background:var(--c-surface2); }
+.stats-table tbody tr:last-child td { border-bottom:none; }
+.table-loading { text-align:center; padding:40px !important; color:var(--c-muted); }
+
+/* BADGES (light) */
+.badge-approuve  { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; font-size:.75rem; font-weight:500; background:#e0f7f5; color:#0d9488; border:1px solid #99f6e4; }
+.badge-en_attente{ display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; font-size:.75rem; font-weight:500; background:#fff3e3; color:#b45309; border:1px solid #fed7aa; }
+.badge-refuse    { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; font-size:.75rem; font-weight:500; background:#ffe4e6; color:#e11d48; border:1px solid #fecdd3; }
+.badge-acceptee  { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; font-size:.75rem; font-weight:500; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; }
+.badge-default   { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; font-size:.75rem; font-weight:500; background:var(--c-surface2); color:var(--c-muted); border:1px solid var(--c-border); }
+
+.type-tag {
+    display:inline-block; padding:3px 9px; border-radius:6px; font-size:.78rem;
+    background:#f3e8ff; color:#7e22ce; border:1px solid #d8b4fe;
+}
+.type-tag-cert {
+    background:#ffe4e6; color:#be123c; border-color:#fecdd3;
 }
 
-.dossier-stat-card {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    border-radius: 12px;
-    padding: 16px;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    margin-bottom: 8px;
+/* Select2 light override */
+.select2-container--default .select2-selection--single {
+    background: var(--c-surface2) !important;
+    border: 1px solid var(--c-border) !important;
+    border-radius: 8px !important;
+    height: 42px !important;
+    color: var(--c-text) !important;
 }
-.dossier-stat-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 20px rgba(0,0,0,.08);
-}
+.select2-container--default .select2-selection--single .select2-selection__rendered { color: var(--c-text) !important; line-height: 42px !important; padding-left: 14px; }
+.select2-container--default .select2-selection--single .select2-selection__arrow { height: 42px !important; right: 8px; }
+.select2-dropdown { background: var(--c-surface) !important; border: 1px solid var(--c-border) !important; }
+.select2-results__option { color: var(--c-text) !important; }
+.select2-results__option--highlighted { background: var(--c-blue) !important; color: white !important; }
 
-/* Fond légèrement teinté selon le type */
-.dossier-global { background: #f8f9ff; border: 1px solid #e8ecff; }
-.dossier-filtre { background: #fff8f0; border: 1px solid #ffe8c0; }
+@keyframes spin { to { transform:rotate(360deg); } }
+#refresh-icon.spinning { animation: spin .7s linear infinite; }
 
-.dossier-stat-icon {
-    width: 46px;
-    height: 46px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-.dossier-stat-body { flex: 1; min-width: 0; }
-.dossier-stat-label {
-    font-size: .73rem;
-    font-weight: 600;
-    color: #8a8fa3;
-    text-transform: uppercase;
-    letter-spacing: .4px;
-    margin-bottom: 2px;
-}
-.dossier-stat-value {
-    font-size: 1.9rem;
-    font-weight: 800;
-    line-height: 1;
-    color: #2c3e50;
-    margin-bottom: 2px;
-}
-.dossier-stat-sub {
-    font-size: .72rem;
-    color: #aab0bd;
-}
-
-/* Séparateur vertical */
-.dossier-separator {
-    width: 1px;
-    height: 80%;
-    background: linear-gradient(to bottom, transparent, #dee2e6, transparent);
-}
-
-/* ===== TABLES ===== */
-.table-hover tbody tr { transition: all 0.2s ease; }
-.table-hover tbody tr:hover {
-    background: rgba(var(--bs-primary-rgb),.05);
-    transform: translateX(4px);
-}
-.table > thead > tr > th {
-    font-weight: 600;
-    text-transform: uppercase;
-    font-size: .8rem;
-    letter-spacing: .5px;
-    color: #6c757d;
-    border-bottom-width: 2px;
-}
-
-/* Progress bar soldes */
-.progress-taux {
-    height: 8px;
-    border-radius: 4px;
-    background: #e9ecef;
-    position: relative;
-}
-.progress-taux-bar {
-    height: 100%;
-    border-radius: 4px;
-    transition: width 0.6s ease;
-    background: linear-gradient(90deg,#3abaf4,#1572E8);
-}
-.progress-taux-text {
-    position: absolute;
-    top: -20px;
-    right: 0;
-    font-size: .75rem;
-    font-weight: 600;
-    color: #6c757d;
-}
-
-/* Responsive */
-@media (max-width:768px) {
-    .dossier-separator { display:none; }
-    .dossier-stat-value { font-size: 1.5rem; }
+@media (max-width:600px) {
+    .stats-wrapper { padding:16px 12px 40px; }
+    .header-title { font-size:1.2rem; }
+    .kpi-grid { grid-template-columns:1fr 1fr; }
+    .kpi-value { font-size:1.4rem; }
 }
 </style>
 @endpush
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-let charts = {};
-let currentFilters = {
-    periode: 'mois',
-    user_id: null,
-    date_debut: null,
-    date_fin: null
+/* ═══════════════════════════════════════════════
+   CHART.JS — THEME CLAIR
+═══════════════════════════════════════════════ */
+Chart.defaults.color = '#64748b';
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.borderColor = '#e9edf2';
+
+const PALETTE = {
+    blue:   '#3b7fff',
+    teal:   '#0ecfc5',
+    amber:  '#f5a623',
+    violet: '#a259ff',
+    rose:   '#ff5277',
 };
 
-Chart.defaults.font.family = "'Nunito', sans-serif";
-Chart.defaults.plugins.legend.labels.usePointStyle = true;
+let charts = {};
+let currentFilters = { periode: 'mois', user_id: null, date_debut: null, date_fin: null };
 
 $(document).ready(function () {
     $('#filtre-employe').select2({
-        placeholder: "Rechercher un employé...",
+        placeholder: 'Rechercher un employé…',
         allowClear: true,
-        width: '100%'
+        width: '100%',
     });
 
     loadEmployes();
     loadStats();
 
     $('#filtre-periode').change(function () {
-        const periode = $(this).val();
-        if (periode === 'personnalise') {
-            $('#filtre-dates, #filtre-dates-fin').show();
+        if ($(this).val() === 'personnalise') {
+            $('#filtre-dates, #filtre-dates-fin').slideDown(160);
         } else {
-            $('#filtre-dates, #filtre-dates-fin').hide();
+            $('#filtre-dates, #filtre-dates-fin').slideUp(160);
         }
     });
 
-    // Quand date-debut change → mettre le min de date-fin
     $('#date-debut').change(function () {
-        const val = $(this).val();
-        $('#date-fin').attr('min', val);
-
-        // Si date-fin déjà saisie et < date-debut → la corriger automatiquement
-        if ($('#date-fin').val() && $('#date-fin').val() < val) {
-            $('#date-fin').val(val);
+        $('#date-fin').attr('min', $(this).val());
+        if ($('#date-fin').val() && $('#date-fin').val() < $(this).val()) {
+            $('#date-fin').val($(this).val());
         }
     });
-
-    // Quand date-fin change → mettre le max de date-debut
     $('#date-fin').change(function () {
-        const val = $(this).val();
-        $('#date-debut').attr('max', val);
+        $('#date-debut').attr('max', $(this).val());
     });
 });
 
-// ===== CHARGEMENT EMPLOYÉS =====
 function loadEmployes() {
     $.ajax({
         url: '{{ route("admin.stats.employes") }}',
@@ -655,468 +552,339 @@ function loadEmployes() {
             const select = $('#filtre-employe');
             select.empty().append('<option value="">Tous les employés</option>');
             data.forEach(emp => {
-                select.append(`<option value="${emp.id}">${emp.nom_complet}</option>`);
+                select.append(`<option value="${emp.id}">${emp.nom_complet} — ${emp.email}</option>`);
             });
             select.trigger('change.select2');
+        },
+        error: function () {
+            console.warn('Impossible de charger la liste des employés.');
         }
     });
 }
 
-// ===== APPLIQUER LES FILTRES =====
 function applyFilters() {
     const periode = $('#filtre-periode').val();
 
-    // Validation dates personnalisées
     if (periode === 'personnalise') {
-        const dateDebut = $('#date-debut').val();
-        const dateFin   = $('#date-fin').val();
-
-        if (!dateDebut || !dateFin) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Dates manquantes',
-                text: 'Veuillez saisir une date de début et une date de fin.',
-                confirmButtonColor: '#6777ef'
-            });
-            return;
+        const debut = $('#date-debut').val(), fin = $('#date-fin').val();
+        if (!debut || !fin) {
+            return Swal.fire({ icon: 'warning', title: 'Dates manquantes', text: 'Veuillez saisir une plage de dates complète.', background: '#fff', color: '#1e293b' });
         }
-
-        if (dateFin < dateDebut) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Période invalide',
-                text: 'La date de fin ne peut pas être antérieure à la date de début.',
-                confirmButtonColor: '#6777ef'
-            }).then(() => {
-                // Remettre date-fin = date-debut comme valeur minimale
-                $('#date-fin').val(dateDebut).focus();
-            });
-            return; // On bloque l'envoi
+        if (fin < debut) {
+            return Swal.fire({ icon: 'error', title: 'Période invalide', text: 'La date de fin doit être postérieure à la date de début.', background: '#fff', color: '#1e293b' });
         }
     }
 
     currentFilters = {
-        periode:    periode,
+        periode,
         user_id:    $('#filtre-employe').val() || null,
         date_debut: $('#date-debut').val() || null,
-        date_fin:   $('#date-fin').val() || null
+        date_fin:   $('#date-fin').val() || null,
     };
 
     loadStats();
     updateFilterInfo();
 }
 
-// ===== RÉINITIALISER =====
 function resetFilters() {
     $('#filtre-periode').val('mois');
     $('#filtre-employe').val('').trigger('change.select2');
     $('#date-debut, #date-fin').val('');
-    $('#filtre-dates, #filtre-dates-fin').hide();
-    $('#filtre-info').hide();
+    $('#filtre-dates, #filtre-dates-fin').slideUp(160);
+    $('#filtre-info').slideUp(160);
     currentFilters = { periode: 'mois', user_id: null, date_debut: null, date_fin: null };
+    updatePeriodeLabel('mois', null, null);
     loadStats();
 }
 
-// ===== LABEL INFO FILTRES =====
 function updateFilterInfo() {
-    const periode  = currentFilters.periode;
-    const employe  = $('#filtre-employe option:selected').text();
-    const hasFilters = currentFilters.user_id || periode !== 'mois';
+    const labels = { jour: "Aujourd'hui", semaine: 'Cette semaine', mois: 'Ce mois', annee: 'Cette année', personnalise: 'Période personnalisée' };
+    const parts = [];
+    parts.push('<i class="fas fa-calendar-alt"></i> ' + (labels[currentFilters.periode] || currentFilters.periode));
+    if (currentFilters.date_debut && currentFilters.date_fin) {
+        parts.push(`du ${formatDate(currentFilters.date_debut)} au ${formatDate(currentFilters.date_fin)}`);
+    }
+    if (currentFilters.user_id) {
+        const empText = $('#filtre-employe option:selected').text();
+        parts.push('<i class="fas fa-user"></i> ' + empText);
+    }
+    $('#filtre-details').html(parts.join(' &nbsp;·&nbsp; '));
+    $('#filtre-info').slideDown(200);
+}
 
-    if (hasFilters) {
-        let parts = [];
-        const labels = {
-            jour: "Aujourd'hui", semaine: 'Cette semaine',
-            mois: 'Ce mois', annee: 'Cette année'
-        };
-        if (periode === 'personnalise') {
-            parts.push(`Du ${currentFilters.date_debut} au ${currentFilters.date_fin}`);
-        } else {
-            parts.push(labels[periode] || periode);
-        }
-        if (currentFilters.user_id) parts.push(`Employé : ${employe}`);
-        $('#filtre-details').text(parts.join(' • '));
-        $('#filtre-info').show();
+function updatePeriodeLabel(periode, debut, fin) {
+    const map = { jour: "Aujourd'hui", semaine: 'Cette semaine', mois: 'Ce mois', annee: 'Cette année' };
+    if (debut && fin) {
+        $('#periode-label').text(`${formatDate(debut)} → ${formatDate(fin)}`);
     } else {
-        $('#filtre-info').hide();
+        $('#periode-label').text(map[periode] || periode);
     }
 }
 
-// ===== RAFRAÎCHIR =====
+function formatDate(str) {
+    if (!str) return '';
+    const [y, m, d] = str.split('-');
+    return `${d}/${m}/${y}`;
+}
+
 function refreshStats() {
-    loadStats();
-    Swal.fire({
-        toast: true, position: 'top-end', icon: 'success',
-        title: 'Statistiques actualisées', showConfirmButton: false, timer: 2000
+    const icon = document.getElementById('refresh-icon');
+    icon.classList.add('spinning');
+    loadStats(() => {
+        icon.classList.remove('spinning');
+        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Données actualisées', showConfirmButton: false, timer: 2000, background: '#fff', color: '#1e293b' });
     });
 }
 
-// ===== CHARGER TOUTES LES STATS =====
-function loadStats() {
+function loadStats(callback) {
+    // Skeleton (sans heures)
+    ['stat-employes','stat-conges','stat-attestations','stat-certificats'].forEach(id => {
+        $(`#${id}`).html('<i class="fas fa-spinner fa-spin" style="font-size:.8em;opacity:.5"></i>');
+    });
+
     $.ajax({
         url: '{{ route("admin.stats.data") }}',
         method: 'GET',
         data: currentFilters,
         success: function (response) {
-            const stats = response.stats;
-            const periode = response.periode;
-
-            updateGlobalStats(stats.totaux, periode);
-            updateClassementHeures(stats.classement_employes);
-            updateClassementConges(stats.classement_conges);
-            updateChartEvolution(stats.evolution_heures);
-            updateChartDossiers(stats.repartition_dossiers);
-            updateChartConges(stats.statistiques_conges);
-            updateChartMensuel(stats.performance_mensuelle);
-            updateChartValidation(stats.taux_validation);
-            updateChartJoursSemaine(stats.heures_par_jour_semaine);
-            updateSoldesConges(stats.soldes_conges);
-            updateChartActivitesHeure(stats.activites_par_heure);
+            const s = response.stats;
+            updateKPIs(s.totaux);
+            renderChartDoughnut(s.repartition_attestations);
+            renderChartLine(s.evolution_demandes);
+            renderTable(s.dernieres_demandes);
+            updatePeriodeLabel(currentFilters.periode, response.periode?.debut, response.periode?.fin);
+            if (callback) callback();
         },
         error: function (xhr) {
-            console.error('Erreur:', xhr);
-            Swal.fire({ icon: 'error', title: 'Erreur', text: 'Impossible de charger les statistiques' });
+            console.error(xhr);
+            Swal.fire({ icon: 'error', title: 'Erreur de chargement', text: 'Impossible de récupérer les statistiques.', background: '#fff', color: '#1e293b' });
+            if (callback) callback();
         }
     });
 }
 
-// ===== FORMATAGE HEURES =====
-function decimalToHoursMinutes(decimal) {
-    const h = Math.floor(decimal);
-    const m = Math.round((decimal - h) * 60).toString().padStart(2, '0');
-    return `${h}h ${m}`;
+function updateKPIs(t) {
+    animCount('stat-employes', t.total_employes);
+    $('#stat-employes-actifs').text(t.employes_actifs);
+
+    animCount('stat-conges', t.total_conges);
+    $('#stat-conges-cours').text(t.conges_en_cours);
+
+    animCount('stat-attestations', t.total_attestations);
+    $('#stat-attestations-validees').text(t.attestations_approuvees);
+
+    animCount('stat-certificats', t.total_certificats);
+    $('#stat-certificats-acceptes').text(t.certificats_acceptes);
 }
 
-// ===== MISE À JOUR STATS GLOBALES =====
-function updateGlobalStats(totaux, periode) {
-    // Employés
-    $('#stat-employes').text(totaux.total_employes);
-    $('#stat-employes-actifs').text(totaux.employes_actifs);
-
-    // Heures
-    $('#stat-heures').text(decimalToHoursMinutes(totaux.total_heures));
-    if (totaux.moyenne_heures_employe !== null) {
-        $('#stat-moyenne').text(decimalToHoursMinutes(totaux.moyenne_heures_employe) + '/employé');
-    } else {
-        $('#stat-moyenne').text('—');
-    }
-
-    // Congés
-    $('#stat-conges').text(totaux.total_conges);
-    $('#stat-conges-cours').text(totaux.conges_en_cours);
-
-    // Clients
-    $('#stat-clients').text(totaux.total_clients);
-
-    // ===== DOSSIERS : globaux (fixes) =====
-    $('#stat-total-dossiers-global').text(totaux.total_dossiers_global);
-    $('#stat-dossiers-actifs-global').text(totaux.dossiers_actifs_global);
-
-    // ===== DOSSIERS : filtrés =====
-    $('#stat-total-dossiers').text(totaux.total_dossiers);
-    $('#stat-dossiers-actifs').text(totaux.dossiers_actifs);
-
-    // Label période sur la carte dossiers
-    const labels = {
-        jour: "Aujourd'hui", semaine: 'Cette semaine',
-        mois: 'Ce mois', annee: 'Cette année'
+function animCount(id, target) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    let start = 0;
+    const duration = 600;
+    const step = (timestamp) => {
+        if (!start) start = timestamp;
+        const progress = Math.min((timestamp - start) / duration, 1);
+        el.textContent = Math.floor(progress * target);
+        if (progress < 1) requestAnimationFrame(step);
+        else el.textContent = target;
     };
-    const periodeType = currentFilters.periode;
-    let labelPeriode = labels[periodeType]
-        || `Du ${periode.debut} au ${periode.fin}`;
-
-    $('#badge-periode-dossiers').text(labelPeriode);
-    $('#label-periode-dossiers').text(`(${periode.debut} → ${periode.fin})`);
+    requestAnimationFrame(step);
 }
 
-// ===== CLASSEMENT HEURES =====
-function updateClassementHeures(data) {
-    const tbody = $('#classement-heures');
-    if (!data || !data.length) {
-        tbody.html('<tr><td colspan="6" class="text-center py-3 text-muted">Aucune donnée</td></tr>');
+function renderChartDoughnut(data) {
+    destroyChart('doughnut');
+    if (!data.labels || !data.labels.length) {
+        document.getElementById('chartAttestationsTypes').style.display = 'none';
+        document.getElementById('no-attest-types').style.display = 'flex';
         return;
     }
-    let html = '';
-    data.forEach(emp => {
-        const badgeClass = emp.rang === 1 ? 'badge-rang-1' : emp.rang === 2 ? 'badge-rang-2' : emp.rang === 3 ? 'badge-rang-3' : '';
-        html += `
-            <tr onclick="viewEmployeDetails(${emp.id})" style="cursor:pointer;">
-                <td><span class="badge badge-pill ${badgeClass}">${emp.rang}</span></td>
-                <td><strong>${emp.nom_complet}</strong><br><small class="text-muted">${emp.email}</small></td>
-                <td class="text-center"><strong class="text-primary">${emp.total_heures}h</strong></td>
-                <td class="text-center"><small class="text-muted">${emp.moyenne_jour}h/j</small></td>
-                <td class="text-center"><span class="badge badge-info">${emp.nombre_dossiers}</span></td>
-            </tr>`;
+    document.getElementById('chartAttestationsTypes').style.display = 'block';
+    document.getElementById('no-attest-types').style.display = 'none';
+
+    charts.doughnut = new Chart(document.getElementById('chartAttestationsTypes'), {
+        type: 'doughnut',
+        data: {
+            labels: data.labels,
+            datasets: [{
+                data: data.counts,
+                backgroundColor: [PALETTE.violet, PALETTE.blue, PALETTE.teal, PALETTE.rose],
+                borderColor: '#fff',
+                borderWidth: 3,
+                hoverOffset: 8,
+            }]
+        },
+        options: {
+            responsive: true,
+            cutout: '70%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 16,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        font: { size: 12 },
+                    }
+                },
+                tooltip: {
+                    backgroundColor: '#fff',
+                    borderColor: '#e9edf2',
+                    borderWidth: 1,
+                    padding: 12,
+                    bodyColor: '#1e293b',
+                    titleColor: '#0f172a',
+                    callbacks: {
+                        label: (ctx) => ` ${ctx.label}: ${ctx.parsed} demande${ctx.parsed > 1 ? 's' : ''}`,
+                    }
+                }
+            },
+            animation: { animateRotate: true, duration: 700 }
+        }
     });
-    tbody.html(html);
 }
 
-// ===== CLASSEMENT CONGÉS =====
-function updateClassementConges(data) {
-    const tbody = $('#classement-conges');
-    if (!data || !data.length) {
-        tbody.html('<tr><td colspan="5" class="text-center py-3 text-muted">Aucune donnée</td></tr>');
+function renderChartLine(data) {
+    destroyChart('line');
+    if (!data.labels || !data.labels.length) {
+        document.getElementById('chartEvolutionDemandes').style.display = 'none';
+        document.getElementById('no-evolution').style.display = 'flex';
         return;
     }
-    let html = '';
-    data.forEach(emp => {
-        const badgeClass = emp.rang === 1 ? 'badge-rang-1' : emp.rang === 2 ? 'badge-rang-2' : emp.rang === 3 ? 'badge-rang-3' : '';
-        html += `
-            <tr onclick="viewEmployeDetails(${emp.id})" style="cursor:pointer;">
-                <td><span class="badge badge-pill ${badgeClass}">${emp.rang}</span></td>
-                <td><strong>${emp.nom_complet}</strong><br><small class="text-muted">${emp.email}</small></td>
-                <td class="text-center"><strong class="text-warning">${emp.nombre_conges}</strong></td>
-                <td class="text-center"><span class="badge badge-success">${emp.jours_approuves}j</span></td>
-                <td class="text-center"><span class="badge badge-warning">${emp.total_jours}j</span></td>
-            </tr>`;
-    });
-    tbody.html(html);
-}
+    document.getElementById('chartEvolutionDemandes').style.display = 'block';
+    document.getElementById('no-evolution').style.display = 'none';
 
-// ===== SOLDES CONGÉS =====
-function updateSoldesConges(data) {
-    const tbody = $('#soldes-conges');
-    if (!data.employes || !data.employes.length) {
-        tbody.html('<tr><td colspan="7" class="text-center py-3 text-muted">Aucune donnée</td></tr>');
-        return;
-    }
-    let html = '';
-    data.employes.forEach((emp, i) => {
-        const badgeClass = i === 0 ? 'badge-rang-1' : i === 1 ? 'badge-rang-2' : i === 2 ? 'badge-rang-3' : '';
-        const color = emp.pourcentage_pris > 80 ? 'danger' : emp.pourcentage_pris > 50 ? 'warning' : 'success';
-        html += `
-            <tr>
-                <td><span class="badge badge-pill ${badgeClass}">${i + 1}</span></td>
-                <td><strong>${emp.nom_complet}</strong></td>
-                <td class="text-center"><strong class="text-info">${emp.jours_acquis}</strong></td>
-                <td class="text-center"><strong class="text-warning">${emp.jours_pris}</strong></td>
-                <td class="text-center"><strong class="text-success">${emp.jours_restants}</strong></td>
-                <td class="text-center"><span class="badge badge-secondary">${emp.jours_reportes}</span></td>
-                <td>
-                    <div class="progress-taux position-relative">
-                        <div class="progress-taux-bar bg-${color}" style="width:${emp.pourcentage_pris}%"></div>
-                        <div class="progress-taux-text">${emp.pourcentage_pris}%</div>
-                    </div>
-                </td>
-            </tr>`;
-    });
-    tbody.html(html);
-}
+    const makeGradient = (ctx, color) => {
+        const g = ctx.createLinearGradient(0, 0, 0, 260);
+        g.addColorStop(0, color + '30');
+        g.addColorStop(1, color + '00');
+        return g;
+    };
 
-// ===== GRAPHIQUES =====
-function destroyChart(id) {
-    const key = id.replace('chart','').charAt(0).toLowerCase() + id.replace('chart','').slice(1);
-    if (charts[key]) { charts[key].destroy(); delete charts[key]; }
-}
-
-function updateChartEvolution(data) {
-    destroyChart('chartEvolution');
-    charts.Evolution = new Chart(document.getElementById('chartEvolution'), {
+    charts.line = new Chart(document.getElementById('chartEvolutionDemandes'), {
         type: 'line',
         data: {
             labels: data.labels,
             datasets: [
                 {
-                    label: 'Heures travaillées',
-                    data: data.heures,
-                    borderColor: '#6777ef', backgroundColor: 'rgba(103,119,239,.1)',
-                    tension: 0.4, fill: true, borderWidth: 3, yAxisID: 'y'
+                    label: 'Attestations',
+                    data: data.attestations,
+                    borderColor: PALETTE.violet,
+                    backgroundColor: (ctx) => makeGradient(ctx.chart.ctx, PALETTE.violet),
+                    fill: true,
+                    tension: .4,
+                    pointBackgroundColor: PALETTE.violet,
+                    pointRadius: 4,
+                    pointHoverRadius: 7,
+                    borderWidth: 2,
                 },
                 {
-                    label: 'Employés actifs',
-                    data: data.employes,
-                    borderColor: '#47c363', backgroundColor: 'rgba(71,195,99,.1)',
-                    tension: 0.4, borderWidth: 2, borderDash: [5,5], yAxisID: 'y1'
+                    label: 'Certificats',
+                    data: data.certificats,
+                    borderColor: PALETTE.rose,
+                    backgroundColor: (ctx) => makeGradient(ctx.chart.ctx, PALETTE.rose),
+                    fill: true,
+                    tension: .4,
+                    pointBackgroundColor: PALETTE.rose,
+                    pointRadius: 4,
+                    pointHoverRadius: 7,
+                    borderWidth: 2,
                 }
             ]
         },
         options: {
             responsive: true,
             interaction: { mode: 'index', intersect: false },
-            plugins: { legend: { position: 'top' } },
             scales: {
-                x: { grid: { display: false } },
-                y: { type: 'linear', position: 'left', title: { display: true, text: 'Heures' } },
-                y1: { type: 'linear', position: 'right', title: { display: true, text: 'Employés' }, grid: { drawOnChartArea: false } }
-            }
-        }
-    });
-}
-
-function updateChartDossiers(data) {
-    destroyChart('chartDossiers');
-    charts.Dossiers = new Chart(document.getElementById('chartDossiers'), {
-        type: 'bar',
-        data: {
-            labels: data.dossiers,
-            datasets: [{ label: 'Heures travaillées', data: data.heures, backgroundColor: '#47c363', borderRadius: 6 }]
-        },
-        options: {
-            indexAxis: 'y', responsive: true,
-            plugins: { legend: { display: false } },
-            scales: { x: { beginAtZero: true, title: { display: true, text: 'Heures' } } }
-        }
-    });
-}
-
-function updateChartConges(data) {
-    destroyChart('chartCongesTypes');
-    destroyChart('chartCongesStatuts');
-    const colors = ['#6777ef','#ffa426','#47c363','#fc544b','#3abaf4','#f3545d'];
-    charts.CongesTypes = new Chart(document.getElementById('chartCongesTypes'), {
-        type: 'doughnut',
-        data: { labels: data.types.labels, datasets: [{ data: data.types.counts, backgroundColor: colors, borderWidth: 3, borderColor: '#fff' }] },
-        options: { responsive: true, plugins: { legend: { position: 'bottom' }, title: { display: true, text: 'Par type' } } }
-    });
-    const colorStatuts = { 'En_attente': '#3abaf4', 'Approuve': '#47c363', 'Refuse': '#fc544b', 'Annule': '#95a5a6' };
-    charts.CongesStatuts = new Chart(document.getElementById('chartCongesStatuts'), {
-        type: 'pie',
-        data: {
-            labels: data.statuts.labels,
-            datasets: [{ data: data.statuts.counts, backgroundColor: data.statuts.labels.map(l => colorStatuts[l.replace(' ','_')] || '#95a5a6'), borderWidth: 3, borderColor: '#fff' }]
-        },
-        options: { responsive: true, plugins: { legend: { position: 'bottom' }, title: { display: true, text: 'Par statut' } } }
-    });
-}
-
-function updateChartMensuel(data) {
-    destroyChart('chartMensuel');
-    if (!document.getElementById('chartMensuel')) return;
-    charts.Mensuel = new Chart(document.getElementById('chartMensuel'), {
-        type: 'bar',
-        data: {
-            labels: data.labels,
-            datasets: [
-                { label: 'Heures travaillées', data: data.heures, backgroundColor: '#3abaf4', borderRadius: 6, yAxisID: 'y' },
-                { label: 'Jours de congés', data: data.jours_conges, backgroundColor: '#ffa426', borderRadius: 6, yAxisID: 'y1' }
-            ]
-        },
-        options: {
-            responsive: true,
-            plugins: { legend: { position: 'top' } },
-            scales: {
-                x: { grid: { display: false } },
-                y: { type: 'linear', position: 'left', title: { display: true, text: 'Heures' } },
-                y1: { type: 'linear', position: 'right', title: { display: true, text: 'Jours' }, grid: { drawOnChartArea: false } }
-            }
-        }
-    });
-}
-
-function updateChartValidation(data) {
-    destroyChart('chartValidation');
-    const colorMap = { 'Soumis': '#3abaf4', 'Valide': '#95d5a2', 'Refuse': '#fc544b', 'Brouillon': '#47b363' };
-    charts.Validation = new Chart(document.getElementById('chartValidation').getContext('2d'), {
-        type: 'pie',
-        data: {
-            labels: data.statuts,
-            datasets: [{ data: data.counts, backgroundColor: data.statuts.map(s => colorMap[s] || '#95a5a6'), borderWidth: 3, borderColor: '#fff' }]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false, aspectRatio: 2.5,
-            layout: { padding: { top: 10, bottom: 20, left: 10, right: 10 } },
-            plugins: {
-                legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 15 } },
-                tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${ctx.parsed} (${data.pourcentages[ctx.dataIndex]}%)` } }
+                x: {
+                    grid: { color: '#e9edf2' },
+                    ticks: { color: '#64748b' },
+                },
+                y: {
+                    grid: { color: '#e9edf2' },
+                    beginAtZero: true,
+                    ticks: { precision: 0, color: '#64748b' },
+                }
             },
-            cutout: '50%'
-        }
-    });
-}
-
-function updateChartJoursSemaine(data) {
-    destroyChart('chartJoursSemaine');
-    charts.JoursSemaine = new Chart(document.getElementById('chartJoursSemaine'), {
-        type: 'radar',
-        data: {
-            labels: data.jours,
-            datasets: [{ label: 'Heures travaillées', data: data.heures, backgroundColor: 'rgba(58,186,244,.2)', borderColor: '#3abaf4', borderWidth: 2, pointBackgroundColor: '#3abaf4', pointRadius: 4 }]
-        },
-        options: { responsive: true, scales: { r: { beginAtZero: true, ticks: { stepSize: 20 } } }, plugins: { legend: { display: false } } }
-    });
-}
-
-function updateChartActivitesHeure(data) {
-    destroyChart('chartActivitesHeure');
-    charts.ActivitesHeure = new Chart(document.getElementById('chartActivitesHeure'), {
-        type: 'bar',
-        data: {
-            labels: data.map(i => i.heure),
-            datasets: [
-                { label: "Nombre d'activités", data: data.map(i => i.nombre_activites), backgroundColor: '#6777ef', borderRadius: 4, yAxisID: 'y' },
-                { label: 'Heures totales', data: data.map(i => i.total_heures), backgroundColor: '#47c363', borderRadius: 4, yAxisID: 'y1' }
-            ]
-        },
-        options: {
-            responsive: true,
-            interaction: { mode: 'index', intersect: false },
-            plugins: { legend: { position: 'top' } },
-            scales: {
-                x: { grid: { display: false } },
-                y: { type: 'linear', position: 'left', title: { display: true, text: 'Activités' } },
-                y1: { type: 'linear', position: 'right', title: { display: true, text: 'Heures' }, grid: { drawOnChartArea: false } }
-            }
-        }
-    });
-}
-
-// ===== DÉTAILS EMPLOYÉ =====
-function viewEmployeDetails(userId) {
-    $.ajax({
-        url: `/admin/statistiques/employe/${userId}`,
-        method: 'GET',
-        success: function (data) {
-            Swal.fire({
-                title: `<strong>${data.user.nom_complet}</strong>`,
-                html: `
-                    <div class="text-left">
-                        <p><strong>Email :</strong> ${data.user.email}</p>
-                        <p><strong>Poste :</strong> ${data.user.poste}</p>
-                        <p><strong>Contrat :</strong> ${data.user.type_contrat}</p>
-                        <hr>
-                        <h6><i class="fas fa-clock text-primary"></i> Heures</h6>
-                        <div class="row mb-3">
-                            <div class="col-4"><div class="card bg-light"><div class="card-body text-center"><h4 class="text-primary">${data.heures.total}h</h4><small>Total</small></div></div></div>
-                            <div class="col-4"><div class="card bg-light"><div class="card-body text-center"><h4 class="text-success">${data.heures.mois}h</h4><small>Ce mois</small></div></div></div>
-                            <div class="col-4"><div class="card bg-light"><div class="card-body text-center"><h4 class="text-info">${data.heures.annee}h</h4><small>Cette année</small></div></div></div>
-                        </div>
-                        <h6><i class="fas fa-folder text-success"></i> Dossiers</h6>
-                        <div class="row mb-3">
-                            <div class="col-6"><div class="card bg-light"><div class="card-body text-center"><h4 class="text-success">${data.dossiers.total}</h4><small>Total</small></div></div></div>
-                            <div class="col-6"><div class="card bg-light"><div class="card-body text-center"><h4 class="text-warning">${data.dossiers.actifs}</h4><small>Actifs</small></div></div></div>
-                        </div>
-                        <h6><i class="fas fa-umbrella-beach text-warning"></i> Congés</h6>
-                        <div class="row mb-3">
-                            <div class="col-4"><div class="card bg-light"><div class="card-body text-center"><h4 class="text-warning">${data.conges.total_demandes}</h4><small>Demandes</small></div></div></div>
-                            <div class="col-4"><div class="card bg-light"><div class="card-body text-center"><h4 class="text-danger">${data.conges.jours_pris}j</h4><small>Jours pris</small></div></div></div>
-                            <div class="col-4"><div class="card bg-light"><div class="card-body text-center"><h4 class="${data.conges.en_attente > 0 ? 'text-warning' : 'text-muted'}">${data.conges.en_attente}</h4><small>En attente</small></div></div></div>
-                        </div>
-                        <h6><i class="fas fa-balance-scale text-info"></i> Solde congés</h6>
-                        <div class="row">
-                            <div class="col-3"><div class="card bg-light"><div class="card-body text-center"><h4 class="text-info">${data.conges.jours_acquis}</h4><small>Acquis</small></div></div></div>
-                            <div class="col-3"><div class="card bg-light"><div class="card-body text-center"><h4 class="text-warning">${data.conges.jours_pris}</h4><small>Pris</small></div></div></div>
-                            <div class="col-3"><div class="card bg-light"><div class="card-body text-center"><h4 class="text-success">${data.conges.jours_restants}</h4><small>Restants</small></div></div></div>
-                            <div class="col-3"><div class="card bg-light"><div class="card-body text-center"><h4 class="text-secondary">${data.conges.jours_reportes}</h4><small>Reportés</small></div></div></div>
-                        </div>
-                    </div>`,
-                width: 700,
-                showCloseButton: true,
-                showCancelButton: true,
-                confirmButtonText: '<i class="fas fa-filter"></i> Filtrer sur cet employé',
-                cancelButtonText: 'Fermer',
-                confirmButtonColor: '#6777ef',
-                cancelButtonColor: '#95a5a6'
-            }).then(result => {
-                if (result.isConfirmed) {
-                    $('#filtre-employe').val(userId).trigger('change.select2');
-                    applyFilters();
+            plugins: {
+                legend: {
+                    position: 'top',
+                    align: 'end',
+                    labels: { usePointStyle: true, pointStyle: 'circle', padding: 16, color: '#1e293b' }
+                },
+                tooltip: {
+                    backgroundColor: '#fff',
+                    borderColor: '#e9edf2',
+                    borderWidth: 1,
+                    padding: 12,
+                    bodyColor: '#1e293b',
+                    titleColor: '#0f172a',
                 }
-            });
-        },
-        error: function () {
-            Swal.fire({ icon: 'error', title: 'Erreur', text: "Impossible de charger les détails de l'employé" });
+            },
+            animation: { duration: 700 }
         }
     });
+}
+
+function renderTable(demandes) {
+    if (!demandes || !demandes.length) {
+        $('#table-demandes').html('<tr><td colspan="5" class="table-loading" style="color:var(--c-muted)">Aucune demande sur cette période</td></tr>');
+        $('#table-count').text('0 résultat');
+        return;
+    }
+
+    $('#table-count').text(demandes.length + ' résultat' + (demandes.length > 1 ? 's' : ''));
+
+    let html = '';
+    demandes.forEach(d => {
+        const isCert = d.type_label === 'Certificat de travail';
+        const tagClass = isCert ? 'type-tag type-tag-cert' : 'type-tag';
+        const badge = buildBadge(d.statut_badge);
+        html += `
+        <tr>
+            <td><span class="${tagClass}">${escHtml(d.type_label)}</span></td>
+            <td>
+                <div style="display:flex;align-items:center;gap:8px">
+                    <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--c-blue),var(--c-violet));display:grid;place-items:center;font-size:.7rem;font-weight:700;color:#fff;flex-shrink:0">
+                        ${getInitials(d.employe)}
+                    </div>
+                    <span>${escHtml(d.employe)}</span>
+                </div>
+            </td>
+            <td style="color:var(--c-muted)">${escHtml(d.date)}</td>
+            <td>${badge}</td>
+            <td style="font-family:monospace;font-size:.8rem;color:var(--c-muted)">${escHtml(d.reference)}</td>
+        </tr>`;
+    });
+
+    $('#table-demandes').html(html);
+}
+
+function buildBadge(statutBadge) {
+    const map = {
+        'approuve':   ['badge-approuve',  'fas fa-check-circle', 'Approuvé'],
+        'en_attente': ['badge-en_attente','fas fa-clock',        'En attente'],
+        'refuse':     ['badge-refuse',    'fas fa-times-circle', 'Refusé'],
+        'acceptee':   ['badge-acceptee',  'fas fa-check',        'Accepté'],
+    };
+    for (const [key, [cls, icon, label]] of Object.entries(map)) {
+        if (statutBadge && (statutBadge.includes(key) || statutBadge.toLowerCase().includes(label.toLowerCase()))) {
+            return `<span class="${cls}"><i class="${icon}"></i>${label}</span>`;
+        }
+    }
+    return `<span class="badge-default">${escHtml(statutBadge || '—')}</span>`;
+}
+
+function getInitials(name) {
+    return (name || '').split(' ').slice(0,2).map(w => w[0] || '').join('').toUpperCase();
+}
+
+function escHtml(str) {
+    return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function destroyChart(key) {
+    if (charts[key]) { charts[key].destroy(); delete charts[key]; }
 }
 </script>
 @endpush

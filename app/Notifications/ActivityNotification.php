@@ -162,6 +162,10 @@ class ActivityNotification extends Notification
             // Utilisateurs
             $this->model instanceof \App\Models\User => route('users.show', $this->model),
 
+            $this->model instanceof \App\Models\DemandeAttestation => route('attestations.show', $this->model),
+            $this->model instanceof \App\Models\DemandeDemission => route('demissions.show', $this->model),
+
+
             // Historiques (redirige vers la demande)
             $this->model instanceof \App\Models\HistoriqueConge =>
             $this->model->demandeConge
