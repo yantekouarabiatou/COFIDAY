@@ -263,6 +263,21 @@
                                             </small>
                                         </div>
                                     </div>
+
+                                    <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Date d'embauche</label>
+                                        <input type="date" name="date_embauche" 
+                                            class="form-control @error('date_embauche') is-invalid @enderror"
+                                            value="{{ old('date_embauche', $user->date_embauche ? \Carbon\Carbon::parse($user->date_embauche)->format('Y-m-d') : '') }}">
+                                        @error('date_embauche')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                        <small class="text-muted">
+                                            <i class="fas fa-calendar-alt"></i> Facultatif
+                                        </small>
+                                    </div>
+                                </div>
                                 </div>
 
 

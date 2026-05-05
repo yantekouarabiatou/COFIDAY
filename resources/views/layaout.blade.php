@@ -366,162 +366,162 @@
             auth()->user()->can('voir les demandes de congés') ||
             auth()->user()->can('créer des demandes de congés')
         )
-                                    <li class="menu-header">GESTION DES CONGES</li>
+                                        <li class="menu-header">GESTION DES CONGES</li>
 
-                                    @can('accéder au tableau de bord utilisateur')
-                                        <li class="{{ request()->routeIs('dashboard') ? 'active' : '' }}">
-                                            <a href="{{ route('dashboard') }}" class="nav-link">
-                                                <i class="fas fa-tachometer-alt"></i><span>Tableau de bord</span>
-                                            </a>
-                                        </li>
-                                    @endcan
+                                        @can('accéder au tableau de bord utilisateur')
+                                            <li class="{{ request()->routeIs('dashboard') ? 'active' : '' }}">
+                                                <a href="{{ route('dashboard') }}" class="nav-link">
+                                                    <i class="fas fa-tachometer-alt"></i><span>Tableau de bord</span>
+                                                </a>
+                                            </li>
+                                        @endcan
 
-                                     {{-- Gestion des Congés --}}
-                                    @can(['voir les demandes de congés', 'créer des demandes de congés'])
-                                        <li class="dropdown {{ request()->is('conges*') ? 'active' : '' }}">
-                                            <a href="#" class="menu-toggle nav-link has-dropdown {{ request()->is('conges*') ? 'active' : '' }}">
-                                                <i class="fas fa-umbrella-beach"></i><span>Gestion des Congés</span>
-                                            </a>
-                                            <ul class="dropdown-menu" style="{{ request()->is('conges*') ? 'display: block;' : '' }}">
-                                                @can('créer des demandes de congés')
-                                                    <li class="{{ request()->routeIs('conges.create') ? 'active' : '' }}">
-                                                        <a class="nav-link" href="{{ route('conges.create') }}">
-                                                            <i class="fas fa-user-plus"></i> Créer un congé
-                                                        </a>
-                                                    </li>
-                                                @endcan
-
-                                                @can('voir les demandes de congés')
-                                                    <li class="{{ request()->routeIs('conges.index') ? 'active' : '' }}">
-                                                        <a class="nav-link" href="{{ route('conges.index') }}">
-                                                            <i class="fas fa-list"></i> Liste des congés
-                                                        </a>
-                                                    </li>
-                                                @endcan
-                                                @can('valider les demandes de congés')
-                                                    <li class="{{ request()->routeIs('conges.validation-finale.index') ? 'active' : '' }}">
-                                                            <a class="nav-link" href="{{ route('conges.validation-finale.index') }}">
-                                                                <i class="fas fa-check-double"></i> Validation finale
+                                         {{-- Gestion des Congés --}}
+                                        @can(['voir les demandes de congés', 'créer des demandes de congés'])
+                                            <li class="dropdown {{ request()->is('conges*') ? 'active' : '' }}">
+                                                <a href="#" class="menu-toggle nav-link has-dropdown {{ request()->is('conges*') ? 'active' : '' }}">
+                                                    <i class="fas fa-umbrella-beach"></i><span>Gestion des Congés</span>
+                                                </a>
+                                                <ul class="dropdown-menu" style="{{ request()->is('conges*') ? 'display: block;' : '' }}">
+                                                    @can('créer des demandes de congés')
+                                                        <li class="{{ request()->routeIs('conges.create') ? 'active' : '' }}">
+                                                            <a class="nav-link" href="{{ route('conges.create') }}">
+                                                                <i class="fas fa-user-plus"></i> Créer un congé
                                                             </a>
                                                         </li>
-                                                @endcan
-                                                @can('voir le calendrier des congés')
-                                                    <li class="{{ request()->routeIs('conges.calendrier') ? 'active' : '' }}">
-                                                        <a class="nav-link" href="{{ route('conges.calendrier') }}">
-                                                            <i class="fas fa-calendar-alt"></i> <span>Calendrier des congés</span>
-                                                        </a>
-                                                    </li>
-                                                @endcan
+                                                    @endcan
 
-                                                @can('voir les soldes de congés')
-                                                    <li class="{{ request()->routeIs('conges.solde') ? 'active' : '' }}">
-                                                        <a class="nav-link" href="{{ route('conges.solde') }}">
-                                                            <i class="fas fa-chart-pie"></i> <span>Mon soldes des congés</span>
-                                                        </a>
-                                                    </li>
-                                                @endcan
+                                                    @can('voir les demandes de congés')
+                                                        <li class="{{ request()->routeIs('conges.index') ? 'active' : '' }}">
+                                                            <a class="nav-link" href="{{ route('conges.index') }}">
+                                                                <i class="fas fa-list"></i> Liste des congés
+                                                            </a>
+                                                        </li>
+                                                    @endcan
+                                                    @can('valider les demandes de congés')
+                                                        <li class="{{ request()->routeIs('conges.validation-finale.index') ? 'active' : '' }}">
+                                                                <a class="nav-link" href="{{ route('conges.validation-finale.index') }}">
+                                                                    <i class="fas fa-check-double"></i> Validation finale
+                                                                </a>
+                                                            </li>
+                                                    @endcan
+                                                    @can('voir le calendrier des congés')
+                                                        <li class="{{ request()->routeIs('conges.calendrier') ? 'active' : '' }}">
+                                                            <a class="nav-link" href="{{ route('conges.calendrier') }}">
+                                                                <i class="fas fa-calendar-alt"></i> <span>Calendrier des congés</span>
+                                                            </a>
+                                                        </li>
+                                                    @endcan
 
-                                                {{-- Lien admin pour gérer tous les soldes --}}
-                                                @can('gerer les soldes')
-                                                    <li class="{{ request()->routeIs('admin.soldes.*') ? 'active' : '' }}">
-                                                        <a class="nav-link" href="{{ route('admin.soldes.index') }}">
-                                                            <i class="fas fa-cogs"></i> <span>Gérer les soldes</span>
-                                                        </a>
-                                                    </li>
-                                                @endcan
+                                                    @can('voir les soldes de congés')
+                                                        <li class="{{ request()->routeIs('conges.solde') ? 'active' : '' }}">
+                                                            <a class="nav-link" href="{{ route('conges.solde') }}">
+                                                                <i class="fas fa-chart-pie"></i> <span>Mon soldes des congés</span>
+                                                            </a>
+                                                        </li>
+                                                    @endcan
 
-                                                @can('accéder au dashboard des congés')
-                                                    <li class="{{ request()->routeIs('conges.dashboard') ? 'active' : '' }}">
-                                                        <a class="nav-link" href="{{ route('conges.dashboard') }}">
-                                                            <i class="fas fa-tachometer-alt"></i> Tableau de bord
-                                                        </a>
-                                                    </li>
-                                                @endcan
+                                                    {{-- Lien admin pour gérer tous les soldes --}}
+                                                    @can('gerer les soldes')
+                                                        <li class="{{ request()->routeIs('admin.soldes.*') ? 'active' : '' }}">
+                                                            <a class="nav-link" href="{{ route('admin.soldes.index') }}">
+                                                                <i class="fas fa-cogs"></i> <span>Gérer les soldes</span>
+                                                            </a>
+                                                        </li>
+                                                    @endcan
 
-                                            </ul>
-                                        </li>
-                                    @endcan
+                                                    @can('accéder au dashboard des congés')
+                                                        <li class="{{ request()->routeIs('conges.dashboard') ? 'active' : '' }}">
+                                                            <a class="nav-link" href="{{ route('conges.dashboard') }}">
+                                                                <i class="fas fa-tachometer-alt"></i> Tableau de bord
+                                                            </a>
+                                                        </li>
+                                                    @endcan
 
-                                    @canany(['créer des demandes d attestation', 'voir les demandes d attestation', 'valider les demandes d attestation'])
-                                        <li class="dropdown {{ request()->is('attestations*') ? 'active' : '' }}">
-                                            <a href="#" class="menu-toggle nav-link has-dropdown {{ request()->is('attestations*') ? 'active' : '' }}">
-                                                <i class="fas fa-file-alt"></i>
-                                                <span>Attestations de travail</span>
-                                            </a>
-                                            <ul class="dropdown-menu" style="{{ request()->is('attestations*') ? 'display:block;' : '' }}">
+                                                </ul>
+                                            </li>
+                                        @endcan
 
-                                                @can('créer des demandes d attestation')
-                                                    <li class="{{ request()->routeIs('attestations.create') ? 'active' : '' }}">
-                                                        <a class="nav-link" href="{{ route('attestations.create') }}">
-                                                            <i class="fas fa-plus-circle"></i> Nouvelle demande
-                                                        </a>
-                                                    </li>
-                                                @endcan
+                                        @canany(['créer des demandes d attestation', 'voir les demandes d attestation', 'valider les demandes d attestation'])
+                                            <li class="dropdown {{ request()->is('attestations*') ? 'active' : '' }}">
+                                                <a href="#" class="menu-toggle nav-link has-dropdown {{ request()->is('attestations*') ? 'active' : '' }}">
+                                                    <i class="fas fa-file-alt"></i>
+                                                    <span>Attestations de travail</span>
+                                                </a>
+                                                <ul class="dropdown-menu" style="{{ request()->is('attestations*') ? 'display:block;' : '' }}">
 
-                                                @can('voir les demandes d attestation')
-                                                    <li class="{{ request()->routeIs('attestations.index') ? 'active' : '' }}">
-                                                        <a class="nav-link" href="{{ route('attestations.index') }}">
-                                                            <i class="fas fa-list"></i> Mes demandes
-                                                        </a>
-                                                    </li>
-                                                @endcan
+                                                    @can('créer des demandes d attestation')
+                                                        <li class="{{ request()->routeIs('attestations.create') ? 'active' : '' }}">
+                                                            <a class="nav-link" href="{{ route('attestations.create') }}">
+                                                                <i class="fas fa-plus-circle"></i> Nouvelle demande
+                                                            </a>
+                                                        </li>
+                                                    @endcan
 
-                                                @can('valider les demandes d attestation')
-                                                    <li class="{{ request()->routeIs('attestations.validation.index') ? 'active' : '' }}">
-                                                        <a class="nav-link" href="{{ route('attestations.validation.index') }}">
-                                                            <i class="fas fa-check-double"></i> Validation
-                                                            @php $nbAtt = \App\Models\DemandeAttestation::enAttente()->count(); @endphp
-                                                            @if($nbAtt > 0)
-                                                                <span class="badge badge-danger ml-1">{{ $nbAtt }}</span>
-                                                            @endif
-                                                        </a>
-                                                    </li>
-                                                @endcan
+                                                    @can('voir les demandes d attestation')
+                                                        <li class="{{ request()->routeIs('attestations.index') ? 'active' : '' }}">
+                                                            <a class="nav-link" href="{{ route('attestations.index') }}">
+                                                                <i class="fas fa-list"></i> Mes demandes
+                                                            </a>
+                                                        </li>
+                                                    @endcan
 
-                                            </ul>
-                                        </li>
-                                    @endcanany
+                                                    @can('valider les demandes d attestation')
+                                                        <li class="{{ request()->routeIs('attestations.validation.index') ? 'active' : '' }}">
+                                                            <a class="nav-link" href="{{ route('attestations.validation.index') }}">
+                                                                <i class="fas fa-check-double"></i> Validation
+                                                                @php $nbAtt = \App\Models\DemandeAttestation::enAttente()->count(); @endphp
+                                                                @if($nbAtt > 0)
+                                                                    <span class="badge badge-danger ml-1">{{ $nbAtt }}</span>
+                                                                @endif
+                                                            </a>
+                                                        </li>
+                                                    @endcan
 
-            {{-- ── Démission & Certificat de travail ───────────────────────────────── --}}
-            @canany(['soumettre une démission', 'voir les démissions', 'valider les démissions'])
-                <li class="dropdown {{ request()->is('demissions*') ? 'active' : '' }}">
-                    <a href="#" class="menu-toggle nav-link has-dropdown {{ request()->is('demissions*') ? 'active' : '' }}">
-                        <i class="fas fa-sign-out-alt"></i>
-                        <span>Démission & Certificat</span>
-                    </a>
-                    <ul class="dropdown-menu" style="{{ request()->is('demissions*') ? 'display:block;' : '' }}">
+                                                </ul>
+                                            </li>
+                                        @endcanany
 
-                        @can('soumettre une démission')
-                            <li class="{{ request()->routeIs('demissions.create') ? 'active' : '' }}">
-                                <a class="nav-link" href="{{ route('demissions.create') }}">
-                                    <i class="fas fa-envelope-open-text"></i> Soumettre ma démission
-                                </a>
-                            </li>
-                        @endcan
+                {{-- ── Démission & Certificat de travail ───────────────────────────────── --}}
+                @canany(['soumettre une démission', 'voir les démissions', 'valider les démissions'])
+                    <li class="dropdown {{ request()->is('demissions*') ? 'active' : '' }}">
+                        <a href="#" class="menu-toggle nav-link has-dropdown {{ request()->is('demissions*') ? 'active' : '' }}">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Démission & Certificat</span>
+                        </a>
+                        <ul class="dropdown-menu" style="{{ request()->is('demissions*') ? 'display:block;' : '' }}">
 
-                        @can('voir les démissions')
-                            <li class="{{ request()->routeIs('demissions.index') ? 'active' : '' }}">
-                                <a class="nav-link" href="{{ route('demissions.index') }}">
-                                    <i class="fas fa-list"></i> Mes démissions
-                                </a>
-                            </li>
-                        @endcan
+                            @can('soumettre une démission')
+                                <li class="{{ request()->routeIs('demissions.create') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('demissions.create') }}">
+                                        <i class="fas fa-envelope-open-text"></i> Soumettre ma démission
+                                    </a>
+                                </li>
+                            @endcan
 
-                        @can('valider les démissions')
-                            <li class="{{ request()->routeIs('demissions.validation.index') ? 'active' : '' }}">
-                                <a class="nav-link" href="{{ route('demissions.validation.index') }}">
-                                    <i class="fas fa-check-double"></i> Validation DG
-                                    @php $nbDem = \App\Models\DemandeDemission::enAttente()->count(); @endphp
-                                    @if($nbDem > 0)
-                                        <span class="badge badge-danger ml-1">{{ $nbDem }}</span>
-                                    @endif
-                                </a>
-                            </li>
-                        @endcan
+                            @can('voir les démissions')
+                                <li class="{{ request()->routeIs('demissions.index') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('demissions.index') }}">
+                                        <i class="fas fa-list"></i> Mes démissions
+                                    </a>
+                                </li>
+                            @endcan
 
-                    </ul>
-                </li>
-            @endcanany
+                            @can('valider les démissions')
+                                <li class="{{ request()->routeIs('demissions.validation.index') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('demissions.validation.index') }}">
+                                        <i class="fas fa-check-double"></i> Validation DG
+                                        @php $nbDem = \App\Models\DemandeDemission::enAttente()->count(); @endphp
+                                        @if($nbDem > 0)
+                                            <span class="badge badge-danger ml-1">{{ $nbDem }}</span>
+                                        @endif
+                                    </a>
+                                </li>
+                            @endcan
+
+                        </ul>
+                    </li>
+                @endcanany
 
     @endif
 
@@ -535,96 +535,96 @@
             auth()->user()->can('gérer les permissions') ||
             auth()->user()->can('voir les paramètres')
         )
-                            <li class="menu-header">GESTION DES PARAMÈTRES</li>
+                                <li class="menu-header">GESTION DES PARAMÈTRES</li>
 
-                            @can(['voir les utilisateurs', 'créer des utilisateurs', 'voir les postes'])
-                                <li class="dropdown {{ request()->is('users*') || request()->is('postes*') ? 'active' : '' }}">
-                                    <a href="#"
-                                        class="menu-toggle nav-link has-dropdown {{ request()->is('users*') || request()->is('postes*') ? 'active' : '' }}">
-                                        <i class="fas fa-users-cog"></i><span>Gestion des Utilisateurs</span>
-                                    </a>
-                                    <ul class="dropdown-menu"
-                                        style="{{ request()->is('users*') || request()->is('postes*') ? 'display: block;' : '' }}">
-                                        @can('créer des utilisateurs')
-                                            <li class="{{ request()->routeIs('users.create') ? 'active' : '' }}">
-                                                <a class="nav-link" href="{{ route('users.create') }}">
-                                                    <i class="fas fa-user-plus"></i> Créer un utilisateur
+                                @can(['voir les utilisateurs', 'créer des utilisateurs', 'voir les postes'])
+                                    <li class="dropdown {{ request()->is('users*') || request()->is('postes*') ? 'active' : '' }}">
+                                        <a href="#"
+                                            class="menu-toggle nav-link has-dropdown {{ request()->is('users*') || request()->is('postes*') ? 'active' : '' }}">
+                                            <i class="fas fa-users-cog"></i><span>Gestion des Utilisateurs</span>
+                                        </a>
+                                        <ul class="dropdown-menu"
+                                            style="{{ request()->is('users*') || request()->is('postes*') ? 'display: block;' : '' }}">
+                                            @can('créer des utilisateurs')
+                                                <li class="{{ request()->routeIs('users.create') ? 'active' : '' }}">
+                                                    <a class="nav-link" href="{{ route('users.create') }}">
+                                                        <i class="fas fa-user-plus"></i> Créer un utilisateur
+                                                    </a>
+                                                </li>
+                                            @endcan
+                                            @can('voir les utilisateurs')
+                                                <li class="{{ request()->routeIs('users.index') ? 'active' : '' }}">
+                                                    <a class="nav-link" href="{{ route('users.index') }}">
+                                                        <i class="fas fa-list"></i> Liste des utilisateurs
+                                                    </a>
+                                                </li>
+                                            @endcan
+                                            @can('voir les postes')
+                                                <li class="{{ request()->routeIs('postes.*') ? 'active' : '' }}">
+                                                    <a class="nav-link" href="{{ route('postes.index') }}">
+                                                        <i class="fas fa-briefcase"></i> Gestion des postes
+                                                    </a>
+                                                </li>
+                                            @endcan
+                                        </ul>
+                                    </li>
+                                @endcan
+
+                                @can(['voir les rôles', 'voir les permissions', 'gérer les permissions'])
+                                    <li class="dropdown {{ request()->is('admin/permissions*') || request()->is('roles*') ? 'active' : '' }}">
+                                        <a href="#"
+                                            class="menu-toggle nav-link has-dropdown {{ request()->is('admin/permissions*') || request()->is('roles*') ? 'active' : '' }}">
+                                            <i class="fas fa-user-lock"></i><span>Gestion des permissions</span>
+                                        </a>
+                                        <ul class="dropdown-menu"
+                                            style="{{ request()->is('admin/permissions*') || request()->is('roles*') ? 'display: block;' : '' }}">
+                                            @can('voir les rôles')
+                                                <li><a class="nav-link" href="{{ route('admin.roles.index') }}">
+                                                    <i class="fas fa-user-tag"></i> Gérer les rôles
+                                                </a></li>
+                                            @endcan
+                                            @can(['voir les permissions', 'gérer les permissions'])
+                                                <li><a class="nav-link" href="{{ route('admin.roles.permissions.index') }}">
+                                                    <i class="fas fa-tasks"></i> Gérer les permissions
+                                                </a></li>
+                                            @endcan
+                                        </ul>
+                                    </li>
+                                @endcan
+
+                                @can('access-settings')
+                                    <li class="dropdown {{ request()->is('settings*') ? 'active' : '' }}">
+                                        <a href="#"
+                                            class="menu-toggle nav-link has-dropdown {{ request()->is('settings*') ? 'active' : '' }}">
+                                            <i class="fas fa-cog"></i><span>Paramètres Entreprise</span>
+                                        </a>
+                                        <ul class="dropdown-menu" style="{{ request()->is('settings*') ? 'display: block;' : '' }}">
+                                            <li>
+                                                <a class="nav-link" href="{{ route('settings.show') }}">
+                                                    <i class="fas fa-building"></i> Paramètres Généraux
                                                 </a>
                                             </li>
-                                        @endcan
-                                        @can('voir les utilisateurs')
-                                            <li class="{{ request()->routeIs('users.index') ? 'active' : '' }}">
-                                                <a class="nav-link" href="{{ route('users.index') }}">
-                                                    <i class="fas fa-list"></i> Liste des utilisateurs
-                                                </a>
-                                            </li>
-                                        @endcan
-                                        @can('voir les postes')
-                                            <li class="{{ request()->routeIs('postes.*') ? 'active' : '' }}">
-                                                <a class="nav-link" href="{{ route('postes.index') }}">
-                                                    <i class="fas fa-briefcase"></i> Gestion des postes
-                                                </a>
-                                            </li>
-                                        @endcan
-                                    </ul>
-                                </li>
-                            @endcan
+                                        </ul>
+                                    </li>
+                                @endcan
 
-                            @can(['voir les rôles', 'voir les permissions', 'gérer les permissions'])
-                                <li class="dropdown {{ request()->is('admin/permissions*') || request()->is('roles*') ? 'active' : '' }}">
-                                    <a href="#"
-                                        class="menu-toggle nav-link has-dropdown {{ request()->is('admin/permissions*') || request()->is('roles*') ? 'active' : '' }}">
-                                        <i class="fas fa-user-lock"></i><span>Gestion des permissions</span>
-                                    </a>
-                                    <ul class="dropdown-menu"
-                                        style="{{ request()->is('admin/permissions*') || request()->is('roles*') ? 'display: block;' : '' }}">
-                                        @can('voir les rôles')
-                                            <li><a class="nav-link" href="{{ route('admin.roles.index') }}">
-                                                <i class="fas fa-user-tag"></i> Gérer les rôles
-                                            </a></li>
-                                        @endcan
-                                        @can(['voir les permissions', 'gérer les permissions'])
-                                            <li><a class="nav-link" href="{{ route('admin.roles.permissions.index') }}">
-                                                <i class="fas fa-tasks"></i> Gérer les permissions
-                                            </a></li>
-                                        @endcan
-                                    </ul>
-                                </li>
-                            @endcan
-
-                            @can('access-settings')
-                                <li class="dropdown {{ request()->is('settings*') ? 'active' : '' }}">
-                                    <a href="#"
-                                        class="menu-toggle nav-link has-dropdown {{ request()->is('settings*') ? 'active' : '' }}">
-                                        <i class="fas fa-cog"></i><span>Paramètres Entreprise</span>
-                                    </a>
-                                    <ul class="dropdown-menu" style="{{ request()->is('settings*') ? 'display: block;' : '' }}">
-                                        <li>
-                                            <a class="nav-link" href="{{ route('settings.show') }}">
-                                                <i class="fas fa-building"></i> Paramètres Généraux
-                                            </a>
-                                        </li>
-                                    </ul>
-                                </li>
-                            @endcan
-
-                            {{-- Regles de Congés --}}
-                            @can(['voir les dossiers', 'créer des dossiers'])
-                                <li class="dropdown {{ request()->routeIs('admin.regles-conges.*') ? 'active' : '' }}">
-                                    <a href="#" class="menu-toggle nav-link has-dropdown {{ request()->routeIs('admin.regles-conges.*') ? 'active' : '' }}">
-                                        <i class="fas fa-calendar-alt"></i><span>Règles de Congés</span>
-                                    </a>
-                                    <ul class="dropdown-menu" style="{{ request()->routeIs('admin.regles-conges.*') ? 'display: block;' : '' }}">
-                                        @can('voir les dossiers')
-                                            <li class="{{ request()->routeIs('admin.regles-conges.index') ? 'active' : '' }}">
-                                                <a class="nav-link" href="{{ route('admin.regles-conges.index') }}">
-                                                    <i class="fas fa-list"></i> Liste des règles
-                                                </a>
-                                            </li>
-                                        @endcan
-                                    </ul>
-                                </li>
-                            @endcan
+                                {{-- Regles de Congés --}}
+                                @can(['voir les dossiers', 'créer des dossiers'])
+                                    <li class="dropdown {{ request()->routeIs('admin.regles-conges.*') ? 'active' : '' }}">
+                                        <a href="#" class="menu-toggle nav-link has-dropdown {{ request()->routeIs('admin.regles-conges.*') ? 'active' : '' }}">
+                                            <i class="fas fa-calendar-alt"></i><span>Règles de Congés</span>
+                                        </a>
+                                        <ul class="dropdown-menu" style="{{ request()->routeIs('admin.regles-conges.*') ? 'display: block;' : '' }}">
+                                            @can('voir les dossiers')
+                                                <li class="{{ request()->routeIs('admin.regles-conges.index') ? 'active' : '' }}">
+                                                    <a class="nav-link" href="{{ route('admin.regles-conges.index') }}">
+                                                        <i class="fas fa-list"></i> Liste des règles
+                                                    </a>
+                                                </li>
+                                            @endcan
+                                        </ul>
+                                    </li>
+                                @endcan
     @endif
 
     {{-- GESTION DES LOGS --}}
@@ -633,23 +633,23 @@
             auth()->user()->can('accéder au tableau de bord admin') ||
             auth()->user()->can('accéder au tableau de bord utilisateur')
         )
-                            <li class="menu-header">GESTION DES LOGS</li>
-                            <li class="dropdown {{ request()->routeIs('activities') ? 'active' : '' }}">
-                                <a href="#"
-                                    class="menu-toggle nav-link has-dropdown {{ request()->routeIs('activities') ? 'active' : '' }}">
-                                    <i class="fas fa-clipboard-list"></i><span>Gestion des activités</span>
-                                </a>
-                                <ul class="dropdown-menu"
-                                    style="{{ request()->routeIs('activities') ? 'display: block;' : '' }}">
-                                    @can('voir les activités')
-                                        <li class="{{ request()->routeIs('activities') ? 'active' : '' }}">
-                                            <a class="nav-link" href="{{ route('activities') }}">
-                                                <i class="fas fa-history"></i> Voir Activités
-                                            </a>
-                                        </li>
-                                    @endcan
-                                </ul>
-                            </li>
+                                <li class="menu-header">GESTION DES LOGS</li>
+                                <li class="dropdown {{ request()->routeIs('activities') ? 'active' : '' }}">
+                                    <a href="#"
+                                        class="menu-toggle nav-link has-dropdown {{ request()->routeIs('activities') ? 'active' : '' }}">
+                                        <i class="fas fa-clipboard-list"></i><span>Gestion des activités</span>
+                                    </a>
+                                    <ul class="dropdown-menu"
+                                        style="{{ request()->routeIs('activities') ? 'display: block;' : '' }}">
+                                        @can('voir les activités')
+                                            <li class="{{ request()->routeIs('activities') ? 'active' : '' }}">
+                                                <a class="nav-link" href="{{ route('activities') }}">
+                                                    <i class="fas fa-history"></i> Voir Activités
+                                                </a>
+                                            </li>
+                                        @endcan
+                                    </ul>
+                                </li>
     @endif
 
     {{-- NOTIFICATIONS --}}
@@ -659,7 +659,7 @@
                     auth()->user()->can('accéder au tableau de bord admin') ||
                     auth()->user()->can('accéder au tableau de bord utilisateur'))
             )
-                                <li class="menu-header">GESTION DES LOGS</li>
+                                    <li class="menu-header">GESTION DES LOGS</li>
         @endif
         <li class="{{ request()->routeIs('notifications.*') ? 'active' : '' }}">
             <a href="{{ route('notifications.index') }}" class="nav-link">
@@ -689,14 +689,6 @@
                     <li class="{{ request()->routeIs('admin.stats.globale') ? 'active' : '' }}">
                         <a class="nav-link" href="{{ route('admin.stats.globale') }}">
                             <i class="fas fa-chart-pie"></i> Statistiques générales
-                        </a>
-                    </li>
-                @endcan
-
-                @can('voir les rapports mensuels temps')
-                    <li class="{{ request()->routeIs('rapports.mensuel') ? 'active' : '' }}">
-                        <a class="nav-link" href="{{ route('rapports.mensuel') }}">
-                            <i class="fas fa-clock"></i> Rapport des Temps
                         </a>
                     </li>
                 @endcan

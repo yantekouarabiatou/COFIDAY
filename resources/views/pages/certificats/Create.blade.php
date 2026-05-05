@@ -102,16 +102,15 @@
                                             <i class="fas fa-calendar-alt mr-1 text-primary"></i>
                                             Date d'embauche <span class="text-danger">*</span>
                                         </label>
-                                        <input type="date"
-                                            name="date_embauche"
-                                            class="form-control @error('date_embauche') is-invalid @enderror"
-                                            value="{{ old('date_embauche') }}"
-                                            max="{{ now()->format('Y-m-d') }}">
-                                        @error('date_embauche')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
+                                        <input type="text"
+                                            class="form-control"
+                                            value="{{ Auth::user()->date_embauche ? \Carbon\Carbon::parse(Auth::user()->date_embauche)->format('d/m/Y') : 'Non renseignée' }}"
+                                            readonly disabled>
                                         <small class="form-text text-muted">
-                                            Indiquez la date de votre embauche dans le cabinet.
+                                            Cette information provient de votre profil.
+                                            @if(!Auth::user()->date_embauche)
+                                                <a href="{{ route('users.edit', Auth::user()) }}" class="text-danger">Veuillez la renseigner</a> avant de faire une demande.
+                                            @endif
                                         </small>
                                     </div>
                                 </div>

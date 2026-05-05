@@ -75,6 +75,10 @@ class AttestationController extends Controller
     public function store(Request $request)
     {
         $user = Auth::user();
+        if (empty($user->date_embauche)) {
+            Alert::error('Erreur', 'Votre profil ne contient pas de date d’embauche. Veuillez la renseigner avant de faire une demande.');
+            return back()->withInput();
+        }
 
         $validated = $request->validate([
             'type'            => 'required|in:attestation_simple,attestation_banque,attestation_ambassade,attestation_autre',
@@ -88,7 +92,6 @@ class AttestationController extends Controller
             ],
             'inclure_salaire' => 'nullable|boolean',
             'salaire_net'     => 'nullable|numeric|min:0',
-            'date_embauche'   => 'required|date|before_or_equal:today',
             'poste'           => 'required|string|max:255',
         ], [
             'motif.min'                => 'Le motif doit contenir au moins 20 caractères.',
@@ -115,7 +118,7 @@ class AttestationController extends Controller
             'destinataire'    => $validated['destinataire'] ?? null,
             'inclure_salaire' => $inclureSalaire,
             'salaire_net'     => $inclureSalaire ? ($validated['salaire_net'] ?? null) : null,
-            'date_embauche'   => $validated['date_embauche'],
+            'date_embauche'   => $user->date_embauche,   // ← récupérée depuis la table users
             'poste'           => $validated['poste'],
             'numero_reference' => DemandeAttestation::genererNumeroReference(),
             'statut'          => 'en_attente',

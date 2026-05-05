@@ -119,6 +119,7 @@ class UserController extends Controller
             'is_active' => 'required|in:0,1',
             'photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
             'manager_id' => 'nullable|exists:users,id',
+            'date_embauche' => 'nullable|date|before_or_equal:today',
         ], [
             'nom.required' => 'Le nom est obligatoire',
             'prenom.required' => 'Le prénom est obligatoire',
@@ -166,6 +167,8 @@ class UserController extends Controller
                 'photo' => $photoPath,
                 'created_by' => auth()->id(),
                 'manager_id' => $validated['manager_id'] ?? null,
+                'date_embauche' => $validated['date_embauche'] ?? null,
+
             ]);
 
             // 2. ASSIGNATION SPATIE
@@ -225,6 +228,7 @@ class UserController extends Controller
             'role_id' => 'required|exists:roles,id',
             'photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
             'manager_id' => 'nullable|exists:users,id',
+            'date_embauche' => 'nullable|date|before_or_equal:today',
         ], [
             'nom.required' => 'Le nom est obligatoire',
             'prenom.required' => 'Le prénom est obligatoire',
@@ -272,6 +276,8 @@ class UserController extends Controller
                 'sexe' => $validated['sexe'] ?? null,
                 'is_active' => $validated['is_active'],
                 'manager_id' => $validated['manager_id'] ?? null,
+                'date_embauche' => $validated['date_embauche'] ?? null,
+
             ];
 
             if ($newPhotoPath) {

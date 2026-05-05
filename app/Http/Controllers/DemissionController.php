@@ -57,6 +57,10 @@ class DemissionController extends Controller
     public function store(Request $request)
     {
         $user = Auth::user();
+        if (empty($user->date_embauche)) {
+            Alert::error('Erreur', 'Votre profil ne contient pas de date d’embauche. Veuillez la renseigner avant de faire une demande de démission.');
+            return back()->withInput();
+        }
 
         $demissionActive = DemandeDemission::where('user_id', $user->id)
             ->where('statut', 'en_attente')
@@ -69,7 +73,6 @@ class DemissionController extends Controller
 
         $request->validate([
             'date_depart_souhaitee' => 'required|date|after:today',
-            'date_embauche'         => 'required|date|before_or_equal:today',
             'lettre'                => 'required|string|min:50|max:5000',
         ], [
             'date_depart_souhaitee.after' => 'La date de départ doit être postérieure à aujourd\'hui.',
@@ -80,7 +83,7 @@ class DemissionController extends Controller
         $demande = DemandeDemission::create([
             'user_id'               => $user->id,
             'date_depart_souhaitee' => $request->date_depart_souhaitee,
-            'date_embauche'         => $request->date_embauche,
+            'date_embauche' => $user->date_embauche,
             'lettre'                => $request->lettre,
             'numero_reference'      => DemandeDemission::genererNumeroReference(),
             'statut'                => 'en_attente',

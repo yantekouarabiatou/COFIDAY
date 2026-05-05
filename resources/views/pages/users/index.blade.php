@@ -91,7 +91,8 @@
                                 <th width="150">username</th>
                                 <th width="200">Satut</th>
                                 <th width="100">Email</th>
-                                <th width="1o0">Poste</th>
+                                <th width="100">Poste</th>
+                                <th width="100">Date d'embauche</th>
                                 <th width="180" class="text-center">Actions</th>
                             </tr>
                         </thead>
@@ -115,6 +116,8 @@
                                 <td>
                                     {{ $user->poste?->intitule ?? 'Inconnu' }}
                                 </td>
+                                <td>{{ $user->date_embauche ?? "" }}</td>
+
                                <td>
                                     <div class="btn-group btn-group-sm" role="group" style="padding: 4px;">
                                         {{-- Bouton Voir --}}
