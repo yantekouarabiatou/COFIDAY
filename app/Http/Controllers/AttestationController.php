@@ -170,7 +170,6 @@ class AttestationController extends Controller
     {
         $this->authorizeAdmin();
 
-        // Vérification préalable : la demande n’a pas déjà été traitée
         if ($attestation->statut !== 'en_attente') {
             Alert::warning('Information', 'Cette demande a déjà été traitée.');
             return back();
@@ -195,63 +194,65 @@ class AttestationController extends Controller
                 'numero_reference' => $numeroRef,
             ]);
 
-            // Recharger la relation user (au cas où elle ne serait pas chargée)
             $attestation->load('user');
 
-            // Vérification que l’utilisateur associé existe bien
             if (! $attestation->user) {
                 throw new \Exception("L'utilisateur associé à la demande #{$attestation->id} est introuvable.");
             }
 
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur enregistrement décision attestation', [
+                'attestation_id' => $attestation->id,
+                'error'          => $e->getMessage(),
+            ]);
+            Alert::error('Erreur', 'Impossible d\'enregistrer la décision : ' . $e->getMessage());
+            return back();
+        }
+
+        // Envoi des emails (après commit)
+        try {
+            $employeEmail = $attestation->user->email;
+
+            // Récupération des emails depuis la config (supports tableau)
+            $secretaireEmails = config('cofima.email_secretaire');
+            $secretaireEmails = is_array($secretaireEmails) ? $secretaireEmails : [$secretaireEmails];
+            $secretaireEmails = array_filter($secretaireEmails);
+
+            $rhEmail = config('cofima.email_rh'); // chaîne ou null
+
             if ($action === 'approuve') {
-                ['secretaire' => $emailSecretaire, 'dg' => $emailDG] = $this->getSecretaireEtDgEmails();
+                // Liste des destinataires en copie (secrétaires uniquement)
+                $cc = array_filter($secretaireEmails, fn($e) => $e !== $employeEmail);
 
                 if ($attestation->type === 'attestation_autre') {
-                    // Notification au RH pour rédaction manuelle
-                    $emailRH = $this->getRhEmail();
-                    if ($emailRH) {
-                        if (! in_array($emailRH, [$emailSecretaire, $emailDG], true)) {
-                            Mail::to($emailRH)->send(new AttestationAutreNotifRHMail($attestation));
-                        } else {
-                            Log::warning('L\'email RH est identique à la secrétaire ou au DG ; vérifiez la configuration ou la base de données.', [
-                                'emailRH' => $emailRH,
-                                'emailSecretaire' => $emailSecretaire,
-                                'emailDG' => $emailDG,
-                            ]);
-                        }
+                    // Notification au RH si configuré
+                    if ($rhEmail && $rhEmail !== $employeEmail && !in_array($rhEmail, $cc)) {
+                        Mail::to($rhEmail)->send(new AttestationAutreNotifRHMail($attestation));
                     }
-
-                    // Avertir l’employé et copier la secrétaire
-                    Mail::to($attestation->user->email)
-                        ->cc(array_unique(array_filter([$emailSecretaire])))
-                        ->send(new AttestationApprouvéeMail($attestation, true));
+                    // Envoi à l'employé avec copie aux secrétaires
+                    Mail::to($employeEmail)->cc($cc)->send(new AttestationApprouvéeMail($attestation, true));
                 } else {
-                    // Génération automatique + copie secrétaire
-                    Mail::to($attestation->user->email)
-                        ->cc(array_unique(array_filter([$emailSecretaire])))
-                        ->send(new AttestationApprouvéeMail($attestation, false));
+                    Mail::to($employeEmail)->cc($cc)->send(new AttestationApprouvéeMail($attestation, false));
                 }
             } else { // refus
-                Mail::to($attestation->user->email)
-                    ->send(new AttestationRefuseeMail($attestation, $request->commentaire));
+                Mail::to($employeEmail)->send(new AttestationRefuseeMail($attestation, $request->commentaire));
             }
-
-            DB::commit();
 
             Alert::success('Succès', $action === 'approuve'
                 ? 'Demande approuvée. Notifications envoyées.'
                 : 'Demande refusée. L’employé a été notifié.');
-
-            return redirect()->route('attestations.validation.index');
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Erreur lors du traitement de la demande d’attestation', [
+            Log::error('Erreur envoi email traitement attestation', [
                 'attestation_id' => $attestation->id,
+                'action'         => $action,
                 'error'          => $e->getMessage(),
             ]);
-            Alert::error('Erreur', 'Une erreur est survenue : ' . $e->getMessage());
-            return back();
+            Alert::warning('Attention', 'La décision a été enregistrée mais l\'envoi des emails a échoué.');
         }
+
+        return redirect()->route('attestations.validation.index');
     }
 
     // ── Annulation par l’employé ─────────────────────────────────────────────

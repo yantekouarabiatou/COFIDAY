@@ -121,6 +121,19 @@
         margin-top: 20px;
         font-size: 12px;
     }
+
+    .btn {
+        display: inline-block;
+        padding: 10px 20px;
+        text-decoration: none;
+        border-radius: 6px;
+        font-weight: bold;
+        text-align: center;
+    }
+    .btn-secondary {
+        background-color: #6c757d;
+        color: white;
+    }
     </style>
 </head>
 
@@ -157,7 +170,12 @@
                 <p>
                     Cette demande nécessite désormais <strong>votre validation finale</strong>.
                 </p>
-
+                <div style="text-align: center; margin-top: 24px;">
+                    <a href="{{ route('conges.validation-finale.show', $demande->id) }}"
+                    style="background-color: #244584; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+                         Cliquez ici pour traiter la demande
+                    </a>
+                </div>
 
                 {{-- Détails de la demande --}}
                 <ul class="info-list">

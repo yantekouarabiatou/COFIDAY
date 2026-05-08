@@ -11,6 +11,9 @@ class Kernel extends ConsoleKernel
 {
     protected function schedule(Schedule $schedule): void
     {
+            
+        $schedule->command('leaves:send-reminders')->dailyAt('08:00');
+
         // ── Générer les jours manquants + notifier ──────────────────────
         // Chaque jour ouvrable à 18h : génère les feuilles manquantes pour la journée
         $schedule->command('timesheets:generate-missing --days=1')

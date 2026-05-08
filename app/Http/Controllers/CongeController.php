@@ -208,13 +208,23 @@ class CongeController extends Controller
 
     public function index(Request $request)
     {
-        $user  = Auth::user();
-        $isAdmin = $user->hasRole('admin') || $user->hasRole('manager');
+        $user = Auth::user();
+        $isAdmin   = $user->hasRole('admin');
+        $isManager = $user->hasRole('manager');
+        $isSimpleUser = !$isAdmin && !$isManager;
 
         $query = DemandeConge::with(['user', 'typeConge', 'validePar']);
 
-        // Restriction de base : non-admin ne voit que ses propres demandes
-        if (!$isAdmin) {
+        // 1. Restriction selon le rôle
+        if ($isAdmin) {
+            // Admin : voit tout, aucune restriction
+        } elseif ($isManager) {
+            // Manager : voit uniquement les demandes des employés dont il est le manager
+            $query->whereHas('user', function ($q) use ($user) {
+                $q->where('manager_id', $user->id);
+            });
+        } else {
+            // Simple utilisateur : ne voit que ses propres demandes
             $query->where('user_id', $user->id);
         }
 
@@ -230,12 +240,20 @@ class CongeController extends Controller
             $query->where('statut', $request->statut);
         }
 
-        // Collaborateur (admin / manager uniquement)
-        if ($request->filled('user_id') && $isAdmin) {
-            $query->where('user_id', $request->user_id);
+        // Collaborateur (admin ou manager uniquement)
+        if ($request->filled('user_id')) {
+            if ($isAdmin) {
+                $query->where('user_id', $request->user_id);
+            } elseif ($isManager) {
+                // Le manager ne peut filtrer que parmi ses subordonnés
+                $query->where('user_id', $request->user_id)
+                    ->whereHas('user', function ($q) use ($user) {
+                        $q->where('manager_id', $user->id);
+                    });
+            }
         }
 
-        // Recherche texte libre (motif)
+        // Recherche texte libre (motif ou nom/prenom)
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -267,10 +285,16 @@ class CongeController extends Controller
         $demandes    = $query->latest()->paginate(20)->withQueryString();
         $typesConges = TypeConge::where('actif', true)->get();
 
-        // Liste des collaborateurs pour le select (admin / manager uniquement)
+        // Liste des collaborateurs pour le select (admin ou manager)
         $users = collect();
         if ($isAdmin) {
             $users = User::where('is_active', 1)
+                ->orderBy('prenom')
+                ->get(['id', 'prenom', 'nom']);
+        } elseif ($isManager) {
+            // Le manager voit uniquement ses subordonnés actifs
+            $users = User::where('is_active', 1)
+                ->where('manager_id', $user->id)
                 ->orderBy('prenom')
                 ->get(['id', 'prenom', 'nom']);
         }
@@ -758,10 +782,10 @@ class CongeController extends Controller
             if ($action === 'pre_approuve') {
 
                 // Mail au demandeur
-                // Mail::to($demandeur->email)->send(new LeavePreApprovedMail($demande));
+                Mail::to($demandeur->email)->send(new LeavePreApprovedMail($demande));
 
                 // Mail au grand supérieur (patron)
-                $grandSuperieur = User::where('email', 'biroko@cofima.cc')->firstOrFail();
+                $grandSuperieur = User::where('email', 'jcavande@cofima.cc')->firstOrFail();
 
                 Mail::to($grandSuperieur->email)
                     ->send(new RequestFinalValidationMail($demande, $user, $grandSuperieur, $request->commentaire));
@@ -1270,7 +1294,7 @@ class CongeController extends Controller
                 //         $numeroNote,
                 //         $request->commentaire
                 //     ));
-                Mail::to("biroko@cofima.cc")->cc("ryantekoua@cofima.cc")
+                Mail::to($demande->user->email)->cc("meguagie@cofima.cc")
                     ->send(new LeaveApprovedMail(
                         $demande,
                         $soldes,
@@ -1322,5 +1346,25 @@ class CongeController extends Controller
         $type = pathinfo($path, PATHINFO_EXTENSION);
         $data = file_get_contents($path);
         return 'data:image/' . $type . ';base64,' . base64_encode($data);
+    }
+
+        public function showValidationFinale($id)
+    {
+        $demande = DemandeConge::findOrFail($id);
+        // Vérifier que l'utilisateur connecté est bien le supérieur final
+        // Afficher une vue avec un formulaire qui appelle la route POST
+        return view('conges.validation-finale-show', compact('demande'));
+    }
+
+        public function preApprouver(Request $request, $id)
+    {
+        $demande = DemandeConge::findOrFail($id);
+        // Mettre à jour le statut (par exemple 'pre_approuve')
+        $demande->statut = 'pre_approuve';
+        $demande->valide_par = auth()->id();
+        $demande->save();
+
+        // Rediriger avec un message
+        return redirect()->route('conges.index')->with('success', 'Demande pré‑approuvée.');
     }
 }

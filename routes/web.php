@@ -83,7 +83,10 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
 
     Route::post('/conges/{demande}/valider-finale', [CongeController::class, 'validerFinale'])
         ->name('conges.valider-finale');
-
+    Route::get('/conges/{demande}/validation-finale', [CongeController::class, 'showValidationFinale'])
+    ->name('conges.validation-finale.show');
+    Route::get('/conges/{demande}/pre-approbation', [CongeController::class, 'preApprouver'])
+    ->name('conges.pre-approbation.show');
     Route::get('/error_404', function () {
         return view('errors.errors-404');
     });

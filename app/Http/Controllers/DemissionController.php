@@ -149,7 +149,6 @@ class DemissionController extends Controller
         $action = $request->action;
         $dgUser = Auth::user();
 
-        // 1. Enregistrement de la décision (transaction)
         DB::beginTransaction();
         try {
             $demission->update([
@@ -171,7 +170,7 @@ class DemissionController extends Controller
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur lors de l\'enregistrement de la décision de démission', [
+            Log::error('Erreur enregistrement décision démission', [
                 'demande_id' => $demission->id,
                 'error'      => $e->getMessage(),
             ]);
@@ -179,36 +178,50 @@ class DemissionController extends Controller
             return back();
         }
 
-        // 2. Envoi des emails (après commit, pour ne pas annuler la décision en cas d'échec)
+        // Envoi des emails (après commit)
         try {
-            $secretaire = config('cofima.email_secretaire', 'cofima@cofima.cc');
-            $rh         = $this->getRhEmail();
-            $dg         = $this->getDgEmail();
-            $ccList     = array_unique(array_filter([$secretaire, $rh, $dg]));
+            $employeEmail = $demission->user->email;
+
+            // Récupération des emails depuis la config (supports tableau)
+            $secretaireEmails = config('cofima.email_secretaire');
+            $secretaireEmails = is_array($secretaireEmails) ? $secretaireEmails : [$secretaireEmails];
+            $secretaireEmails = array_filter($secretaireEmails);
+
+            $dgEmails = config('cofima.email_dg');
+            $dgEmails = is_array($dgEmails) ? $dgEmails : [$dgEmails];
+            $dgEmails = array_filter($dgEmails);
+
+            $rhEmail = config('cofima.email_rh');
+
+            // Construction de la liste CC (tous les destinataires secondaires, sauf l'employé)
+            $ccList = array_merge($secretaireEmails, $dgEmails);
+            if ($rhEmail) {
+                $ccList[] = $rhEmail;
+            }
+            $ccList = array_unique(array_filter($ccList, fn($e) => $e !== $employeEmail));
 
             if ($action === 'acceptee') {
-                Mail::to($demission->user->email)
+                Mail::to($employeEmail)
                     ->cc($ccList)
                     ->send(new CertificatTravailMail($demission, $request->date_depart_confirmee));
-                Alert::success('Succès', 'Démission acceptée. Le certificat de travail a été généré et envoyé par mail.');
+                Alert::success('Succès', 'Démission acceptée. Le certificat de travail a été généré et envoyé.');
             } else {
-                Mail::to($demission->user->email)
+                Mail::to($employeEmail)
                     ->cc($ccList)
                     ->send(new DemissionRefuseeMail($demission, $request->commentaire));
                 Alert::success('Succès', 'Démission refusée. L’employé a été notifié.');
             }
         } catch (\Exception $e) {
-            Log::error('Erreur lors de l\'envoi de l\'email de traitement de démission', [
+            Log::error('Erreur envoi email traitement démission', [
                 'demande_id' => $demission->id,
                 'action'     => $action,
                 'error'      => $e->getMessage(),
             ]);
-            Alert::warning('Attention', 'La décision a été enregistrée mais l\'envoi de l\'email a échoué. Veuillez contacter le support.');
+            Alert::warning('Attention', 'La décision a été enregistrée mais l\'envoi des emails a échoué.');
         }
 
         return redirect()->route('demissions.validation.index');
     }
-
     // ── Helpers pour la récupération des emails (RH et DG uniquement) ────────
 
     private function getRhEmail(): ?string

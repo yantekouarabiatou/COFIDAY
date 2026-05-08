@@ -4,7 +4,7 @@
     <div class="card">
 
         {{-- ── Header ─────────────────────────────────────────────────────────── --}}
-        <div style="background: linear-gradient(135deg, #d32f2f 0%, #c62828 100%);
+        <div style="background: linear-gradient(135deg, #cd8c13 0%, #d5740c 100%);
                     border-radius: 8px 8px 0 0; padding: 28px 30px; text-align: center;">
             <h2 style="color:#fff; margin:0; font-size:1.2rem; font-weight:700;">
                 📜 Demande d'attestation en attente
@@ -26,14 +26,14 @@
                 est en attente de votre approbation depuis le {{ $demande->created_at->isoFormat('D MMMM YYYY à HH:mm') }}.
             </p>
 
-            <div style="background:#ffebee; border:1px solid #d32f2f; border-radius:6px; padding:16px; margin:20px 0;">
+            <div style="background:#ffebee; border:1px solid #c07314; border-radius:6px; padding:16px; margin:20px 0;">
                 <p style="margin:0; color:#b71c1c; font-size:.9rem;">
                     <strong>🔴 Priorité :</strong> Cette demande nécessite votre signature pour être finalisée.
                 </p>
             </div>
 
             {{-- ── Informations de la demande ────────────────────────────────── --}}
-            <div style="background:#f8f9fa; border-left:4px solid #d32f2f; padding:16px; margin:20px 0; border-radius:4px;">
+            <div style="background:#f8f9fa; border-left:4px solid #c96d11; padding:16px; margin:20px 0; border-radius:4px;">
                 <h4 style="margin:0 0 12px; color:#333; font-size:0.95rem;">Détails de la demande :</h4>
                 <table style="width:100%; font-size:0.9rem; color:#555;">
                     <tr>
@@ -64,6 +64,14 @@
                     📎 Le document PDF est joint à cet e-mail pour consultation et signature.
                 </p>
             </div>
+
+            <div style="text-align: center; margin: 30px 0 20px;">
+                <a href="{{ route('attestations.validation.index') }}"
+                   style="display: inline-block; background: #cd8c13; color: white; text-decoration: none; border-radius: 30px; padding: 12px 28px; font-weight: bold; font-size: 14px; border: none; cursor: pointer;">
+                     Accéder aux demandes en attente
+                </a>
+            </div>
+
 
         </div>
 

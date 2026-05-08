@@ -109,7 +109,7 @@
     <div class="entete">
         <div class="entete-logo">
             <div class="logo-container">
-                <img src="file://{{ public_path('storage/photos/logo-cofima-bon.jpg') }}" class="logo">
+             <img src="file://{{ public_path('storage/photos/logo-cofima-bon.jpg') }}">
             </div>
         </div>
         <div class="entete-texte">

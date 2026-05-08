@@ -105,7 +105,8 @@
             margin-top: 30px;
         }
 
-        .btn {
+        /* Bouton principal (bleu) */
+        .btn-primary {
             display: inline-block;
             background: #4a70b7;
             color: white !important;
@@ -114,6 +115,20 @@
             text-decoration: none;
             font-weight: bold;
             font-size: 14px;
+            margin: 0 5px;
+        }
+
+        /* Bouton secondaire (gris) visiblement similaire à l'exemple */
+        .btn-secondary {
+            display: inline-block;
+            background: #6c757d;
+            color: white !important;
+            padding: 12px 28px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 14px;
+            margin: 0 5px;
         }
 
         .footer {
@@ -191,13 +206,12 @@
                 @endif
             </p>
 
-            @if(!empty($approval_link))
-                <div class="btn-container">
-                    <a href="{{ $approval_link }}" class="btn">
-                        Examiner la demande
-                    </a>
-                </div>
-            @endif
+            {{-- Bouton de pré‑approbation (exactement comme demandé) --}}
+            <div class="btn-container">
+                <a href="{{ route('conges.pre-approbation.show', $leave->id) }}" class="btn-secondary">
+                    Cliquez ici pour Pré‑approuver cette demande
+                </a>
+            </div>
 
             <p style="margin-top:25px; font-size:14px;">
                 Je reste bien entendu disponible pour toute information complémentaire

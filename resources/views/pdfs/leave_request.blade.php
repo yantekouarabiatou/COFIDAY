@@ -113,24 +113,7 @@
 	</head>
 
 	<body>
-		{{-- LOGO --}}
-		<div class="logo-container">
-			<div class="logo-container">
-				@php
-                    $logoBase64 = ''; // À passer depuis le contrôleur ou calculer ici
-                    $logoPath = public_path('storage/photos/logo-cofima-bon.jpg');
-                    if (file_exists($logoPath)) {
-                        $logoData = file_get_contents($logoPath);
-                        $logoBase64 = 'data:image/jpg;base64,' . base64_encode($logoData);
-                    }
-                @endphp
-				@if($logoBase64)
-                    <img src="{{ $logoBase64 }}" class="logo">
-                @endif
-			</div>
-		</div>
-
-		{{-- EN-TÊTE --}}
+			{{-- EN-TÊTE --}}
 		<div class="header">
 			<p>{{ $lieu ?? 'Cotonou' }}, le
 				{{ $date ?? date('d/m/Y') }}

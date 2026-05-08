@@ -3,10 +3,10 @@
 @section('content')
 <div class="card">
 
-    <div style="background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
+    <div style="background: linear-gradient(135deg, #df8804 0%, #d8833c 100%);
                 border-radius: 8px 8px 0 0; padding: 28px 30px; text-align: center;">
         <h2 style="color: #fff; margin: 0; font-size: 1.3rem; font-weight: 700;">
-            🚪 Nouvelle lettre de démission
+            Nouvelle lettre de démission
         </h2>
         <p style="color: #ffc9c9; margin: 8px 0 0; font-size: .9rem;">
             Action requise — Validation Direction Générale
@@ -40,7 +40,7 @@
                 </tr>
                 <tr>
                     <td style="padding: 8px 0; color: #6c757d; font-size: .9rem;">Départ souhaité</td>
-                    <td style="padding: 8px 0; color: #dc3545; font-weight: bold;">
+                    <td style="padding: 8px 0; color: #d17411; font-weight: bold;">
                         {{ $demande->date_depart_souhaitee->isoFormat('D MMMM YYYY') }}
                     </td>
                 </tr>
@@ -69,6 +69,16 @@
             fixer la date de départ effective et valider ou refuser la démission.
             <strong>Le certificat de travail sera généré automatiquement à l'approbation.</strong>
         </p>
+
+        {{-- ⭐ BOUTON D'ACTION (ajouté) ⭐ --}}
+        <div style="text-align: center; margin: 30px 0 20px;">
+            <a href="{{ route('demissions.validation.index') }}"
+               style="display: inline-block; background: linear-gradient(135deg, #df8804 0%, #d8833c 100%);
+                      color: white; text-decoration: none; border-radius: 30px; padding: 12px 28px;
+                      font-weight: bold; font-size: 14px; border: none; cursor: pointer;">
+                S Accéder aux demandes de démission
+            </a>
+        </div>
 
         <p style="color: #888; font-size: .85rem; margin-top: 28px;
                   border-top: 1px solid #eee; padding-top: 16px;">
