@@ -133,7 +133,7 @@
     {{-- ── Header : logo + infos cabinet ──────────────────────────────────── --}}
     <div class="header">
         <div class="header-logo">
-            <img src="{{ storage_path('app/public/photos/logo-cofima-bon.jpg') }}" alt="Logo COFIMA">
+            <img src="{{ $logoBase64 }}" alt="Logo COFIMA">
         </div>
     </div>
 
@@ -194,10 +194,10 @@
 
     {{-- ── Pied de page fixe ───────────────────────────────────────────────── --}}
     <div class="footer">
-        N° IFU 3200900601214 · RCCM RB/COT/07B/336 · C/2213 F Immeuble Ahouansou Sossou Kouhoumou – Cotonou
-        Tél : +229 21 38 04 58 · Mobile : +229 90 95 18 90 / 05 07 09 48 &nbsp;|&nbsp;
-        site web : www.cofimabenin.com · cofima@cofimabenin.com
-    </div>
+        N° IFU 3200800611214 · RCCM RB/COT/07B 336 · C/2197 F Immeuble Luca Pacioli,Kouhounou – Cotonou,Bénin<br>
+        Tél : +229 01 21 38 04 58 · Mobile : +229 01 90 95 19 59 / 01 95 07 09 48<br>
+        Site web : https:www.cofima.cc · Email : cofima@cofimabenin.com / cofima@cofima.cc
+     </div>
 
 </body>
 </html>

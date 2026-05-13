@@ -35,7 +35,7 @@
                                     </a>
                                 @endif
 
-                                @if(auth()->user()->hasRole('admin|manager') && $demande->statut === 'en_attente')
+                                @if(auth()->user()->hasAnyRole(['admin', 'manager', 'directeur-general']) && $demande->statut === 'en_attente')
                                     <div class="dropdown d-inline">
                                         <button class="btn btn-icon icon-left btn-success dropdown-toggle"
                                                 type="button" id="actionDropdown" data-toggle="dropdown">

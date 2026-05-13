@@ -30,6 +30,7 @@
             font-size: 12px;
             line-height: 1.8;
             margin: 40px 50px;
+            padding-bottom: 60px;
             color: #000;
         }
 
@@ -70,8 +71,16 @@
         }
 
         .footer {
-            margin-top: 50px;
-            font-size: 10px;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            border-top: 1px solid #ccc;
+            padding: 8px 50px;
+            font-size: 9px;
+            color: #555;
+            text-align: center;
+            background: #fff;
         }
     </style>
 </head>
@@ -81,7 +90,7 @@
     {{-- EN-TÊTE --}}
     <div class="entete">
         <div class="logo">
-            <img src="file://{{ public_path('storage/photos/logo-cofima-bon.jpg') }}">
+            <img src="{{ $logoBase64 }}">
         </div>
     </div>
 
@@ -132,15 +141,11 @@
         {{-- FOOTER --}}
     <div class="footer">
         <div class="gauche-footer">
-            C/2213 F Immeuble Athouansou Sossou Kouhou – Cotonou<br>
-            Tél : +229 21 38 04 58 · Mobile : +229 90 95 18 90 / 05 07 09 48<br>
-            Site web : www.cofimabenin.com · Email : cofima@cofimabenin.com
-        </div>
-        <div class="droite-footer">
-            <div class="logo2">
-                <img src="file://{{ public_path('storage/photos/logo-cofima-bon.jpg') }}">
-            </div>
-        </div>
+            N° IFU 3200800611214 · RCCM RB/COT/07B 738 · C/2197 Immeuble Luca Pacioli, Kouhounou – Cotonou,Bénin<br>
+            Tél : +229 01 21 38 04 58 · Mobile : +229 01 90 95 19 59 / 01 95 07 09 48<br>
+            Site web : https:www.cofima.cc · Email : cofima@cofima.cc / cofima@cofimabenin.com 
+     </div>
+        
     </div>
 
 </body>

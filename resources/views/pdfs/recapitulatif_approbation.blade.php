@@ -52,6 +52,7 @@
             line-height: 1.7;
             color: #000;
             margin: 40px 50px;
+            padding-bottom: 60px;
         }
 
         .entete            { display: table; width: 100%; margin-bottom: 10px; }
@@ -98,8 +99,16 @@
         .sig-bas      { width: 50%; vertical-align: top; text-align: left; font-size: 12px; }
 
         .footer {
-            margin-top: 40px; border-top: 1px solid #aaa;
-            padding-top: 8px; font-size: 8.5px; color: #666; text-align: center;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            border-top: 1px solid #aaa;
+            padding: 8px 50px;
+            font-size: 8.5px;
+            color: #666;
+            text-align: center;
+            background: #fff;
         }
     </style>
 </head>
@@ -109,17 +118,12 @@
     <div class="entete">
         <div class="entete-logo">
             <div class="logo-container">
-             <img src="file://{{ public_path('storage/photos/logo-cofima-bon.jpg') }}">
+             <img src="{{ $logoBase64 }}">
             </div>
         </div>
-        <div class="entete-texte">
-            <span class="societe">COFIMA BENIN</span><br>
-            Compagnie Fiduciaire de Management et d'Audit<br>
-            Cotonou — Bénin
-        </div>
+        
     </div>
 
-    <hr class="sep">
 
     {{-- NUMÉRO DE NOTE --}}
     <div class="numero-note">
@@ -219,26 +223,6 @@
         
         <div class="sig-bas">
             Pour COFIMA,<br><br>
-            {{-- CACHET APPROUVÉ --}}
-            <div style="
-                display: inline-block;
-                border: 3px dashed #16a34a;
-                border-radius: 6px;
-                padding: 10px 28px;
-                margin-top: 24px;
-                text-align: center;
-                transform: rotate(-8deg);
-                transform-origin: left center;
-            ">
-                <span style="
-                    display: block;
-                    font-size: 22px;
-                    font-weight: bold;
-                    color: #16a34a;
-                    letter-spacing: 4px;
-                    text-transform: uppercase;
-                    line-height: 1.2;
-                ">APPROUVÉ</span>
             </div><br>
             <br><strong>Jean Claude AVANDE</strong><br>
             Expert-Comptable Diplômé<br>
@@ -248,10 +232,10 @@
 
     {{-- FOOTER --}}
     <div class="footer">
-        N° IFU 3200900601214 · RCCM RB/COT/07B/336 · C/2213 F Immeuble Athouansou Sossou Kouhou – Cotonou<br>
-        Tél : +229 21 38 04 58 · Mobile : +229 90 95 18 90 / 05 07 09 48<br>
-        Site web : www.cofimabenin.com · Email : cofima@cofimabenin.com
-    </div>
+         N° IFU 3200800611214 · RCCM RB/COT/07B 336 · C/2197 F Immeuble Luca Pacioli,Kouhounou – Cotonou,Bénin<br>
+         Tél : +229 01 21 38 04 58 · Mobile : +229 01 90 95 19 59 / 01 95 07 09 48<br>
+         Site web : https:www.cofima.cc · Email : cofima@cofimabenin.com / cofima@cofima.cc
+      </div>
 
 </body>
 </html>

@@ -15,18 +15,18 @@ class StatisticsController extends Controller
 {
     public function index()
     {
-        if (!auth()->user()->hasRole('admin')) {
-            abort(403, 'Accès non autorisé');
-        }
+        // if (!auth()->user()->hasRole('admin')) {
+        //     abort(403, 'Accès non autorisé');
+        // }
         return view('pages.statistics.statglobale');
     }
 
     public function globalStats(Request $request)
     {
         try {
-            if (!auth()->user()->hasRole('admin')) {
-                return response()->json(['message' => 'Accès non autorisé'], 403);
-            }
+            // if (!auth()->user()->hasRole('admin')) {
+            //     return response()->json(['message' => 'Accès non autorisé'], 403);
+            // }
 
             $periode = $request->get('periode', 'mois');
             $dateDebut = $request->get('date_debut');
@@ -199,9 +199,9 @@ class StatisticsController extends Controller
     public function getEmployes()
     {
         try {
-            if (!auth()->user()->hasRole('admin')) {
-                return response()->json(['message' => 'Accès non autorisé'], 403);
-            }
+            // if (!auth()->user()->hasRole('admin')) {
+            //     return response()->json(['message' => 'Accès non autorisé'], 403);
+            // }
 
             $employes = User::select('id', 'prenom', 'nom', 'email')
                 ->orderBy('prenom')
@@ -222,9 +222,9 @@ class StatisticsController extends Controller
 
     public function export(Request $request)
     {
-        if (!auth()->user()->hasRole('admin')) {
-            return response()->json(['message' => 'Accès non autorisé'], 403);
-        }
+        // if (!auth()->user()->hasRole('admin')) {
+        //     return response()->json(['message' => 'Accès non autorisé'], 403);
+        // }
         return response()->json(['message' => 'Export en développement'], 200);
     }
 

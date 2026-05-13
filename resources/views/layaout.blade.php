@@ -494,7 +494,7 @@
                             @can('soumettre une démission')
                                 <li class="{{ request()->routeIs('demissions.create') ? 'active' : '' }}">
                                     <a class="nav-link" href="{{ route('demissions.create') }}">
-                                        <i class="fas fa-envelope-open-text"></i> Soumettre ma démission
+                                        <i class="fas fa-envelope-open-text"></i> Nouvelle demande
                                     </a>
                                 </li>
                             @endcan
@@ -833,9 +833,10 @@
             @endif
             <footer class="main-footer">
                 <div class="footer-left">
-                    <a href="templateshub.net">COFIMA BENIN</a></a>
+                    <a href="templateshub.net">COFIMA BENIN</a>
                 </div>
                 <div class="footer-right">
+                    <span class="text-muted" style="font-size: 12px;">v1</span>
                 </div>
             </footer>
         </div>

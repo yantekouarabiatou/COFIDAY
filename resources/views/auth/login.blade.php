@@ -447,7 +447,7 @@
             </div>
 
             <div class="welcome-text">
-                <h1>Bienvenue !</h1>
+                <h1>Bienvenue sur COFIDAY!</h1>
                 <p>Connectez-vous à votre espace sécurisé pour accéder à tous vos services Cofiday</p>
             </div>
 
@@ -522,7 +522,7 @@
             </form>
 
             <div class="footer">
-                <p>Copyright COFIMA &copy; {{ date('Y') }}. Tous droits réservés</p>
+                <p>Copyright COFIMA &copy; {{ date('Y') }}. Tous droits réservés &mdash; <strong>v1</strong></p>
             </div>
         </div>
     </div>

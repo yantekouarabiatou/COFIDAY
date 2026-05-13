@@ -104,47 +104,64 @@ class LeaveApprovedMail extends Mailable
     {
         $attachments = [];
 
-        $logoPath   = public_path('storage/photos/logo-cofima-bon.jpg');
+        $logoPath   = storage_path('app/public/photos/logo-cofima-bon.jpg');
         $logoBase64 = file_exists($logoPath)
             ? 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoPath))
             : null;
 
-        // ── Construction de $soldesParAnnee ─────────────────────────────
-        $soldesParAnnee = $this->soldes
-            ->keyBy('annee')
-            ->map(fn($s) => $s->jours_restants)
-            ->toArray();
+        try {
+            $soldesParAnnee = $this->soldes
+                ->keyBy('annee')
+                ->map(fn($s) => $s->jours_restants)
+                ->toArray();
 
-        // ── PDF 1 : Récapitulatif (toujours envoyé) ─────────────────────
-        $pdfRecap = Pdf::loadView('pdfs.recapitulatif_approbation', [
-            'demande'             => $this->demande,
-            'soldes'              => $this->soldes,
-            'anneesPrelevees'     => $this->anneesPrelevees,
-            'soldesParAnnee'      => $soldesParAnnee,
-            'dateRepriseFormatee' => $this->dateRepriseFormatee,
-            'numeroNote'          => $this->numeroNote,
-            'logoBase64'          => $logoBase64,
-        ]);
-
-        $attachments[] = Attachment::fromData(
-            fn () => $pdfRecap->output(),
-            'approbation_conge_' . $this->demande->user->nom . '_' . now()->format('Y') . '.pdf'
-        )->withMime('application/pdf');
-
-        // ── PDF 2 : Attestation (conditionnelle) ────────────────────────
-        if (!empty($this->demande->demande_attestation) && $this->demande->demande_attestation == true) {
-
-            $pdfAttestation = Pdf::loadView('pdfs.attestation_conge', [
-                'demande' => $this->demande,
-                'cabinet' => 'COFIMA',
-                'signataireNom' => 'Jean Claude AVANDE',
-                'motif' => 'Journées Techniques DECOFI 2025-2ème année'
+            // ── PDF 1 : Récapitulatif ────────────────────────────────────
+            $pdfRecap = Pdf::loadView('pdfs.recapitulatif_approbation', [
+                'demande'             => $this->demande,
+                'soldes'              => $this->soldes,
+                'anneesPrelevees'     => $this->anneesPrelevees,
+                'soldesParAnnee'      => $soldesParAnnee,
+                'dateRepriseFormatee' => $this->dateRepriseFormatee,
+                'numeroNote'          => $this->numeroNote,
+                'logoBase64'          => $logoBase64,
             ]);
 
             $attachments[] = Attachment::fromData(
-                fn () => $pdfAttestation->output(),
-                'attestation_conge_' . $this->demande->user->nom . '_' . now()->format('Y') . '.pdf'
+                fn () => $pdfRecap->output(),
+                'approbation_conge_' . $this->demande->user->nom . '_' . now()->format('Y') . '.pdf'
             )->withMime('application/pdf');
+
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('LeaveApprovedMail - échec PDF récapitulatif', [
+                'demande_id' => $this->demande->id,
+                'error'      => $e->getMessage(),
+                'file'       => $e->getFile() . ':' . $e->getLine(),
+            ]);
+        }
+
+        // ── PDF 2 : Attestation (conditionnelle) ────────────────────────
+        if (!empty($this->demande->demande_attestation) && $this->demande->demande_attestation == true) {
+            try {
+                $pdfAttestation = Pdf::loadView('pdfs.attestation_conge', [
+                    'demande'       => $this->demande,
+                    'cabinet'       => 'COFIMA',
+                    'signataireNom' => 'Jean Claude AVANDE',
+                    'motif'         => 'Journées Techniques DECOFI 2025-2ème année',
+                    'logoBase64'    => $logoBase64,
+                ]);
+
+                $attachments[] = Attachment::fromData(
+                    fn () => $pdfAttestation->output(),
+                    'attestation_conge_' . $this->demande->user->nom . '_' . now()->format('Y') . '.pdf'
+                )->withMime('application/pdf');
+
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('LeaveApprovedMail - échec PDF attestation', [
+                    'demande_id' => $this->demande->id,
+                    'error'      => $e->getMessage(),
+                    'file'       => $e->getFile() . ':' . $e->getLine(),
+                ]);
+            }
         }
 
         return $attachments;

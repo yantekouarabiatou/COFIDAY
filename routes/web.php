@@ -251,8 +251,8 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
         // Route pour annuler une demande
         Route::post('/conges/{demande}/annuler', [CongeController::class, 'annuler'])->name('conges.annuler');
 
-        // Routes pour admin/manager
-        Route::middleware(['role:admin|manager'])->group(function () {
+        // Routes pour admin/manager/directeur-general
+        Route::middleware(['role:admin|manager|directeur-general'])->group(function () {
             Route::get('/conges/dashboard', [CongeController::class, 'dashboard'])->name('conges.dashboard');
             Route::post('/conges/{demande}/traiter', [CongeController::class, 'traiter'])->name('conges.traiter');
             Route::get('/conges/solde/{user}', [CongeController::class, 'solde'])->name('conges.solde.user');

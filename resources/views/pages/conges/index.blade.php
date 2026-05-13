@@ -308,7 +308,7 @@
                                                         </a>
                                                     @endif
 
-                                                    @role('admin|manager')
+                                                    @hasanyrole('admin|manager|directeur-general')
                                                         @if($demande->statut === 'en_attente' && $demande->superieur_hierarchique_id == auth()->id() && auth()->id() !== $demande->user_id)
                                                             <form action="{{ route('conges.traiter', $demande) }}" method="POST" class="d-inline approve-form">
                                                                 @csrf
@@ -325,7 +325,7 @@
                                                                 </button>
                                                             </form>
                                                         @endif
-                                                    @endrole
+                                                    @endhasanyrole
 
                                                     @if($demande->statut === 'en_attente' &&
                                                         (auth()->user()->hasRole('admin') || auth()->id() === $demande->user_id))

@@ -209,7 +209,7 @@ class CongeController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
-        $isAdmin   = $user->hasRole('admin');
+        $isAdmin   = $user->hasRole('admin') || $user->hasRole('directeur-general');
         $isManager = $user->hasRole('manager');
         $isSimpleUser = !$isAdmin && !$isManager;
 
@@ -217,7 +217,7 @@ class CongeController extends Controller
 
         // 1. Restriction selon le rôle
         if ($isAdmin) {
-            // Admin : voit tout, aucune restriction
+            // Admin & Directeur Général : voient tout, aucune restriction
         } elseif ($isManager) {
             // Manager : voit uniquement les demandes des employés dont il est le manager
             $query->whereHas('user', function ($q) use ($user) {
@@ -285,14 +285,13 @@ class CongeController extends Controller
         $demandes    = $query->latest()->paginate(20)->withQueryString();
         $typesConges = TypeConge::where('actif', true)->get();
 
-        // Liste des collaborateurs pour le select (admin ou manager)
+        // Liste des collaborateurs pour le select (admin/DG ou manager)
         $users = collect();
         if ($isAdmin) {
             $users = User::where('is_active', 1)
                 ->orderBy('prenom')
                 ->get(['id', 'prenom', 'nom']);
         } elseif ($isManager) {
-            // Le manager voit uniquement ses subordonnés actifs
             $users = User::where('is_active', 1)
                 ->where('manager_id', $user->id)
                 ->orderBy('prenom')
@@ -744,7 +743,7 @@ class CongeController extends Controller
         try {
             $user = Auth::user();
 
-            if (!$user->hasRole('admin') && !$user->hasRole('manager')) {
+            if (!$user->hasRole('admin') && !$user->hasRole('manager') && !$user->hasRole('directeur-general')) {
                 abort(403, 'Accès non autorisé');
             }
 
@@ -784,11 +783,24 @@ class CongeController extends Controller
                 // Mail au demandeur
                 Mail::to($demandeur->email)->send(new LeavePreApprovedMail($demande));
 
-                // Mail au grand supérieur (patron)
-                $grandSuperieur = User::where('email', 'jcavande@cofima.cc')->firstOrFail();
+                // Mail au DG pour validation finale — emails récupérés depuis la config
+                $dgEmails = config('cofima.email_dg');
+                $dgEmails = is_array($dgEmails) ? $dgEmails : [$dgEmails];
+                $dgEmails = array_filter($dgEmails);
 
-                Mail::to($grandSuperieur->email)
-                    ->send(new RequestFinalValidationMail($demande, $user, $grandSuperieur, $request->commentaire));
+                if (!empty($dgEmails)) {
+                    $grandSuperieur = User::whereIn('email', $dgEmails)->first();
+
+                    if ($grandSuperieur) {
+                        $toDG   = $dgEmails[0];
+                        $ccDG   = array_slice($dgEmails, 1);
+                        $mailDG = Mail::to($toDG);
+                        if (!empty($ccDG)) {
+                            $mailDG->cc($ccDG);
+                        }
+                        $mailDG->send(new RequestFinalValidationMail($demande, $user, $grandSuperieur, $request->commentaire));
+                    }
+                }
             } else {
                 Mail::to($demandeur->email)->send(new LeaveRejectedMail($demande, $request->commentaire));
             }
@@ -797,14 +809,14 @@ class CongeController extends Controller
                 ? 'La demande a été pré-approuvée. En attente de validation finale.'
                 : 'La demande a été refusée.';
 
-            Alert::success('Succès', $message);
-            return redirect()->route('conges.index');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Erreur traitement congé: ' . $e->getMessage());
-            Alert::error('Erreur', 'Une erreur est survenue : ' . $e->getMessage());
-            return back();
-        }
+                Alert::success('Succès', $message);
+                return redirect()->route('conges.index');
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error('Erreur traitement congé: ' . $e->getMessage());
+                Alert::error('Erreur', 'Une erreur est survenue : ' . $e->getMessage());
+                return back();
+            }
     }
 
     // =========================================================================
@@ -981,7 +993,7 @@ class CongeController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user->hasRole('admin') && !$user->hasRole('manager')) {
+        if (!$user->hasRole('admin') && !$user->hasRole('manager') && !$user->hasRole('directeur-general')) {
             abort(403, 'Accès non autorisé');
         }
 
@@ -1224,33 +1236,34 @@ class CongeController extends Controller
 
     public function validerFinale(Request $request, DemandeConge $demande)
     {
-        DB::beginTransaction();
+        $user = Auth::user();
 
+        if (!$user->hasRole('directeur-general') && !$user->hasRole('rh') && !$user->hasRole('admin')) {
+            abort(403, 'Accès non autorisé');
+        }
+
+        if ($demande->statut !== 'pre_approuve') {
+            Alert::warning('Information', 'Cette demande n\'est pas en attente de validation finale.');
+            return back();
+        }
+
+        $request->validate([
+            'action'      => 'required|in:approuve,refuse',
+            'commentaire' => 'nullable|string|max:1000',
+        ]);
+
+        $action = $request->action;
+
+        // ── 1. Enregistrement en base (transaction isolée) ────────────────────
         try {
-            $user = Auth::user();
-
-            if (!$user->hasRole('directeur-general') && !$user->hasRole('rh') && !$user->hasRole('admin')) {
-                abort(403, 'Accès non autorisé');
-            }
-
-            if ($demande->statut !== 'pre_approuve') {
-                Alert::warning('Information', 'Cette demande n\'est pas en attente de validation finale.');
-                return back();
-            }
-
-            $validated = $request->validate([
-                'action'      => 'required|in:approuve,refuse',
-                'commentaire' => 'nullable|string|max:1000',
-            ]);
-
-            $action = $request->action;
+            DB::beginTransaction();
 
             $demande->update([
-                'statut'                  => $action,
-                'statut_final'            => $action,
-                'valide_par_final'        => $user->id,
-                'date_validation_finale'  => now(),
-                'commentaire_final'       => $request->commentaire,
+                'statut'                 => $action,
+                'statut_final'           => $action,
+                'valide_par_final'       => $user->id,
+                'date_validation_finale' => now(),
+                'commentaire_final'      => $request->commentaire,
             ]);
 
             HistoriqueConge::create([
@@ -1260,64 +1273,81 @@ class CongeController extends Controller
                 'commentaire'      => $request->commentaire,
             ]);
 
-            // Notifier l'employé
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur validation finale congé (DB): ' . $e->getMessage());
+            Alert::error('Erreur', 'Impossible d\'enregistrer la décision : ' . $e->getMessage());
+            return back();
+        }
+
+        // ── 2. Envoi des emails (après commit, séparé) ────────────────────────
+        try {
+            $demande->load('user');
+
             if ($action === 'approuve') {
 
-                // ── Années prélevées ──────────────────────────────────────────────
-                $deductions = $demande->meta_deductions ?? [];
+                $deductions      = $demande->meta_deductions ?? [];
                 $anneesPrelevees = !empty($deductions)
                     ? collect($deductions)->pluck('annee')->unique()->toArray()
                     : [Carbon::parse($demande->date_debut)->year];
 
-                // ── Soldes filtrés : jours_restants > 0 OU année prélevée ────────
                 $soldes = SoldeConge::where('user_id', $demande->user_id)
                     ->orderBy('annee')
                     ->get()
                     ->filter(fn($s) => $s->jours_restants > 0 || in_array($s->annee, $anneesPrelevees))
                     ->values();
 
-                // ── Date de reprise en français ───────────────────────────────────
-                $dateReprise     = Carbon::parse($demande->date_fin)->addWeekday();
-                $dateRepriseFormatee = $dateReprise->isoFormat('dddd D MMMM YYYY'); // nécessite locale fr
+                $dateRepriseFormatee = Carbon::parse($demande->date_fin)
+                    ->addWeekday()
+                    ->isoFormat('dddd D MMMM YYYY');
 
-                // ── Numéro de note ────────────────────────────────────────────────
                 $numeroNote = str_pad($demande->id, 3, '0', STR_PAD_LEFT)
                     . '/COFIMA/SA/JCA/GAT/'
                     . now()->year;
 
-                // Mail::to($demande->user->email)
-                //     ->send(new LeaveApprovedMail(
-                //         $demande,
-                //         $soldes,
-                //         $anneesPrelevees,
-                //         $dateRepriseFormatee,
-                //         $numeroNote,
-                //         $request->commentaire
-                //     ));
-                Mail::to($demande->user->email)->cc("meguagie@cofima.cc")
-                    ->send(new LeaveApprovedMail(
-                        $demande,
-                        $soldes,
-                        $anneesPrelevees,
-                        $dateRepriseFormatee,
-                        $numeroNote,
-                        $request->commentaire
-                    ));
+                $secretaireEmails = config('cofima.email_secretaire');
+                $secretaireEmails = is_array($secretaireEmails) ? $secretaireEmails : [$secretaireEmails];
+                $secretaireEmails = array_filter($secretaireEmails, fn($e) => $e !== $demande->user->email);
+
+                $rhEmail = config('cofima.email_rh');
+                $ccList  = array_values($secretaireEmails);
+                if ($rhEmail && $rhEmail !== $demande->user->email) {
+                    $ccList[] = $rhEmail;
+                }
+
+                $mail = Mail::to($demande->user->email);
+                if (!empty($ccList)) {
+                    $mail->cc($ccList);
+                }
+                $mail->send(new LeaveApprovedMail(
+                    $demande,
+                    $soldes,
+                    $anneesPrelevees,
+                    $dateRepriseFormatee,
+                    $numeroNote,
+                    $request->commentaire
+                ));
             } else {
                 Mail::to($demande->user->email)->send(new LeaveRejectedMail($demande, $request->commentaire));
             }
-
-            DB::commit();
-            Alert::success('Succès', $action === 'approuve'
-                ? 'Congé approuvé définitivement. Le solde a été mis à jour.'
-                : 'Congé refusé.');
-
+        } catch (\Throwable $e) {
+            Log::error('Erreur envoi email validation finale congé', [
+                'demande_id' => $demande->id,
+                'action'     => $action,
+                'error'      => $e->getMessage(),
+                'file'       => $e->getFile() . ':' . $e->getLine(),
+                'trace'      => $e->getTraceAsString(),
+            ]);
+            Alert::warning('Attention', 'La décision a été enregistrée mais l\'envoi de l\'email a échoué.');
             return redirect()->route('conges.validation-finale.index');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Alert::error('Erreur', 'Une erreur est survenue : ' . $e->getMessage());
-            return back();
         }
+
+        Alert::success('Succès', $action === 'approuve'
+            ? 'Congé approuvé définitivement. Notifications envoyées.'
+            : 'Congé refusé. L\'employé a été notifié.');
+
+        return redirect()->route('conges.validation-finale.index');
     }
 
     public function validationFinaleIndex()
