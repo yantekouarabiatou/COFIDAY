@@ -8,11 +8,12 @@
         $civilite   = $sexe === 'F' ? 'Madame' : 'Monsieur';
         $dateEmbauche = optional($demande->date_embauche)->isoFormat('D MMMM YYYY') ?? '[date d\'embauche]';
         $poste        = $demande->poste ?? 'Collaborateur';
-        $titreDoc   = match ($demande->type) {
-            'attestation_simple' => 'Attestation de travail',
-            'attestation_banque' => 'Attestation de travail',
-            'attestation_ambassade' => 'Attestation de travail',
-            default => 'Attestation de travail',
+        $titreDoc = match ($demande->type) {
+            'attestation_simple'      => 'Attestation de travail',
+            'attestation_banque'      => 'Attestation de travail',
+            'attestation_ambassade'   => 'Attestation de travail',
+            'attestation_appel_offre' => 'Attestation de travail',
+            default                   => 'Attestation de travail',
         };
     @endphp
 
@@ -161,6 +162,12 @@
             <p>
                 La présente attestation est délivrée à la demande de l'intéressé(e)
                 dans le cadre d'une démarche consulaire.
+            </p>
+        @elseif($demande->type === 'attestation_appel_offre')
+            <p>
+                La présente attestation est délivrée à la demande de l'intéressé(e)
+                dans le cadre d'une manifestation d'intérêt ou d'un appel d'offres,
+                en vue de faire valoir ses références professionnelles auprès du commanditaire concerné.
             </p>
         @else
             <p>

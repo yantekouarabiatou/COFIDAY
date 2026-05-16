@@ -53,9 +53,15 @@ class AttestationApprouvéeMail extends Mailable
             return [];
         }
 
+        $logoPath   = storage_path('app/public/photos/logo-cofima-bon.jpg');
+        $logoBase64 = file_exists($logoPath)
+            ? 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoPath))
+            : null;
+
         $pdf = Pdf::loadView('pdfs.attestation_letter', [
-            'demande' => $this->demande,
-            'employe' => $this->demande->user,
+            'demande'    => $this->demande,
+            'employe'    => $this->demande->user,
+            'logoBase64' => $logoBase64,
         ]);
 
         $nomFichier = 'attestation_' . ($this->demande->user->nom ?? 'attestation')

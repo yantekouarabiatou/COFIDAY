@@ -81,7 +81,7 @@ class AttestationController extends Controller
         }
 
         $validated = $request->validate([
-            'type'            => 'required|in:attestation_simple,attestation_banque,attestation_ambassade,attestation_autre',
+            'type'            => 'required|in:attestation_simple,attestation_banque,attestation_ambassade,attestation_appel_offre,attestation_autre',
             'motif'           => 'required|string|min:20|max:2000',
             'destinataire'    => [
                 'nullable',

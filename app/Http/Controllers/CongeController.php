@@ -792,11 +792,19 @@ class CongeController extends Controller
                     $grandSuperieur = User::whereIn('email', $dgEmails)->first();
 
                     if ($grandSuperieur) {
-                        $toDG   = $dgEmails[0];
-                        $ccDG   = array_slice($dgEmails, 1);
+                        $toDG  = $dgEmails[0];
+                        $ccDG  = array_slice($dgEmails, 1);
+
+                        // Secrétaire en CC du mail DG
+                        $secEmails = config('cofima.email_secretaire');
+                        $secEmails = is_array($secEmails) ? $secEmails : [$secEmails];
+                        $secEmails = array_filter($secEmails, fn($e) => $e !== $demande->user->email && !in_array($e, $dgEmails));
+
+                        $ccAll = array_values(array_unique(array_merge($ccDG, $secEmails)));
+
                         $mailDG = Mail::to($toDG);
-                        if (!empty($ccDG)) {
-                            $mailDG->cc($ccDG);
+                        if (!empty($ccAll)) {
+                            $mailDG->cc($ccAll);
                         }
                         $mailDG->send(new RequestFinalValidationMail($demande, $user, $grandSuperieur, $request->commentaire));
                     }

@@ -40,7 +40,7 @@
             </h3>
 
             <p style="text-align:justify; line-height:2; color:#333;">
-                Je soussigné, <strong>AVANDE Jean-Claude</strong>, Expert-Comptable Diplômé inscrit à
+                Je soussigné, <strong>AVANDE Jean-Claude Alain</strong>, Expert-Comptable Diplômé inscrit à
                 l'Ordre des Experts Comptables et Comptables Agréés du Bénin, Directeur du Cabinet COFIMA
                 atteste que
                 {{ $employe->sexe === 'F' ? 'Madame' : 'Monsieur' }}
@@ -72,7 +72,7 @@
             <div style="margin-top:20px;">
                 <p style="color:#333; margin-bottom:4px;"><strong>Pour COFIMA,</strong></p>
                 <p style="color:#333; margin:0;">
-                    <strong>Jean-Claude AVANDE</strong><br>
+                    <strong>Jean-Claude Alain AVANDE</strong><br>
                     Expert-Comptable Diplômé<br>
                     Associé-Gérant
                 </p>

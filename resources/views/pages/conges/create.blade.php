@@ -127,12 +127,17 @@
                                                 <option value="{{ $type->id }}"
                                                         data-est-paye="{{ $type->est_paye ? '1' : '0' }}"
                                                         data-est-annuel="{{ $type->est_annuel ? '1' : '0' }}"
+                                                        data-est-horaire="{{ ($type->est_horaire ?? false) ? '1' : '0' }}"
+                                                        data-duree-legale="{{ $type->duree_legale_jours ?? '' }}"
+                                                        data-justificatif="{{ ($type->justificatif_requis ?? false) ? '1' : '0' }}"
                                                         data-max-jours="{{ $type->nombre_jours_max }}"
                                                         {{ old('type_conge_id') == $type->id ? 'selected' : '' }}>
                                                     {{ $type->libelle }}
                                                     @if($type->est_annuel) (Annuel — déduit du solde) @endif
-                                                    @if($type->est_paye && !$type->est_annuel) (Payé — non déduit) @endif
+                                                    @if(($type->est_horaire ?? false)) (Permission horaire) @endif
+                                                    @if($type->est_paye && !$type->est_annuel && !($type->est_horaire ?? false)) (Payé — non déduit) @endif
                                                     @if(!$type->est_paye && !$type->est_annuel) (Non payé) @endif
+                                                    @if($type->duree_legale_jours) ({{ $type->duree_legale_jours }} j légaux) @endif
                                                 </option>
                                             @endforeach
                                         </select>
@@ -155,7 +160,62 @@
                                 </div>
                             </div>
 
-                            <div class="row g-4">
+                            {{-- Alerte durée légale (congés spéciaux) --}}
+                            <div id="alerte-duree-legale" class="alert alert-info mt-3 py-2" style="display:none;">
+                                <i class="fas fa-gavel me-2"></i>
+                                <span id="texte-duree-legale"></span>
+                            </div>
+
+                            {{-- Alerte justificatif obligatoire --}}
+                            <div id="alerte-justificatif" class="alert alert-warning mt-3 py-2" style="display:none;">
+                                <i class="fas fa-paperclip me-2"></i>
+                                <strong>Justificatif obligatoire</strong> pour ce type de congé. Veuillez joindre un document d'appui.
+                            </div>
+
+                            {{-- Section permission HORAIRE --}}
+                            <div id="section-horaire" style="display:none;">
+                                <div class="row g-4">
+                                    <div class="col-12">
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-clock me-2"></i>
+                                            <strong>Permission horaire</strong> — Indiquez la date et les heures de la permission.
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label class="form-label">Date <span class="text-danger">*</span></label>
+                                            <input type="date" name="date_debut_horaire" id="date_debut_horaire"
+                                                   class="form-control" min="{{ date('Y-m-d') }}">
+                                            <small class="text-muted">La permission se déroule sur une seule journée.</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label class="form-label">Heure de début <span class="text-danger">*</span></label>
+                                            <input type="time" name="heure_debut" id="heure_debut"
+                                                   class="form-control @error('heure_debut') is-invalid @enderror"
+                                                   value="{{ old('heure_debut') }}"
+                                                   min="07:00" max="18:00">
+                                            @error('heure_debut') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label class="form-label">Heure de fin <span class="text-danger">*</span></label>
+                                            <input type="time" name="heure_fin" id="heure_fin"
+                                                   class="form-control @error('heure_fin') is-invalid @enderror"
+                                                   value="{{ old('heure_fin') }}"
+                                                   min="07:00" max="18:00">
+                                            @error('heure_fin') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                            <div id="duree-horaire-display" class="text-success small mt-1 fw-bold"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {{-- Champs cachés pour respecter le formulaire existant --}}
+                                <input type="hidden" name="date_fin_horaire" id="date_fin_horaire">
+                            </div>
+
+                            <div class="row g-4" id="section-dates">
                                 <!-- Date début -->
                                 <div class="col-md-6">
                                     <div class="form-group">
@@ -548,6 +608,85 @@
                 $('#attestation-info').hide();
             }
         });
+
+        // ── Gestion permissions horaires & congés spéciaux ─────────────────
+        function handleTypeChange() {
+            var option       = $('#type_conge_id option:selected');
+            var estHoraire   = option.data('est-horaire') == '1';
+            var dureeLegale  = option.data('duree-legale');
+            var justificatif = option.data('justificatif') == '1';
+
+            // Mode horaire
+            if (estHoraire) {
+                $('#section-horaire').show();
+                $('#section-dates').hide();
+                $('#nombre_jours_display').closest('.col-md-6').hide();
+                // Désactiver required sur les champs dates standard
+                $('#date_debut, #date_fin').prop('required', false);
+                $('#submit-btn').prop('disabled', false);
+            } else {
+                $('#section-horaire').hide();
+                $('#section-dates').show();
+                $('#nombre_jours_display').closest('.col-md-6').show();
+                $('#date_debut, #date_fin').prop('required', true);
+            }
+
+            // Durée légale
+            if (dureeLegale) {
+                $('#texte-duree-legale').html(
+                    `<strong>Durée légale :</strong> Ce type de congé est fixé à <strong>${dureeLegale} jour(s)</strong> par la réglementation béninoise du travail.`
+                );
+                $('#alerte-duree-legale').show();
+            } else {
+                $('#alerte-duree-legale').hide();
+            }
+
+            // Justificatif obligatoire
+            if (justificatif) {
+                $('#alerte-justificatif').show();
+                $('#fichier_justificatif').prop('required', true);
+            } else {
+                $('#alerte-justificatif').hide();
+                $('#fichier_justificatif').prop('required', false);
+            }
+        }
+
+        // Calcul de la durée horaire
+        function calculerDureeHoraire() {
+            var debut = $('#heure_debut').val();
+            var fin   = $('#heure_fin').val();
+            if (!debut || !fin) return;
+
+            var [hD, mD] = debut.split(':').map(Number);
+            var [hF, mF] = fin.split(':').map(Number);
+            var totalMin = (hF * 60 + mF) - (hD * 60 + mD);
+
+            if (totalMin <= 0) {
+                $('#duree-horaire-display').html('<span class="text-danger">L\'heure de fin doit être après l\'heure de début.</span>');
+                $('#submit-btn').prop('disabled', true);
+                return;
+            }
+
+            var heures = Math.floor(totalMin / 60);
+            var minutes = totalMin % 60;
+            var label = heures > 0 ? `${heures}h${minutes > 0 ? minutes + 'min' : ''}` : `${minutes} min`;
+            $('#duree-horaire-display').html(`⏱ Durée : <strong>${label}</strong>`);
+            $('#nombre_heures').val((totalMin / 60).toFixed(2));
+
+            // Synchroniser date_debut et date_fin avec la date horaire
+            var dateVal = $('#date_debut_horaire').val();
+            $('#date_fin_horaire').val(dateVal);
+            $('#submit-btn').prop('disabled', !dateVal || totalMin <= 0);
+        }
+
+        $('#type_conge_id').on('change', handleTypeChange);
+        $('#heure_debut, #heure_fin').on('change', calculerDureeHoraire);
+        $('#date_debut_horaire').on('change', function() {
+            calculerDureeHoraire();
+        });
+
+        // Init au chargement
+        handleTypeChange();
     });
     </script>
 @endpush

@@ -52,6 +52,15 @@
                         </div>
                     </div>
                     <div class="col-md-6 col-lg-3 mb-3">
+                        <div class="type-card" data-type="attestation_appel_offre">
+                            <div class="type-card-icon" style="color:#e74a3b;">
+                                <i class="fas fa-handshake fa-2x"></i>
+                            </div>
+                            <div class="type-card-title">Appel d'offres / Marché</div>
+                            <div class="type-card-desc">Manifestation d'intérêt, offre client</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-3 mb-3">
                         <div class="type-card" data-type="attestation_autre">
                             <div class="type-card-icon" style="color:#858796;">
                                 <i class="fas fa-pen-fancy fa-2x"></i>
@@ -338,6 +347,15 @@ Je vous saurais gré de bien vouloir m'établir ce document dans les meilleurs d
 
 Je vous prie d'agréer, Monsieur l'Associé-Gérant, l'expression de mes salutations distinguées.`,
 
+        attestation_appel_offre:
+`Je me permets par la présente de solliciter une attestation de travail dans le cadre d'une [manifestation d'intérêt / offre de marché / appel d'offres] pour [précisez l'intitulé du marché ou de l'offre].
+
+En ma qualité de [poste], je suis appelé(e) à faire valoir mon appartenance au Cabinet COFIMA ainsi que mon expérience professionnelle auprès du [maître d'ouvrage / commanditaire].
+
+Je vous saurais gré de bien vouloir m'établir ce document dans les meilleurs délais afin de respecter les délais de soumission.
+
+Je vous prie d'agréer, Monsieur l'Associé-Gérant, l'expression de mes salutations distinguées.`,
+
         attestation_autre:
 `Je me permets par la présente de solliciter une attestation de travail dont le format spécifique m'est exigé par [précisez l'organisme].
 
@@ -349,17 +367,19 @@ Je vous prie d'agréer, Monsieur l'Associé-Gérant, l'expression de mes salutat
     };
 
     const TYPE_TITLES = {
-        attestation_simple:    '<i class="fas fa-file-alt"></i> Attestation simple — Démarches administratives',
-        attestation_banque:    '<i class="fas fa-university"></i> Attestation de travail — Usage bancaire',
-        attestation_ambassade: '<i class="fas fa-globe"></i> Attestation de travail — Ambassade / Visa',
-        attestation_autre:     '<i class="fas fa-pen-fancy"></i> Attestation — Format spécifique',
+        attestation_simple:       '<i class="fas fa-file-alt"></i> Attestation simple — Démarches administratives',
+        attestation_banque:       '<i class="fas fa-university"></i> Attestation de travail — Usage bancaire',
+        attestation_ambassade:    '<i class="fas fa-globe"></i> Attestation de travail — Ambassade / Visa',
+        attestation_appel_offre:  '<i class="fas fa-handshake"></i> Attestation — Appel d\'offres / Manifestation d\'intérêt',
+        attestation_autre:        '<i class="fas fa-pen-fancy"></i> Attestation — Format spécifique',
     };
 
     const TYPE_INFOS = {
-        attestation_simple:    { cls: 'alert-info',    msg: '📋 Format standard COFIMA. Votre attestation sera jointe au mail. Passez chez la secrétaire pour la version originale cachetée.' },
-        attestation_banque:    { cls: 'alert-success', msg: '🏦 Ce format mentionne le destinataire bancaire. Vous pouvez choisir d\'y inclure votre salaire net si la banque l\'exige.' },
-        attestation_ambassade: { cls: 'alert-info',    msg: '✈️ Ce format est adapté aux démarches de visa. Précisez bien le nom de l\'ambassade ou du consulat concerné.' },
-        attestation_autre:     { cls: 'alert-warning', msg: '✍️ La Secrétaire préparera manuellement votre attestation selon vos indications. Soyez le plus précis possible dans votre description.' },
+        attestation_simple:       { cls: 'alert-info',    msg: '📋 Format standard COFIMA. Votre attestation sera jointe au mail. Passez chez la secrétaire pour la version originale cachetée.' },
+        attestation_banque:       { cls: 'alert-success', msg: '🏦 Ce format mentionne le destinataire bancaire. Vous pouvez choisir d\'y inclure votre salaire net si la banque l\'exige.' },
+        attestation_ambassade:    { cls: 'alert-info',    msg: '✈️ Ce format est adapté aux démarches de visa. Précisez bien le nom de l\'ambassade ou du consulat concerné.' },
+        attestation_appel_offre:  { cls: 'alert-danger',  msg: '🤝 Ce format atteste de votre appartenance au Cabinet dans le cadre d\'une offre commerciale ou d\'un appel d\'offres. Précisez bien le nom du marché.' },
+        attestation_autre:        { cls: 'alert-warning', msg: '✍️ La Secrétaire préparera manuellement votre attestation selon vos indications. Soyez le plus précis possible dans votre description.' },
     };
 
     // Éléments DOM
