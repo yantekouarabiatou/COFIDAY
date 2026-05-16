@@ -128,6 +128,11 @@ return new class extends Migration
                 $type
             );
         }
+
+        // Marquer les types existants nécessitant un justificatif médical
+        DB::table('types_conges')
+            ->whereIn('libelle', ['Congés maladie', 'Congés maternité', 'Congés paternité'])
+            ->update(['justificatif_requis' => true]);
     }
 
     public function down(): void

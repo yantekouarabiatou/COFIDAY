@@ -251,6 +251,14 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
         // Route pour annuler une demande
         Route::post('/conges/{demande}/annuler', [CongeController::class, 'annuler'])->name('conges.annuler');
 
+        // Retour anticipé (suspension) — admin/manager/DG
+        Route::post('/conges/{demande}/retour-anticipe', [CongeController::class, 'enregistrerRetourAnticipe'])
+            ->name('conges.retour-anticipe');
+
+        // Justificatif au retour — employé concerné
+        Route::post('/conges/{demande}/justificatif-retour', [CongeController::class, 'uploadJustificatifRetour'])
+            ->name('conges.justificatif-retour');
+
         // Routes pour admin/manager/directeur-general
         Route::middleware(['role:admin|manager|directeur-general'])->group(function () {
             Route::get('/conges/dashboard', [CongeController::class, 'dashboard'])->name('conges.dashboard');

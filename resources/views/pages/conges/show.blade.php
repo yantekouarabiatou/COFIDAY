@@ -266,20 +266,20 @@
                                         </div>
                                         @endif
 
-                                        {{-- Fichier justificatif --}}
+                                        {{-- Fichier justificatif soumis à la demande --}}
                                         @if($demande->fichier_justificatif)
                                         <div class="row">
                                             <div class="col-md-12">
                                                 <div class="form-group">
                                                     <label class="font-weight-bold">
                                                         <i class="fas fa-paperclip text-primary mr-1"></i>
-                                                        Fichier justificatif joint
+                                                        Justificatif joint à la demande
                                                     </label>
                                                     <div class="card bg-light">
                                                         <div class="card-body py-2 d-flex align-items-center justify-content-between">
                                                             <span>
                                                                 <i class="fas fa-file mr-2 text-muted"></i>
-                                                                Document d'appui fourni par l'employé
+                                                                Document fourni par l'employé
                                                             </span>
                                                             <a href="{{ Storage::url($demande->fichier_justificatif) }}"
                                                             target="_blank"
@@ -287,6 +287,130 @@
                                                                 <i class="fas fa-eye mr-1"></i> Consulter
                                                             </a>
                                                         </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        @endif
+
+                                        {{-- Justificatif au retour --}}
+                                        @if($demande->justificatif_retour)
+                                        <div class="row">
+                                            <div class="col-md-12">
+                                                <div class="form-group">
+                                                    <label class="font-weight-bold">
+                                                        <i class="fas fa-file-medical text-success mr-1"></i>
+                                                        Justificatif médical (déposé au retour)
+                                                    </label>
+                                                    <div class="card border-success">
+                                                        <div class="card-body py-2 d-flex align-items-center justify-content-between">
+                                                            <span>
+                                                                <i class="fas fa-check-circle text-success mr-2"></i>
+                                                                Déposé le {{ optional($demande->date_depot_justificatif)->format('d/m/Y') }}
+                                                            </span>
+                                                            <a href="{{ Storage::url($demande->justificatif_retour) }}"
+                                                               target="_blank" class="btn btn-sm btn-outline-success">
+                                                                <i class="fas fa-eye mr-1"></i> Consulter
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        @elseif(auth()->id() === $demande->user_id
+                                            && in_array($demande->statut, ['approuve', 'pre_approuve'])
+                                            && optional($demande->typeConge)->justificatif_requis
+                                            && $demande->date_fin && $demande->date_fin->lte(now()))
+                                        {{-- L'employé doit encore déposer son justificatif --}}
+                                        <div class="row">
+                                            <div class="col-md-12">
+                                                <div class="alert" style="background:#fff3cd; border-left:5px solid #e6a817;">
+                                                    <div class="d-flex align-items-center justify-content-between">
+                                                        <div>
+                                                            <i class="fas fa-exclamation-triangle text-warning mr-2"></i>
+                                                            <strong>Justificatif médical requis</strong><br>
+                                                            <small class="text-dark">Votre congé est terminé. Veuillez déposer votre certificat médical.</small>
+                                                        </div>
+                                                        <button class="btn btn-warning btn-sm ml-3"
+                                                                data-toggle="collapse" data-target="#form-justif-retour">
+                                                            <i class="fas fa-upload mr-1"></i> Déposer
+                                                        </button>
+                                                    </div>
+                                                    <div class="collapse mt-3" id="form-justif-retour">
+                                                        <form action="{{ route('conges.justificatif-retour', $demande) }}"
+                                                              method="POST" enctype="multipart/form-data">
+                                                            @csrf
+                                                            <div class="input-group">
+                                                                <input type="file" name="justificatif_retour"
+                                                                       class="form-control @error('justificatif_retour') is-invalid @enderror"
+                                                                       accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" required>
+                                                                <div class="input-group-append">
+                                                                    <button type="submit" class="btn btn-success">
+                                                                        <i class="fas fa-check"></i> Valider
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                            @error('justificatif_retour')
+                                                                <div class="text-danger small mt-1">{{ $message }}</div>
+                                                            @enderror
+                                                            <small class="text-muted d-block mt-1">PDF, Word ou image — max 5 Mo</small>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        @endif
+
+                                        {{-- Retour anticipé : bouton pour admin/manager/DG --}}
+                                        @if(auth()->user()->hasAnyRole(['admin', 'manager', 'directeur-general', 'rh'])
+                                            && $demande->statut === 'approuve'
+                                            && $demande->date_debut && $demande->date_fin
+                                            && now()->between($demande->date_debut, $demande->date_fin)
+                                            && ($demande->statut_suspension ?? 'actif') !== 'repris')
+                                        <div class="row mt-2">
+                                            <div class="col-md-12">
+                                                <div class="alert alert-info">
+                                                    <div class="d-flex align-items-center justify-content-between">
+                                                        <div>
+                                                            <i class="fas fa-undo mr-2"></i>
+                                                            <strong>Retour anticipé</strong><br>
+                                                            <small>L'employé est actuellement en congé. Enregistrez un retour avant la date prévue pour restituer les jours non utilisés.</small>
+                                                        </div>
+                                                        <button class="btn btn-info btn-sm ml-3"
+                                                                data-toggle="collapse" data-target="#form-retour-anticipe">
+                                                            <i class="fas fa-sign-in-alt mr-1"></i> Enregistrer le retour
+                                                        </button>
+                                                    </div>
+                                                    <div class="collapse mt-3" id="form-retour-anticipe">
+                                                        <form action="{{ route('conges.retour-anticipe', $demande) }}"
+                                                              method="POST">
+                                                            @csrf
+                                                            <div class="row">
+                                                                <div class="col-md-5">
+                                                                    <label class="small font-weight-bold">Date de retour effectif</label>
+                                                                    <input type="date" name="date_retour_effectif"
+                                                                           class="form-control form-control-sm"
+                                                                           min="{{ $demande->date_debut->toDateString() }}"
+                                                                           max="{{ $demande->date_fin->toDateString() }}"
+                                                                           value="{{ now()->toDateString() }}" required>
+                                                                </div>
+                                                                <div class="col-md-5">
+                                                                    <label class="small font-weight-bold">Motif (optionnel)</label>
+                                                                    <input type="text" name="motif_suspension"
+                                                                           class="form-control form-control-sm"
+                                                                           placeholder="Ex : Rétablissement plus rapide que prévu">
+                                                                </div>
+                                                                <div class="col-md-2 d-flex align-items-end">
+                                                                    <button type="submit" class="btn btn-success btn-sm w-100">
+                                                                        <i class="fas fa-check"></i> Confirmer
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                            <small class="text-muted d-block mt-2">
+                                                                Les jours non consommés (du retour à la fin du congé) seront automatiquement restitués au solde.
+                                                            </small>
+                                                        </form>
                                                     </div>
                                                 </div>
                                             </div>

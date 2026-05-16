@@ -172,6 +172,24 @@
                                 <strong>Justificatif obligatoire</strong> pour ce type de congé. Veuillez joindre un document d'appui.
                             </div>
 
+                            {{-- Alerte déclaration rétrospective --}}
+                            <div id="alerte-retroactive" class="alert mt-3 py-3" style="display:none; background:#fff3cd; border-left:5px solid #e6a817;">
+                                <div class="d-flex align-items-start">
+                                    <i class="fas fa-history me-3 mt-1 text-warning" style="font-size:1.2rem;"></i>
+                                    <div>
+                                        <strong>Déclaration rétrospective</strong><br>
+                                        <small class="text-dark">
+                                            Vos dates sont <strong>dans le passé</strong> — cela correspond à une absence déjà survenue.
+                                            Si vous n'avez pas pu prévenir à l'avance (ex&nbsp;: maladie soudaine),
+                                            vous déclarez votre absence au retour.<br>
+                                            <span id="texte-retroactive-justif" class="text-danger fw-bold" style="display:none;">
+                                                Le justificatif médical est <u>obligatoire</u> pour valider cette déclaration.
+                                            </span>
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+
                             {{-- Section permission HORAIRE --}}
                             <div id="section-horaire" style="display:none;">
                                 <div class="row g-4">
@@ -223,7 +241,7 @@
                                         <input type="date" name="date_debut" id="date_debut"
                                                class="form-control @error('date_debut') is-invalid @enderror"
                                                value="{{ old('date_debut') }}"
-                                               min="{{ date('Y-m-d') }}" required>
+                                               required>
                                         @error('date_debut') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                         <div id="date_debut_info" class="text-info small mt-1"></div>
                                     </div>
@@ -290,7 +308,8 @@
                                         <label class="form-label">
                                             <i class="fas fa-paperclip me-1"></i>
                                             Fichier justificatif
-                                            <small class="text-muted">(facultatif)</small>
+                                            <small class="text-muted" id="justif-label-hint">(facultatif)</small>
+                                            <span class="text-danger fw-bold" id="justif-label-requis" style="display:none;"> *</span>
                                         </label>
                                         <input type="file" name="fichier_justificatif" id="fichier_justificatif"
                                             class="form-control @error('fichier_justificatif') is-invalid @enderror"
@@ -513,6 +532,7 @@
 
             updatePreview();
             checkSolde();
+            checkRetroactive();
         }
 
         function updatePreview() {
@@ -579,6 +599,50 @@
             }
         }
 
+        // ── Déclaration rétrospective ─────────────────────────────────────
+        function checkRetroactive() {
+            var debut = $('#date_debut').val();
+            var option = $('#type_conge_id option:selected');
+            var justifReqs = option.data('justificatif') == '1';
+
+            if (!debut) {
+                $('#alerte-retroactive').hide();
+                return;
+            }
+
+            var today = new Date();
+            today.setHours(0, 0, 0, 0);
+            var debutDate = new Date(debut);
+            debutDate.setHours(0, 0, 0, 0);
+            var estRetroactive = debutDate < today;
+
+            if (estRetroactive) {
+                $('#alerte-retroactive').show();
+                if (justifReqs) {
+                    $('#texte-retroactive-justif').show();
+                    $('#justif-label-requis').show();
+                    $('#justif-label-hint').hide();
+                    $('#fichier_justificatif').prop('required', true);
+                } else {
+                    $('#texte-retroactive-justif').hide();
+                    $('#justif-label-requis').hide();
+                    $('#justif-label-hint').show();
+                }
+            } else {
+                $('#alerte-retroactive').hide();
+                $('#texte-retroactive-justif').hide();
+                if (justifReqs) {
+                    $('#justif-label-requis').show();
+                    $('#justif-label-hint').hide();
+                    $('#fichier_justificatif').prop('required', true);
+                } else {
+                    $('#justif-label-requis').hide();
+                    $('#justif-label-hint').show();
+                    $('#fichier_justificatif').prop('required', false);
+                }
+            }
+        }
+
         // Événements
         $('#date_debut, #date_fin').on('change', analyzePeriod);
         $('#type_conge_id').on('change', function() {
@@ -641,14 +705,14 @@
                 $('#alerte-duree-legale').hide();
             }
 
-            // Justificatif obligatoire
+            // Justificatif obligatoire (géré conjointement avec checkRetroactive)
             if (justificatif) {
                 $('#alerte-justificatif').show();
-                $('#fichier_justificatif').prop('required', true);
             } else {
                 $('#alerte-justificatif').hide();
-                $('#fichier_justificatif').prop('required', false);
             }
+
+            checkRetroactive();
         }
 
         // Calcul de la durée horaire
@@ -687,6 +751,7 @@
 
         // Init au chargement
         handleTypeChange();
+        checkRetroactive();
     });
     </script>
 @endpush

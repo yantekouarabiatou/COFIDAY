@@ -361,7 +361,7 @@ class CongeController extends Controller
 
             $validated = $request->validate([
                 'type_conge_id'              => 'required|exists:types_conges,id',
-                'date_debut'                 => 'required|date|after_or_equal:today',
+                'date_debut'                 => 'required|date',
                 'date_fin'                   => 'required|date|after_or_equal:date_debut',
                 'motif'                      => 'required|string|max:1000',
                 'superieur_hierarchique_id'  => 'required|exists:users,id',
@@ -383,6 +383,15 @@ class CongeController extends Controller
             $nombreJours = (float) $request->nombre_jours;
 
             $typeConge = TypeConge::findOrFail($request->type_conge_id);
+
+            // Déclaration rétrospective (dates dans le passé) : justificatif obligatoire si type l'exige
+            $estRetroactive = Carbon::parse($request->date_debut)->startOfDay()->lt(now()->startOfDay());
+            if ($estRetroactive && $typeConge->justificatif_requis && ! $request->hasFile('fichier_justificatif')) {
+                DB::rollBack();
+                return back()
+                    ->withErrors(['fichier_justificatif' => 'Le justificatif est obligatoire pour une déclaration rétrospective de « ' . $typeConge->libelle . ' ».'])
+                    ->withInput();
+            }
 
             // NOTE : nombre_jours_max est indicatif, pas bloquant.
             // Tant que le solde global (toutes années) couvre la demande, elle est acceptée.
@@ -730,6 +739,135 @@ class CongeController extends Controller
             Alert::error('Erreur', "Une erreur est survenue lors de l'annulation.");
             return back();
         }
+    }
+
+    // =========================================================================
+    //  RETOUR ANTICIPÉ (admin / manager / DG)
+    // =========================================================================
+
+    public function enregistrerRetourAnticipe(Request $request, DemandeConge $demande)
+    {
+        $user = Auth::user();
+        if (! $user->hasAnyRole(['admin', 'manager', 'directeur-general', 'rh'])) {
+            abort(403);
+        }
+
+        if ($demande->statut !== 'approuve') {
+            Alert::warning('Information', 'Seules les demandes approuvées peuvent faire l\'objet d\'un retour anticipé.');
+            return back();
+        }
+
+        $request->validate([
+            'date_retour_effectif' => [
+                'required',
+                'date',
+                'after_or_equal:' . $demande->date_debut->toDateString(),
+                'before_or_equal:' . $demande->date_fin->toDateString(),
+            ],
+            'motif_suspension' => 'nullable|string|max:500',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $dateRetour = Carbon::parse($request->date_retour_effectif);
+            $dateFin    = Carbon::parse($demande->date_fin);
+
+            // Jours non consommés = du retour effectif jusqu'à la fin du congé
+            $joursRestitues = 0;
+            $typeConge = TypeConge::find($demande->type_conge_id);
+
+            if ($typeConge && $typeConge->est_annuel) {
+                $current = $dateRetour->copy();
+                while ($current->lte($dateFin)) {
+                    $dow = $current->dayOfWeek;
+                    if ($dow !== 0 && $dow !== 6) { // exclure week-ends
+                        $joursRestitues++;
+                    }
+                    $current->addDay();
+                }
+
+                if ($joursRestitues > 0) {
+                    // Restituer sur l'année d'origine
+                    $annee = $demande->date_debut->year;
+                    $solde = SoldeConge::where('user_id', $demande->user_id)
+                        ->where('annee', $annee)->first();
+
+                    if ($solde) {
+                        $solde->update([
+                            'jours_pris'     => max(0, $solde->jours_pris - $joursRestitues),
+                            'jours_restants' => $solde->jours_restants + $joursRestitues,
+                        ]);
+                    }
+                }
+            }
+
+            $demande->update([
+                'statut_suspension'  => 'repris',
+                'date_suspension'    => $dateRetour,
+                'jours_restitues'    => $joursRestitues,
+                'motif_suspension'   => $request->motif_suspension,
+            ]);
+
+            HistoriqueConge::create([
+                'demande_conge_id' => $demande->id,
+                'action'           => 'retour_anticipe',
+                'effectue_par'     => $user->id,
+                'commentaire'      => "Retour anticipé le {$dateRetour->format('d/m/Y')} — {$joursRestitues} jour(s) restitué(s)." . ($request->motif_suspension ? ' Motif : ' . $request->motif_suspension : ''),
+            ]);
+
+            DB::commit();
+
+            Alert::success('Succès', "{$joursRestitues} jour(s) restitué(s) au solde de l'employé.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur retour anticipé: ' . $e->getMessage());
+            Alert::error('Erreur', 'Une erreur est survenue : ' . $e->getMessage());
+        }
+
+        return redirect()->route('conges.show', $demande);
+    }
+
+    // =========================================================================
+    //  UPLOAD JUSTIFICATIF AU RETOUR (employé)
+    // =========================================================================
+
+    public function uploadJustificatifRetour(Request $request, DemandeConge $demande)
+    {
+        $user = Auth::user();
+
+        if ($demande->user_id !== $user->id && ! $user->hasAnyRole(['admin', 'rh'])) {
+            abort(403);
+        }
+
+        if (! in_array($demande->statut, ['approuve', 'pre_approuve'])) {
+            Alert::warning('Information', 'Le justificatif ne peut être déposé que sur une demande approuvée.');
+            return back();
+        }
+
+        $request->validate([
+            'justificatif_retour' => 'required|file|max:5120|mimes:pdf,jpg,jpeg,png,doc,docx',
+        ], [
+            'justificatif_retour.required' => 'Veuillez sélectionner un fichier.',
+            'justificatif_retour.mimes'    => 'Format accepté : PDF, Word, Image.',
+        ]);
+
+        $chemin = $request->file('justificatif_retour')
+            ->store('conges/justificatifs-retour', 'public');
+
+        $demande->update([
+            'justificatif_retour'       => $chemin,
+            'date_depot_justificatif'   => now(),
+        ]);
+
+        HistoriqueConge::create([
+            'demande_conge_id' => $demande->id,
+            'action'           => 'justificatif_depose',
+            'effectue_par'     => $user->id,
+            'commentaire'      => 'Justificatif médical déposé au retour.',
+        ]);
+
+        Alert::success('Succès', 'Votre justificatif a été enregistré.');
+        return redirect()->route('conges.show', $demande);
     }
 
     // =========================================================================
