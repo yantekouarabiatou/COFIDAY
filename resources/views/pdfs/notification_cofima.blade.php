@@ -114,7 +114,7 @@
     <div class="signature">
         <p>
             Pour COFIMA,<br><br><br>
-            <strong>Jean-Claude AVANDE</strong><br>
+            <strong>Jean-Claude Alain AVANDE</strong><br>
             Expert-Comptable Diplômé<br>
             Associé-Gérant<br>
             Tél. 21 38 04 58 / 90 95 19 59<br>

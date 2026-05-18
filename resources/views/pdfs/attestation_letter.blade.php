@@ -8,13 +8,7 @@
         $civilite   = $sexe === 'F' ? 'Madame' : 'Monsieur';
         $dateEmbauche = optional($demande->date_embauche)->isoFormat('D MMMM YYYY') ?? '[date d\'embauche]';
         $poste        = $demande->poste ?? 'Collaborateur';
-        $titreDoc = match ($demande->type) {
-            'attestation_simple'      => 'Attestation de travail',
-            'attestation_banque'      => 'Attestation de travail',
-            'attestation_ambassade'   => 'Attestation de travail',
-            'attestation_appel_offre' => 'Attestation de travail',
-            default                   => 'Attestation de travail',
-        };
+        $titreDoc = 'ATTESTATION DE TRAVAIL';
     @endphp
 
     <title>{{ $titreDoc }}</title>
@@ -45,81 +39,61 @@
             src: url("file://{{ str_replace('\\', '/', storage_path('fonts/Helvetica-BoldOblique.ttf')) }}") format('truetype');
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        html, body {
-            height: 100%;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; }
 
         body {
             font-family: 'Helvetica', sans-serif;
             font-size: 14px;
-            line-height: 1.7;
+            line-height: 1.5;
             color: #000;
-            /* Marges de page via padding */
-            padding: 40px 50px 100px 50px; /* bas = espace pour le footer fixe */
+            padding: 40px 50px 100px 50px;
             position: relative;
             min-height: 100vh;
         }
 
-        /* ── Header ────────────────────────────────────────────────── */
+        /* ── Header ── */
         .header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 35px;
+            margin-bottom: 0;
         }
-        .header-logo img {
-            max-width: 150px;
-        }
-        .company-info {
-            text-align: right;
-            font-size: 10px;
-            color: #333;
-            line-height: 1.6;
-        }
-        .company-info .name {
-            font-weight: bold;
-            font-size: 12px;
-            color: #000;
-        }
+        .header-logo img { max-width: 220px; }
 
-        /* ── Titre principal ────────────────────────────────────────── */
+        /* ── Titre : gras, italique, souligné, centré, +2pt, 5 lignes avant, 2 lignes après ── */
         .titre-doc {
             text-align: center;
-            font-size: 14px;
+            font-size: 16px;
             font-weight: bold;
+            font-style: italic;
             text-decoration: underline;
             text-transform: uppercase;
             letter-spacing: 1px;
-            margin: 30px 0 35px;
+            margin-top: 105px;   /* 5 lignes × 21px (14px × 1.5) */
+            margin-bottom: 42px; /* 2 lignes × 21px */
         }
 
-        /* ── Corps ──────────────────────────────────────────────────── */
+        /* ── Corps : taille 15px pour occuper 5 lignes, 1 ligne entre paragraphes ── */
         .content p {
-            margin-bottom: 18px;
+            font-size: 15px;
+            margin-bottom: 23px;
             text-align: justify;
         }
+        /* Dernier paragraphe sans marge basse (l'espace vient du margin-top de .signature) */
+        .content .p-date { margin-bottom: 0; }
 
-        /* ── Signature (gauche) ─────────────────────────────────────── */
+        /* ── Signature : 2 lignes entre "Fait à Cotonou" et "Pour COFIMA" ── */
         .signature {
-            margin-top: 50px;
+            margin-top: 45px;
             text-align: left;
         }
-        .signature p {
-            line-height: 1.8;
-        }
+        .signature p { line-height: 1.8; }
 
-        /* ── Pied de page fixe en bas de feuille ───────────────────── */
+        /* ── Pied de page ── */
         .footer {
             position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
+            bottom: 0; left: 0; right: 0;
             padding: 10px 50px;
             border-top: 1px solid #ccc;
             font-size: 9px;
@@ -131,28 +105,31 @@
 </head>
 <body>
 
-    {{-- ── Header : logo + infos cabinet ──────────────────────────────────── --}}
+    {{-- ── Header : logo ── --}}
     <div class="header">
         <div class="header-logo">
             <img src="{{ $logoBase64 }}" alt="Logo COFIMA">
         </div>
     </div>
 
-    {{-- ── Titre centré, majuscules, gras, souligné ────────────────────────── --}}
-    <div class="titre-doc">{{ strtoupper($titreDoc) }}</div>
+    {{-- ── Titre centré, gras, italique, souligné, taille +2 ── --}}
+    <div class="titre-doc">{{ $titreDoc }}</div>
 
-    {{-- ── Corps du document ────────────────────────────────────────────────── --}}
+    {{-- ── Corps ── --}}
     <div class="content">
+
+        {{-- Paragraphe principal (5 lignes) --}}
         <p>
-            Je soussigné, <strong>AVANDE Jean-Claude</strong>, Expert-Comptable Diplômé inscrit à
+            Je soussigné, <strong>AVANDE Jean-Claude Alain</strong>, Expert-Comptable Diplômé inscrit à
             l'Ordre des Experts Comptables et Comptables Agréés du Bénin sous le numéro 006-EC,
             Associé-Gérant du Cabinet COFIMA, atteste que
             <strong>{{ $civilite }} {{ strtoupper($employe->nom) }} {{ $employe->prenom }}</strong>
             {{ strtolower($sexe) === 'f' ? 'est employée' : 'est employé' }} au sein du Cabinet COFIMA depuis le
             <strong>{{ $dateEmbauche }}</strong>
-            à ce jour en qualité de <strong>{{ $poste }}{{ $demande->inclure_salaire && $demande->salaire_net ? ', avec une rémunération nette mensuelle de' . number_format($demande->salaire_net, 0, ',', ' ') . ' FCFA' : '' }}.
-         </strong></p>
+            à ce jour en qualité de <strong>{{ $poste }}{{ $demande->inclure_salaire && $demande->salaire_net ? ', avec une rémunération nette mensuelle de ' . number_format($demande->salaire_net, 0, ',', ' ') . ' FCFA' : '' }}</strong>.
+        </p>
 
+        {{-- Paragraphe selon le type d'attestation (1 ligne d'espace avant grâce au margin-bottom du <p> précédent) --}}
         @if($demande->type === 'attestation_banque')
             <p>
                 La présente attestation est rédigée à usage bancaire.
@@ -182,29 +159,29 @@
             </p>
         @endif
 
-        <p>
+        {{-- "Fait à Cotonou" : 1 ligne d'espace fourni par le margin-bottom du <p> précédent --}}
+        <p class="p-date">
             Fait à Cotonou, le <strong>{{ optional($demande->date_validation)->isoFormat('D MMMM YYYY') ?? now()->isoFormat('D MMMM YYYY') }}</strong>.
         </p>
+
     </div>
 
-    {{-- ── Signature à gauche ───────────────────────────────────────────────── --}}
+    {{-- ── Signature : 2 lignes après "Fait à Cotonou" (margin-top: 45px) ── --}}
     <div class="signature">
         <p>
-            Pour COFIMA,<br><br><br>    
-            <strong>Jean-Claude AVANDE</strong><br>
+            Pour COFIMA,<br><br><br>
+            <strong>Jean-Claude Alain AVANDE</strong><br>
             Expert-Comptable Diplômé<br>
-            Associé-Gérant<br>
-            Tél. 21 38 04 58 / 90 95 19 59<br>
-            Courriel : jcavande@cofimabenin.com
+            Associé-Gérant
         </p>
     </div>
 
-    {{-- ── Pied de page fixe ───────────────────────────────────────────────── --}}
+    {{-- ── Pied de page ── --}}
     <div class="footer">
-        N° IFU 3200800611214 · RCCM RB/COT/07B 336 · C/2197 F Immeuble Luca Pacioli,Kouhounou – Cotonou,Bénin<br>
+        N° IFU 3200800611214 · RCCM RB/COT/07B 336 · C/2197 F Immeuble Luca Pacioli, Kouhounou – Cotonou, Bénin<br>
         Tél : +229 01 21 38 04 58 · Mobile : +229 01 90 95 19 59 / 01 95 07 09 48<br>
-        Site web : https:www.cofima.cc · Email : cofima@cofimabenin.com / cofima@cofima.cc
-     </div>
+        Site web : https://www.cofima.cc · Email : cofima@cofimabenin.com / cofima@cofima.cc
+    </div>
 
 </body>
 </html>
