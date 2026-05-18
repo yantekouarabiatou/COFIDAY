@@ -398,7 +398,7 @@
                                                             </a>
                                                         </li>
                                                     @endcan
-                                                    @if(auth()->user()->hasRole('manager') || auth()->user()->hasRole('admin'))
+                                                    @if(auth()->user()->hasAnyRole(['manager', 'admin', 'directeur-general', 'rh']))
                                                         <li class="{{ request()->routeIs('conges.pre-approbation.index') ? 'active' : '' }}">
                                                             <a class="nav-link" href="{{ route('conges.pre-approbation.index') }}">
                                                                 <i class="fas fa-user-check"></i> Pré-approbation
