@@ -1524,23 +1524,37 @@ class CongeController extends Controller
         return 'data:image/' . $type . ';base64,' . base64_encode($data);
     }
 
-        public function showValidationFinale($id)
+    public function showValidationFinale($id)
     {
-        $demande = DemandeConge::findOrFail($id);
-        // Vérifier que l'utilisateur connecté est bien le supérieur final
-        // Afficher une vue avec un formulaire qui appelle la route POST
-        return view('conges.validation-finale-show', compact('demande'));
+        return redirect()->route('conges.validation-finale.index');
     }
 
-        public function preApprouver(Request $request, $id)
+    public function showPreApprobation($id)
+    {
+        $demande = DemandeConge::with(['user', 'typeConge'])->findOrFail($id);
+        return view('pages.conges.pre-approbation-show', compact('demande'));
+    }
+
+    public function submitPreApprobation(Request $request, $id)
     {
         $demande = DemandeConge::findOrFail($id);
-        // Mettre à jour le statut (par exemple 'pre_approuve')
-        $demande->statut = 'pre_approuve';
-        $demande->valide_par = auth()->id();
-        $demande->save();
 
-        // Rediriger avec un message
-        return redirect()->route('conges.index')->with('success', 'Demande pré‑approuvée.');
+        if ($demande->statut !== 'en_attente') {
+            return redirect()->route('conges.index')
+                ->with('info', 'Cette demande a déjà été traitée.');
+        }
+
+        if ($request->input('action') === 'pre_approuver') {
+            $demande->statut    = 'pre_approuve';
+            $demande->valide_par = auth()->id();
+            $demande->save();
+            return redirect()->route('conges.index')
+                ->with('success', 'Demande pré-approuvée avec succès.');
+        }
+
+        $demande->statut = 'refuse';
+        $demande->save();
+        return redirect()->route('conges.index')
+            ->with('success', 'Demande refusée.');
     }
 }
