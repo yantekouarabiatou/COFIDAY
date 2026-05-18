@@ -89,6 +89,7 @@
             text-align: left;
         }
         .signature p { line-height: 1.8; }
+        .signature .sig-nom { line-height: 1.2; display: block; }
 
         /* ── Pied de page ── */
         .footer {
@@ -161,7 +162,7 @@
 
         {{-- "Fait à Cotonou" : 1 ligne d'espace fourni par le margin-bottom du <p> précédent --}}
         <p class="p-date">
-            Fait à Cotonou, le <strong>{{ optional($demande->date_validation)->isoFormat('D MMMM YYYY') ?? now()->isoFormat('D MMMM YYYY') }}</strong>.
+            Fait à Cotonou, le {{ optional($demande->date_validation)->isoFormat('D MMMM YYYY') ?? now()->isoFormat('D MMMM YYYY') }}.
         </p>
 
     </div>
@@ -170,9 +171,11 @@
     <div class="signature">
         <p>
             Pour COFIMA,<br><br><br>
-            <strong>Jean-Claude Alain AVANDE</strong><br>
-            Expert-Comptable Diplômé<br>
-            Associé-Gérant
+            <span class="sig-nom">
+                <strong>Jean-Claude Alain AVANDE</strong><br>
+                Expert-Comptable Diplômé<br>
+                Associé-Gérant
+            </span>
         </p>
     </div>
 
