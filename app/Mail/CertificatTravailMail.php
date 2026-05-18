@@ -12,14 +12,19 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Barryvdh\DomPDF\Facade\Pdf;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 3. CertificatTravailMail  — Envoyé à l'employé + secrétaire après approbation
-// ─────────────────────────────────────────────────────────────────────────────
 class CertificatTravailMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public function __construct(public DemandeDemission $demande, public $dateDepart = null) {}
+    private string $logoBase64 = '';
+
+    public function __construct(public DemandeDemission $demande, public $dateDepart = null)
+    {
+        $logoPath = storage_path('app/public/photos/logo-cofima-bon.jpg');
+        if (file_exists($logoPath)) {
+            $this->logoBase64 = 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoPath));
+        }
+    }
 
     public function envelope(): Envelope
     {
@@ -29,9 +34,10 @@ class CertificatTravailMail extends Mailable
     public function content(): Content
     {
         return new Content(view: 'emails.demission.certificat', with: [
-            'demande' => $this->demande,
-            'employe' => $this->demande->user,
-            'dateDepart' => $this->dateDepart
+            'demande'    => $this->demande,
+            'employe'    => $this->demande->user,
+            'dateDepart' => $this->dateDepart,
+            'logoBase64' => $this->logoBase64,
         ]);
     }
 
@@ -39,9 +45,10 @@ class CertificatTravailMail extends Mailable
     {
         return $this->view('emails.demission.certificat')
                     ->with([
-                        'demande' => $this->demande,
-                        'employe' => $this->demande->user,
-                        'dateDepart' => $this->dateDepart
+                        'demande'    => $this->demande,
+                        'employe'    => $this->demande->user,
+                        'dateDepart' => $this->dateDepart,
+                        'logoBase64' => $this->logoBase64,
                     ])
                     ->subject('[COFIMA] Votre certificat de travail — Réf. ' . $this->demande->numero_certificat);
     }
@@ -50,42 +57,35 @@ class CertificatTravailMail extends Mailable
     {
         try {
             Log::info('Génération du PDF certificat de travail', [
-                'demande_id' => $this->demande->id,
-                'numero_certificat' => $this->demande->numero_certificat
+                'demande_id'       => $this->demande->id,
+                'numero_certificat' => $this->demande->numero_certificat,
             ]);
-
-            $logoPath   = storage_path('app/public/photos/logo-cofima-bon.jpg');
-            $logoBase64 = file_exists($logoPath)
-                ? 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoPath))
-                : null;
 
             $pdf = Pdf::loadView('emails.demission.certificat', [
                 'demande'    => $this->demande,
                 'employe'    => $this->demande->user,
                 'dateDepart' => $this->dateDepart,
-                'logoBase64' => $logoBase64,
+                'logoBase64' => $this->logoBase64,
             ]);
 
             $filename = 'Certificat_Travail_' . $this->demande->numero_certificat . '.pdf';
 
             Log::info('PDF généré avec succès', [
                 'demande_id' => $this->demande->id,
-                'filename' => $filename
+                'filename'   => $filename,
             ]);
 
             return [
                 Attachment::fromData(fn () => $pdf->output(), $filename)
-                    ->withMime('application/pdf')
+                    ->withMime('application/pdf'),
             ];
         } catch (\Exception $e) {
             Log::error('Erreur lors de la génération du PDF certificat', [
                 'demande_id' => $this->demande->id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'error'      => $e->getMessage(),
+                'trace'      => $e->getTraceAsString(),
             ]);
 
-            // Pour le débogage, on retourne un tableau vide au lieu de planter
-            // TODO: Remettre les pièces jointes après résolution du problème
             return [];
         }
     }
