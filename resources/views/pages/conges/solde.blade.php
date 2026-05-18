@@ -411,8 +411,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     {
                         label: 'Jours pris',
                         data: soldesData.map(function (s) { return s.jours_pris; }),
-                        backgroundColor: 'rgba(255, 193, 107, 0.85)',
-                        borderColor: '#ffc107',
+                        backgroundColor: 'rgba(220, 53, 69, 0.85)',
+                        borderColor: '#dc3545',
                         borderWidth: 1
                     },
                     {
