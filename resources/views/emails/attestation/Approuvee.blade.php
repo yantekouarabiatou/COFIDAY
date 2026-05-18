@@ -158,7 +158,7 @@
             <div style="margin-top:24px;">
                 <p style="color:#222; margin-bottom:4px;"><strong>Pour COFIMA,</strong></p>
                 <p style="color:#222; line-height:1.8; margin:0;">
-                    <strong>Jean-Claude AVANDE</strong><br>
+                    <strong>Jean-Claude Alain AVANDE</strong><br>
                     Expert-Comptable Diplômé<br>
                     Associé-Gérant
                 </p>

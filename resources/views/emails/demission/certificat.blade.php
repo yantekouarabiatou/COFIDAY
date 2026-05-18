@@ -98,7 +98,7 @@
     {{-- ── Header : logo ── --}}
     <div class="header">
         <div class="header-logo">
-            <img src="file://{{ str_replace('\\', '/', public_path('storage/photos/logo-cofima-bon.jpg')) }}" alt="Logo COFIMA">
+            <img src="{{ $logoBase64 }}" alt="Logo COFIMA">
         </div>
     </div>
 

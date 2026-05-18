@@ -54,10 +54,16 @@ class CertificatTravailMail extends Mailable
                 'numero_certificat' => $this->demande->numero_certificat
             ]);
 
+            $logoPath   = storage_path('app/public/photos/logo-cofima-bon.jpg');
+            $logoBase64 = file_exists($logoPath)
+                ? 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoPath))
+                : null;
+
             $pdf = Pdf::loadView('emails.demission.certificat', [
-                'demande' => $this->demande,
-                'employe' => $this->demande->user,
-                'dateDepart' => $this->dateDepart
+                'demande'    => $this->demande,
+                'employe'    => $this->demande->user,
+                'dateDepart' => $this->dateDepart,
+                'logoBase64' => $logoBase64,
             ]);
 
             $filename = 'Certificat_Travail_' . $this->demande->numero_certificat . '.pdf';
