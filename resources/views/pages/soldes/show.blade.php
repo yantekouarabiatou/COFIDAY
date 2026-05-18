@@ -69,7 +69,7 @@
                         <a href="{{ route('admin.soldes.edit', $solde) }}" class="btn btn-sm btn-warning">
                             <i class="fas fa-edit"></i> Modifier le solde {{ $solde->annee }}
                         </a>
-                        <a href="{{ route('admin.soldes.index') }}" class="btn btn-sm btn-secondary ml-1">
+                        <a href="{{ route('admin.soldes.index') }}" class="btn btn-sm btn-light ml-1" style="background:#fff; color:#1e3a5f; border:2px solid #fff; font-weight:600;">
                             <i class="fas fa-arrow-left"></i> Retour
                         </a>
                     </div>
