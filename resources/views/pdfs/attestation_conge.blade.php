@@ -131,6 +131,7 @@
     <div class="signature">
         Fait à Cotonou, le {{ now()->format('d/m/Y') }}<br><br>
 
+
         Pour {{ $cabinet ?? 'COFIMA' }},<br><br><br>
 
         <strong>Jean Claude AVANDE</strong><br>
@@ -143,9 +144,9 @@
         <div class="gauche-footer">
             N° IFU 3200800611214 · RCCM RB/COT/07B 738 · C/2197 Immeuble Luca Pacioli, Kouhounou – Cotonou,Bénin<br>
             Tél : +229 01 21 38 04 58 · Mobile : +229 01 90 95 19 59 / 01 95 07 09 48<br>
-            Site web : https:www.cofima.cc · Email : cofima@cofima.cc / cofima@cofimabenin.com 
+            Site web : https:www.cofima.cc · Email : cofima@cofima.cc / cofima@cofimabenin.com
      </div>
-        
+
     </div>
 
 </body>
