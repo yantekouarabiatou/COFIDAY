@@ -398,12 +398,28 @@
                                                             </a>
                                                         </li>
                                                     @endcan
+                                                    @if(auth()->user()->hasRole('manager') || auth()->user()->hasRole('admin'))
+                                                        <li class="{{ request()->routeIs('conges.pre-approbation.index') ? 'active' : '' }}">
+                                                            <a class="nav-link" href="{{ route('conges.pre-approbation.index') }}">
+                                                                <i class="fas fa-user-check"></i> Pré-approbation
+                                                                @php $nbPreApp = \App\Models\DemandeConge::where('statut','en_attente')->when(auth()->user()->hasRole('manager'), fn($q) => $q->whereHas('user', fn($u) => $u->where('manager_id', auth()->id())))->count(); @endphp
+                                                                @if($nbPreApp > 0)
+                                                                    <span class="badge badge-warning ml-1">{{ $nbPreApp }}</span>
+                                                                @endif
+                                                            </a>
+                                                        </li>
+                                                    @endif
+
                                                     @can('valider les demandes de congés')
                                                         <li class="{{ request()->routeIs('conges.validation-finale.index') ? 'active' : '' }}">
-                                                                <a class="nav-link" href="{{ route('conges.validation-finale.index') }}">
-                                                                    <i class="fas fa-check-double"></i> Validation finale
-                                                                </a>
-                                                            </li>
+                                                            <a class="nav-link" href="{{ route('conges.validation-finale.index') }}">
+                                                                <i class="fas fa-check-double"></i> Validation finale
+                                                                @php $nbVF = \App\Models\DemandeConge::where('statut','pre_approuve')->count(); @endphp
+                                                                @if($nbVF > 0)
+                                                                    <span class="badge badge-danger ml-1">{{ $nbVF }}</span>
+                                                                @endif
+                                                            </a>
+                                                        </li>
                                                     @endcan
                                                     @can('voir le calendrier des congés')
                                                         <li class="{{ request()->routeIs('conges.calendrier') ? 'active' : '' }}">

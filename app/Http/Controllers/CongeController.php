@@ -1524,6 +1524,21 @@ class CongeController extends Controller
         return 'data:image/' . $type . ';base64,' . base64_encode($data);
     }
 
+    public function indexPreApprobation()
+    {
+        $user = Auth::user();
+
+        $demandes = DemandeConge::with(['user', 'typeConge'])
+            ->where('statut', 'en_attente')
+            ->when($user->hasRole('manager'), function ($q) use ($user) {
+                $q->whereHas('user', fn($u) => $u->where('manager_id', $user->id));
+            })
+            ->latest()
+            ->paginate(20);
+
+        return view('pages.conges.pre-approbation-index', compact('demandes'));
+    }
+
     public function showValidationFinale($id)
     {
         return redirect()->route('conges.validation-finale.index');
