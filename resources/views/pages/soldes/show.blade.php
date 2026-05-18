@@ -17,7 +17,7 @@
     $pct         = $totalDispo > 0 ? round(($solde->jours_restants / $totalDispo) * 100) : 0;
     $tauxUtil    = $totalDispo > 0 ? round(($solde->jours_pris / $totalDispo) * 100) : 0;
     $colorPct    = $pct >= 50 ? '#10b981' : ($pct >= 25 ? '#f59e0b' : '#ef4444');
-    $colorUtil   = $tauxUtil > 75 ? 'danger' : ($tauxUtil > 50 ? 'warning' : 'success');
+    $colorUtil   = 'danger';
 
     // ---- Totaux cumulés sur toutes les années ----
     $totalAcquis   = $tousLesSoldes->sum('jours_acquis');
@@ -174,7 +174,7 @@
                                 <small class="font-weight-bold text-{{ $tauxGlobal > 75 ? 'danger' : ($tauxGlobal > 50 ? 'warning' : 'success') }}">{{ $tauxGlobal }}%</small>
                             </div>
                             <div class="progress progress-lg">
-                                <div class="progress-bar bg-{{ $tauxGlobal > 75 ? 'danger' : ($tauxGlobal > 50 ? 'warning' : 'success') }} progress-animated"
+                                <div class="progress-bar bg-danger progress-animated"
                                      data-width="{{ $tauxGlobal }}"
                                      style="width:0%; border-radius:6px;">
                                 </div>
@@ -252,7 +252,7 @@
                         $p     = $td > 0 ? round(($s->jours_restants / $td) * 100) : 0;
                         $tu    = $td > 0 ? round(($s->jours_pris / $td) * 100) : 0;
                         $cp    = $p >= 50 ? 'success' : ($p >= 25 ? 'warning' : 'danger');
-                        $cup   = $tu > 75 ? 'danger' : ($tu > 50 ? 'warning' : 'success');
+                        $cup   = 'danger';
                         $cpHex = $p >= 50 ? '#10b981' : ($p >= 25 ? '#f59e0b' : '#ef4444');
 
                         // Solde de l'année précédente

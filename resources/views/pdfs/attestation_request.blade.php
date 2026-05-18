@@ -188,7 +188,7 @@
             {{ $usagePhrase }}{{ $destinatairePhrase ? ', ' . $destinatairePhrase : '' }}.
         </p>
 
-        @if($demande->motif && !in_array($demande->type, ['attestation_banque', 'attestation_ambassade']))
+        @if($demande->motif && in_array($demande->type, ['attestation_appel_offre', 'attestation_autre']))
         <p>
             {{ lcfirst($demande->motif) }}
         </p>
