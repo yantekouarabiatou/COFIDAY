@@ -117,7 +117,7 @@
             if ($dateDepart instanceof \Carbon\Carbon) {
                 $dateDepartFormatted = $dateDepart->isoFormat('D MMMM YYYY');
             } elseif (is_string($dateDepart) && !empty($dateDepart)) {
-                $dateDepartFormatted = $dateDepart;
+                $dateDepartFormatted = \Carbon\Carbon::parse($dateDepart)->isoFormat('D MMMM YYYY');
             } else {
                 $dateDepartFormatted = $demande->date_depart_confirmee?->isoFormat('D MMMM YYYY') ?? '';
             }
