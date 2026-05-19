@@ -7,6 +7,10 @@
     <title>Connexion - COFIMA</title>
 
     <!-- Fonts -->
+    <link rel="icon" type="image/png" href="{{ asset('assets/logocofima.png') }}">
+    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
+    <link rel="apple-touch-icon" href="{{ asset('assets/logocofima.png') }}">
+
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" />
 
@@ -522,7 +526,7 @@
             </form>
 
             <div class="footer">
-                <p>Copyright COFIMA &copy; {{ date('Y') }}. Tous droits réservés &mdash; <strong>v1</strong></p>
+                <p>Copyright COFIMA &copy; {{ date('Y') }}. Tous droits réservés &mdash; <strong>v1.0</strong></p>
             </div>
         </div>
     </div>
