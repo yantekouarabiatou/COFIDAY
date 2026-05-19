@@ -43,6 +43,7 @@
                                         data-id="{{ $poste->id }}"
                                         data-intitule="{{ $poste->intitule }}"
                                         data-description="{{ $poste->description }}"
+                                        data-url="{{ route('postes.update', $poste) }}"
                                         data-toggle="modal"
                                         data-target="#editPosteModal">
                                     <i class="fas fa-edit"></i>
@@ -150,15 +151,13 @@
 @push('scripts')
 <script>
     // Remplir le modal d'édition
-    $('.editPosteBtn').on('click', function () {
-        let id = $(this).data('id');
-        let intitule = $(this).data('intitule');
+    $(document).on('click', '.editPosteBtn', function () {
+        let intitule    = $(this).data('intitule');
         let description = $(this).data('description');
+        let url         = $(this).data('url');
 
         $('#editIntitule').val(intitule);
         $('#editDescription').val(description);
-
-        let url = "/postes/" + id;
         $('#editPosteForm').attr('action', url);
     });
 
