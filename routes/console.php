@@ -9,9 +9,18 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// ── Rappels quotidiens (congés, attestations, démissions) ────────────────────
+// ── Rappels quotidiens congés ────────────────────────────────────────────────
 Schedule::command('leaves:send-reminders')
     ->dailyAt('08:00')
+    ->withoutOverlapping();
+
+// ── Rappels attestations & certificats (2x/jour) ─────────────────────────────
+Schedule::command('attestations:send-reminders')
+    ->dailyAt('08:00')
+    ->withoutOverlapping();
+
+Schedule::command('attestations:send-reminders')
+    ->dailyAt('14:00')
     ->withoutOverlapping();
 
 // ── Notification fin de mois ─────────────────────────────────────────────────

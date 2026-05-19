@@ -5,18 +5,14 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Mail;
 use App\Models\DemandeConge;
-use App\Models\DemandeAttestation;
-use App\Models\DemandeDemission;
 use App\Models\User;
 use App\Mail\LeaveReminderManager;
 use App\Mail\LeaveReminderFinal;
-use App\Mail\AttestationReminderMail;
-use App\Mail\DemissionReminderMail;
 
 class SendLeaveReminders extends Command
 {
     protected $signature   = 'leaves:send-reminders';
-    protected $description = 'Rappels quotidiens : congés (managers + DG), attestations (DG), démissions (DG/RH)';
+    protected $description = 'Rappels quotidiens : congés en_attente (managers) et pre_approuve (DG/RH/Admin)';
 
     public function handle()
     {
@@ -57,43 +53,7 @@ class SendLeaveReminders extends Command
             $this->line('Aucun congé pre_approuve.');
         }
 
-        // ── 3. Attestations en_attente → DG / RH / Admin ─────────────────────
-        $attestations = DemandeAttestation::with('user')
-            ->where('statut', 'en_attente')
-            ->get();
-
-        if ($attestations->isNotEmpty()) {
-            $this->envoyerAuxValidateursDg(
-                null,
-                function ($dest) use ($attestations) {
-                    return new AttestationReminderMail($dest, $attestations);
-                },
-                'Attestations [DG]',
-                $attestations->count()
-            );
-        } else {
-            $this->line('Aucune attestation en_attente.');
-        }
-
-        // ── 4. Démissions en_attente → DG / RH / Admin ───────────────────────
-        $demissions = DemandeDemission::with('user')
-            ->where('statut', 'en_attente')
-            ->get();
-
-        if ($demissions->isNotEmpty()) {
-            $this->envoyerAuxValidateursDg(
-                null,
-                function ($dest) use ($demissions) {
-                    return new DemissionReminderMail($dest, $demissions);
-                },
-                'Démissions [DG]',
-                $demissions->count()
-            );
-        } else {
-            $this->line('Aucune démission en_attente.');
-        }
-
-        $this->info('Tous les rappels ont été traités.');
+        $this->info('Rappels congés traités. (Attestations/certificats gérés par attestations:send-reminders)');
         return Command::SUCCESS;
     }
 
