@@ -359,16 +359,53 @@ class CongeController extends Controller
             $user          = Auth::user();
             $anneeCourante = now()->year;
 
-            $validated = $request->validate([
-                'type_conge_id'              => 'required|exists:types_conges,id',
-                'date_debut'                 => 'required|date',
-                'date_fin'                   => 'required|date|after_or_equal:date_debut',
-                'motif'                      => 'required|string|max:1000',
-                'superieur_hierarchique_id'  => 'required|exists:users,id',
-                'nombre_jours'               => 'required|numeric|min:0.5',
-                'fichier_justificatif'       => 'nullable|file|max:5120|mimes:pdf,jpg,jpeg,png,doc,docx',
-                'demande_attestation'        => 'nullable|boolean',
-            ]);
+            // Détecter si le type est une permission horaire
+            $typeCheck = TypeConge::find($request->type_conge_id);
+            $isHoraire = $typeCheck && ($typeCheck->est_horaire ?? false);
+            $nombreHeures = null;
+
+            if ($isHoraire) {
+                $request->validate([
+                    'type_conge_id'              => 'required|exists:types_conges,id',
+                    'date_debut_horaire'         => 'required|date',
+                    'heure_debut'                => 'required',
+                    'heure_fin'                  => 'required',
+                    'motif'                      => 'required|string|max:1000',
+                    'superieur_hierarchique_id'  => 'required|exists:users,id',
+                    'fichier_justificatif'       => 'nullable|file|max:5120|mimes:pdf,jpg,jpeg,png,doc,docx',
+                    'demande_attestation'        => 'nullable|boolean',
+                ]);
+
+                $heureDebut = Carbon::parse($request->date_debut_horaire . ' ' . $request->heure_debut);
+                $heureFin   = Carbon::parse($request->date_debut_horaire . ' ' . $request->heure_fin);
+
+                if ($heureFin->lte($heureDebut)) {
+                    DB::rollBack();
+                    return back()
+                        ->withErrors(['heure_fin' => "L'heure de fin doit être après l'heure de début."])
+                        ->withInput();
+                }
+
+                $minutesTotal = $heureFin->diffInMinutes($heureDebut);
+                $nombreHeures = round($minutesTotal / 60, 2);
+
+                $request->merge([
+                    'date_debut'   => $request->date_debut_horaire,
+                    'date_fin'     => $request->date_debut_horaire,
+                    'nombre_jours' => 1,
+                ]);
+            } else {
+                $request->validate([
+                    'type_conge_id'              => 'required|exists:types_conges,id',
+                    'date_debut'                 => 'required|date',
+                    'date_fin'                   => 'required|date|after_or_equal:date_debut',
+                    'motif'                      => 'required|string|max:1000',
+                    'superieur_hierarchique_id'  => 'required|exists:users,id',
+                    'nombre_jours'               => 'required|numeric|min:0.5',
+                    'fichier_justificatif'       => 'nullable|file|max:5120|mimes:pdf,jpg,jpeg,png,doc,docx',
+                    'demande_attestation'        => 'nullable|boolean',
+                ]);
+            }
 
             $user = Auth::user();
 
@@ -393,8 +430,20 @@ class CongeController extends Controller
                     ->withInput();
             }
 
-            // NOTE : nombre_jours_max est indicatif, pas bloquant.
-            // Tant que le solde global (toutes années) couvre la demande, elle est acceptée.
+            // Quota légal strict : maternité et paternité ne peuvent pas dépasser le maximum légal
+            $libelleNorm = mb_strtolower($typeConge->libelle);
+            if ((str_contains($libelleNorm, 'maternit') || str_contains($libelleNorm, 'paternit'))
+                && $typeConge->nombre_jours_max
+                && $nombreJours > $typeConge->nombre_jours_max) {
+                DB::rollBack();
+                Alert::error(
+                    'Quota légal dépassé',
+                    "Le congé « {$typeConge->libelle} » est limité à {$typeConge->nombre_jours_max} jours par la réglementation. Demandé : {$nombreJours} j."
+                );
+                return back()->withInput();
+            }
+
+            // NOTE : nombre_jours_max est indicatif pour les autres types.
 
             // ── Vérification & déduction du solde (congés annuels) ───────────
             $deductions = [];
@@ -428,6 +477,9 @@ class CongeController extends Controller
                 'date_debut'                => $request->date_debut,
                 'date_fin'                  => $request->date_fin,
                 'nombre_jours'              => $nombreJours,
+                'heure_debut'               => $isHoraire ? $request->heure_debut : null,
+                'heure_fin'                 => $isHoraire ? $request->heure_fin   : null,
+                'nombre_heures'             => $nombreHeures,
                 'motif'                     => $request->motif,
                 'statut'                    => 'en_attente',
                 'fichier_justificatif'      => $cheminFichier,

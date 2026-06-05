@@ -213,7 +213,7 @@
                                             <input type="time" name="heure_debut" id="heure_debut"
                                                    class="form-control @error('heure_debut') is-invalid @enderror"
                                                    value="{{ old('heure_debut') }}"
-                                                   min="07:00" max="18:00">
+                                                   min="07:00" max="18:30">
                                             @error('heure_debut') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                         </div>
                                     </div>
@@ -223,7 +223,7 @@
                                             <input type="time" name="heure_fin" id="heure_fin"
                                                    class="form-control @error('heure_fin') is-invalid @enderror"
                                                    value="{{ old('heure_fin') }}"
-                                                   min="07:00" max="18:00">
+                                                   min="07:00" max="18:30">
                                             @error('heure_fin') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                             <div id="duree-horaire-display" class="text-success small mt-1 fw-bold"></div>
                                         </div>
@@ -389,6 +389,9 @@
                             <!-- Info max jours (indicatif) -->
                             <div id="info-max-jours" class="alert alert-warning mt-4 py-2" style="display:none;"></div>
 
+                            {{-- Alerte dépassement quota légal maternité/paternité (bloquant) --}}
+                            <div id="alerte-depassement-legal" class="alert alert-danger mt-4" style="display:none;"></div>
+
                             <div class="text-end mt-5">
                                 <button type="submit" class="btn btn-lg px-5" id="submit-btn" disabled style="background:#00297c;color:#f8f9fc">
                                     <i class="fas fa-paper-plane me-2"></i> Soumettre la demande
@@ -480,7 +483,7 @@
             var debut = $('#date_debut').val();
             var fin   = $('#date_fin').val();
 
-            $('#date_debut_info, #date_fin_info, #periode-info, #deduction-preview, #preview-card, #info-max-jours').hide();
+            $('#date_debut_info, #date_fin_info, #periode-info, #deduction-preview, #preview-card, #info-max-jours, #alerte-depassement-legal').hide();
 
             if (!debut || !fin) return;
 
@@ -568,25 +571,45 @@
         }
 
         function checkSolde() {
-            var jours = parseFloat($('#nombre_jours_hidden').val()) || 0;
-            var option = $('#type_conge_id option:selected');
+            var jours    = parseFloat($('#nombre_jours_hidden').val()) || 0;
+            var option   = $('#type_conge_id option:selected');
             var estAnnuel = option.data('est-annuel');
-            var maxJours = option.data('max-jours');
+            var maxJours  = parseInt(option.data('max-jours')) || 0;
+            var typeText  = option.text().toLowerCase();
+            var estMat    = typeText.includes('maternit');
+            var estPat    = typeText.includes('paternit');
 
+            // Réinitialisation
             $('#submit-btn').prop('disabled', true);
+            $('#info-max-jours').hide();
+            $('#alerte-depassement-legal').hide();
 
             if (jours <= 0) return;
 
-            if (maxJours && jours > maxJours) {
+            // ── Dépassement légal maternité / paternité (BLOQUANT) ───────────
+            if ((estMat || estPat) && maxJours > 0 && jours > maxJours) {
+                var typeLabel = estMat ? 'maternité' : 'paternité';
+                var depasse   = jours - maxJours;
+                $('#alerte-depassement-legal')
+                    .html(`<i class="fas fa-ban me-2"></i>
+                           <strong>Quota légal dépassé :</strong>
+                           Le congé de ${typeLabel} est limité à <strong>${maxJours} jours</strong>
+                           par la réglementation. Vous avez sélectionné <strong>${jours} jours</strong>
+                           — dépassement de <strong>${depasse} jour(s)</strong>.
+                           Veuillez réduire la période.`)
+                    .show();
+                return; // bouton reste désactivé
+            }
+
+            // ── Max jours indicatif (autres types) ──────────────────────────
+            if (maxJours > 0 && jours > maxJours) {
                 $('#info-max-jours')
                     .html(`<i class="fas fa-info-circle"></i> Ce type de congé a un maximum indicatif de ${maxJours} jours.`)
                     .show();
-            } else {
-                $('#info-max-jours').hide();
             }
 
+            // ── Solde annuel insuffisant (BLOQUANT) ──────────────────────────
             if (estAnnuel == '1' && jours > totalJoursDisponibles) {
-                $('#submit-btn').prop('disabled', true);
                 Swal.fire({
                     icon: 'error',
                     title: 'Solde insuffisant',
@@ -594,9 +617,10 @@
                            Demandé : <strong>${jours}</strong> j.<br>
                            <strong class="text-danger">Manquant : ${jours - totalJoursDisponibles} j.</strong>`
                 });
-            } else {
-                $('#submit-btn').prop('disabled', false);
+                return; // bouton reste désactivé
             }
+
+            $('#submit-btn').prop('disabled', false);
         }
 
         // ── Déclaration rétrospective ─────────────────────────────────────
@@ -735,11 +759,13 @@
             var minutes = totalMin % 60;
             var label = heures > 0 ? `${heures}h${minutes > 0 ? minutes + 'min' : ''}` : `${minutes} min`;
             $('#duree-horaire-display').html(`⏱ Durée : <strong>${label}</strong>`);
-            $('#nombre_heures').val((totalMin / 60).toFixed(2));
 
-            // Synchroniser date_debut et date_fin avec la date horaire
+            // Synchroniser date_debut et date_fin avec la date horaire (pour la validation serveur)
             var dateVal = $('#date_debut_horaire').val();
             $('#date_fin_horaire').val(dateVal);
+            $('#date_debut').val(dateVal);
+            $('#date_fin').val(dateVal);
+            $('#nombre_jours_hidden').val(1);
             $('#submit-btn').prop('disabled', !dateVal || totalMin <= 0);
         }
 
