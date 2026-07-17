@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rappel — Demandes d'attestation en attente</title>
+    <title>Rappel - Demandes d'attestation en attente</title>
     <style>
         body { background-color: #f4f4f7; margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; }
         .email-container { width: 100%; padding: 20px 0; }

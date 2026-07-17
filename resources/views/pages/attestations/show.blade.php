@@ -52,7 +52,7 @@
                             </div>
                             <div class="col-md-6">
                                 <p class="text-muted small mb-1">Poste</p>
-                                <p class="font-weight-bold mb-0">{{ $attestation->user->poste->libelle ?? '—' }}</p>
+                                <p class="font-weight-bold mb-0">{{ $attestation->user->poste->intitule ?? '—' }}</p>
                             </div>
                         </div>
 
@@ -83,6 +83,13 @@
                             <div class="mb-3">
                                 <p class="text-muted small mb-1">Salaire net mentionné</p>
                                 <p class="font-weight-bold mb-0">{{ number_format($attestation->salaire_net, 0, ',', ' ') }} FCFA</p>
+                            </div>
+                        @endif
+
+                        @if($attestation->type === 'attestation_banque' && $attestation->date_retraite)
+                            <div class="mb-3">
+                                <p class="text-muted small mb-1">Date de retraite</p>
+                                <p class="font-weight-bold mb-0">{{ $attestation->date_retraite->isoFormat('D MMMM YYYY') }}</p>
                             </div>
                         @endif
 

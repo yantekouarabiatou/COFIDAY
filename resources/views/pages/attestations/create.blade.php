@@ -151,6 +151,25 @@
                                     </div>
                                 </div>
 
+                                <div id="date-retraite-block" class="form-group" style="display:none;">
+                                    <label class="font-weight-bold">
+                                        <i class="fas fa-hourglass-end mr-1"></i>
+                                        Date de retraite prévue <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="date"
+                                           name="date_retraite"
+                                           class="form-control @error('date_retraite') is-invalid @enderror"
+                                           value="{{ old('date_retraite') }}"
+                                           id="date-retraite-input"
+                                           style="max-width:260px;">
+                                    <small class="form-text text-muted">
+                                        Exigée par la banque pour l'étude du dossier de crédit.
+                                    </small>
+                                    @error('date_retraite')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
                                 <div class="form-group">
                                     <label class="font-weight-bold">
                                         <i class="fas fa-calendar-check mr-1 text-primary"></i>
@@ -392,6 +411,8 @@ Je vous prie d'agréer, Monsieur l'Associé-Gérant, l'expression de mes salutat
     const salaireBlock = document.getElementById('salaire-block');
     const salaireMontantBlock = document.getElementById('salaire-montant-block');
     const inclureSalaireCheck = document.getElementById('inclure_salaire');
+    const dateRetraiteBlock = document.getElementById('date-retraite-block');
+    const dateRetraiteInput = document.getElementById('date-retraite-input');
     const infoBox = document.getElementById('type-info-box');
     const motifTextarea = document.getElementById('motif-textarea');
     const charCounter = document.getElementById('char-counter');
@@ -489,6 +510,14 @@ Je vous prie d'agréer, Monsieur l'Associé-Gérant, l'expression de mes salutat
         if (type !== 'attestation_banque') {
             inclureSalaireCheck.checked = false;
             toggleSalaire();
+        }
+
+        // Date de retraite (exigée par la banque)
+        const showDateRetraite = type === 'attestation_banque';
+        if (dateRetraiteBlock) dateRetraiteBlock.style.display = showDateRetraite ? 'block' : 'none';
+        if (dateRetraiteInput) {
+            dateRetraiteInput.required = showDateRetraite;
+            if (!showDateRetraite) dateRetraiteInput.value = '';
         }
 
         // Message info

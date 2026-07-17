@@ -20,8 +20,10 @@ class AttestationController extends Controller
 {
     // ── Liste des demandes ────────────────────────────────────────────────────
 
-    public function index(Request $request)
+        public function index(Request $request)
     {
+        $this->authorize('voir les demandes d attestation');
+
         $user    = Auth::user();
         $isAdmin = $user->hasAnyRole(['admin', 'rh', 'directeur-general']);
 
@@ -62,7 +64,7 @@ class AttestationController extends Controller
             'users'
         ));
     }
-
+     
     // ── Formulaire création ──────────────────────────────────────────────────
 
     public function create()
@@ -93,6 +95,7 @@ class AttestationController extends Controller
             'inclure_salaire' => 'nullable|boolean',
             'salaire_net'     => 'nullable|numeric|min:0',
             'poste'           => 'required|string|max:255',
+            'date_retraite'   => 'nullable|date|required_if:type,attestation_banque',
         ], [
             'motif.min'                => 'Le motif doit contenir au moins 20 caractères.',
             'destinataire.required_if' => 'Veuillez préciser le destinataire.',
@@ -101,6 +104,8 @@ class AttestationController extends Controller
             'date_embauche.before_or_equal' => 'La date d\'embauche ne peut pas être dans le futur.',
             'poste.required'           => 'Veuillez indiquer votre poste.',
             'poste.max'                => 'Le poste doit contenir au maximum 255 caractères.',
+            'date_retraite.required_if' => 'La banque exige la date de retraite prévue.',
+            'date_retraite.date'        => 'La date de retraite doit être une date valide.',
         ]);
 
         $inclureSalaire = $request->boolean('inclure_salaire');
@@ -120,6 +125,7 @@ class AttestationController extends Controller
             'salaire_net'     => $inclureSalaire ? ($validated['salaire_net'] ?? null) : null,
             'date_embauche'   => $user->date_embauche,   // ← récupérée depuis la table users
             'poste'           => $validated['poste'],
+            'date_retraite'   => $validated['date_retraite'] ?? null,
             'numero_reference' => DemandeAttestation::genererNumeroReference(),
             'statut'          => 'en_attente',
         ]);

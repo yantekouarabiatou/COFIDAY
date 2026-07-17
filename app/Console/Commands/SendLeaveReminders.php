@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Mail;
+use App\Console\Commands\Concerns\ResolvesValidateurs;
 use App\Models\DemandeConge;
 use App\Models\User;
 use App\Mail\LeaveReminderManager;
@@ -11,12 +12,14 @@ use App\Mail\LeaveReminderFinal;
 
 class SendLeaveReminders extends Command
 {
+    use ResolvesValidateurs;
+
     protected $signature   = 'leaves:send-reminders';
-    protected $description = 'Rappels quotidiens : congés en_attente (managers) et pre_approuve (DG/RH/Admin)';
+    protected $description = 'Rappels quotidiens : congés en_attente (managers + Admin/DG/RH/Secrétariat) et pre_approuve (Admin/DG/RH/Secrétariat)';
 
     public function handle()
     {
-        // ── 1. Congés en_attente → managers ──────────────────────────────────
+        // ── 1. Congés en_attente → managers + Admin/DG/RH/Secrétariat ────────
         $congesEnAttente = DemandeConge::with(['user', 'typeConge'])
             ->where('statut', 'en_attente')
             ->get();
@@ -31,22 +34,25 @@ class SendLeaveReminders extends Command
                     $this->info("Congés [manager] → {$manager->email} ({$demandes->count()} demande(s))");
                 }
             }
+
+            $this->envoyerAuxValidateurs(
+                fn($dest) => new LeaveReminderManager($dest, $congesEnAttente),
+                'Congés [niveau 1 - Admin/DG/RH/Secrétariat]',
+                $congesEnAttente->count()
+            );
         } else {
             $this->line('Aucun congé en_attente.');
         }
 
-        // ── 2. Congés pre_approuve → DG / RH / Admin ─────────────────────────
+        // ── 2. Congés pre_approuve → Admin/DG/RH/Secrétariat ──────────────────
         $congesPreApprouves = DemandeConge::with(['user', 'typeConge', 'superieurHierarchique'])
             ->where('statut', 'pre_approuve')
             ->get();
 
         if ($congesPreApprouves->isNotEmpty()) {
-            $this->envoyerAuxValidateursDg(
-                new LeaveReminderFinal(...[null, $congesPreApprouves]),
-                function ($dest) use ($congesPreApprouves) {
-                    return new LeaveReminderFinal($dest, $congesPreApprouves);
-                },
-                'Congés [DG]',
+            $this->envoyerAuxValidateurs(
+                fn($dest) => new LeaveReminderFinal($dest, $congesPreApprouves),
+                'Congés [niveau 2 - Admin/DG/RH/Secrétariat]',
                 $congesPreApprouves->count()
             );
         } else {
@@ -57,25 +63,11 @@ class SendLeaveReminders extends Command
         return Command::SUCCESS;
     }
 
-    /**
-     * Envoie un mail à tous les utilisateurs ayant le rôle DG / RH / Admin.
-     *
-     * @param mixed    $unused         (non utilisé, gardé pour compatibilité)
-     * @param callable $mailFactory    Closure(User $dest): Mailable
-     * @param string   $label          Label pour les logs
-     * @param int      $count          Nombre de demandes
-     */
-    private function envoyerAuxValidateursDg($unused, callable $mailFactory, string $label, int $count): void
+    private function envoyerAuxValidateurs(callable $mailFactory, string $label, int $count): void
     {
-        $destinataires = User::whereHas('roles', function ($q) {
-            $q->whereIn('name', ['directeur-general', 'rh', 'admin']);
-        })->get();
-
-        foreach ($destinataires as $dest) {
-            if ($dest->email) {
-                Mail::to($dest->email)->send($mailFactory($dest));
-                $this->info("{$label} → {$dest->email} ({$count} demande(s))");
-            }
+        foreach ($this->getValidateurs() as $dest) {
+            Mail::to($dest->email)->send($mailFactory($dest));
+            $this->info("{$label} → {$dest->email} ({$count} demande(s))");
         }
     }
 }

@@ -19,6 +19,7 @@ class DemandeAttestation extends Model
         'inclure_salaire',
         'date_embauche',
         'poste',
+        'date_retraite',
         'statut',
         'valide_par',
         'date_validation',
@@ -29,6 +30,7 @@ class DemandeAttestation extends Model
     protected $casts = [
         'date_validation'  => 'datetime',
         'date_embauche'    => 'date',
+        'date_retraite'    => 'date',
         'inclure_salaire'  => 'boolean',
         'salaire_net'      => 'decimal:2',
     ];

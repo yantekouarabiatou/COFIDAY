@@ -149,7 +149,7 @@
 
         {{-- HEADER --}}
         <div class="header">
-            Validation finale requise — {{ $motLabelCap }}
+            Validation finale requise - {{ $motLabelCap }}
             <div class="sub">{{ $demande->typeConge->libelle ?? '—' }}</div>
         </div>
 

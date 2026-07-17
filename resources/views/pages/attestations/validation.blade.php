@@ -66,6 +66,9 @@
                                                         @if($demande->inclure_salaire)
                                                             <br><small class="text-success"><i class="fas fa-money-bill-wave"></i> Avec salaire</small>
                                                         @endif
+                                                        @if($demande->date_retraite)
+                                                            <br><small class="text-muted"><i class="fas fa-hourglass-end"></i> Retraite : {{ \Carbon\Carbon::parse($demande->date_retraite)->isoFormat('D MMM YYYY') }}</small>
+                                                        @endif
                                                         @break
                                                     @case('attestation_ambassade')
                                                         <span class="badge badge-info"><i class="fas fa-passport"></i> Ambassade</span>
@@ -95,25 +98,31 @@
                                             </td>
                                             <td class="text-center">
                                                 <div class="btn-group">
+
                                                     {{-- Approuver --}}
+                                                    @can('approuver les demandes d attestation')
                                                     <form action="{{ route('attestations.traiter', $demande) }}"
-                                                          method="POST" class="d-inline approve-form">
+                                                        method="POST" class="d-inline approve-form">
                                                         @csrf
                                                         <input type="hidden" name="action" value="approuve">
                                                         <button type="button" class="btn btn-success btn-sm approve-btn">
                                                             <i class="fas fa-check"></i> Approuver
                                                         </button>
                                                     </form>
+                                                    @endcan
 
                                                     {{-- Refuser --}}
+                                                    @can('refuser les demandes d attestation')
                                                     <form action="{{ route('attestations.traiter', $demande) }}"
-                                                          method="POST" class="d-inline refuse-form">
+                                                        method="POST" class="d-inline refuse-form">
                                                         @csrf
                                                         <input type="hidden" name="action" value="refuse">
                                                         <button type="button" class="btn btn-danger btn-sm refuse-btn">
                                                             <i class="fas fa-times"></i> Refuser
                                                         </button>
                                                     </form>
+                                                    @endcan
+
                                                 </div>
                                             </td>
                                         </tr>

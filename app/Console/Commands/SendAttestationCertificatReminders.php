@@ -4,16 +4,18 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Mail;
+use App\Console\Commands\Concerns\ResolvesValidateurs;
 use App\Models\DemandeAttestation;
 use App\Models\DemandeDemission;
-use App\Models\User;
 use App\Mail\AttestationReminderMail;
 use App\Mail\DemissionReminderMail;
 
 class SendAttestationCertificatReminders extends Command
 {
+    use ResolvesValidateurs;
+
     protected $signature   = 'attestations:send-reminders';
-    protected $description = 'Rappels automatiques (2x/jour) : attestations et certificats en attente → DG/RH/Admin';
+    protected $description = 'Rappels automatiques (2x/jour) : attestations et certificats en attente → Admin/DG/RH/Secrétariat';
 
     public function handle()
     {
@@ -57,15 +59,9 @@ class SendAttestationCertificatReminders extends Command
 
     private function envoyerAuxValidateurs(callable $mailFactory, string $label, int $count): void
     {
-        $destinataires = User::whereHas('roles', function ($q) {
-            $q->whereIn('name', ['directeur-general', 'rh', 'admin']);
-        })->get();
-
-        foreach ($destinataires as $dest) {
-            if ($dest->email) {
-                Mail::to($dest->email)->send($mailFactory($dest));
-                $this->info("{$label} → {$dest->email} ({$count} demande(s))");
-            }
+        foreach ($this->getValidateurs() as $dest) {
+            Mail::to($dest->email)->send($mailFactory($dest));
+            $this->info("{$label} → {$dest->email} ({$count} demande(s))");
         }
     }
 }

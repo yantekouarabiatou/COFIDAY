@@ -20,6 +20,8 @@ class DemissionController extends Controller
 
     public function index()
     {
+        $this->authorize('voir les démissions');
+
         $user    = Auth::user();
         $isAdmin = $user->hasAnyRole(['admin', 'rh', 'directeur-general']);
 

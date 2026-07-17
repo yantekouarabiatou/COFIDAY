@@ -83,7 +83,9 @@
                                             </td>
                                             <td class="text-center">
                                                 <div class="btn-group">
+
                                                     {{-- Approuver --}}
+                                                    @can('approuver les démissions')
                                                     <button type="button"
                                                             class="btn btn-success btn-sm approve-btn"
                                                             data-id="{{ $demande->id }}"
@@ -92,16 +94,20 @@
                                                             data-depart="{{ $demande->date_depart_souhaitee->format('Y-m-d') }}">
                                                         <i class="fas fa-check"></i> Approuver
                                                     </button>
+                                                    @endcan
 
                                                     {{-- Refuser --}}
+                                                    @can('refuser les démissions')
                                                     <form action="{{ route('demissions.traiter', $demande) }}"
-                                                          method="POST" class="d-inline refuse-form">
+                                                        method="POST" class="d-inline refuse-form">
                                                         @csrf
                                                         <input type="hidden" name="action" value="refusee">
                                                         <button type="button" class="btn btn-danger btn-sm refuse-btn">
                                                             <i class="fas fa-times"></i> Refuser
                                                         </button>
                                                     </form>
+                                                    @endcan
+
                                                 </div>
                                             </td>
                                         </tr>

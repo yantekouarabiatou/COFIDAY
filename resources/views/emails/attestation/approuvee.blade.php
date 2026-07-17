@@ -122,6 +122,12 @@
                     auprès de <strong>{{ $demande->destinataire }}</strong> et pour servir et valoir ce que de droit.
                 </p>
                 @endif
+                @if($demande->date_retraite)
+                <p style="text-align:justify; line-height:2; color:#222; font-size:.93rem;">
+                    Sa date de retraite prévue est le
+                    <strong>{{ \Carbon\Carbon::parse($demande->date_retraite)->isoFormat('D MMMM YYYY') }}</strong>.
+                </p>
+                @endif
 
             @elseif($demande->type === 'attestation_ambassade')
 

@@ -135,6 +135,9 @@
             <p>
                 La présente attestation est rédigée à usage bancaire.
                 Elle peut être produite auprès des établissements financiers ou des organismes bancaires.
+                @if($demande->date_retraite)
+                    Sa date de retraite prévue est le <strong>{{ \Carbon\Carbon::parse($demande->date_retraite)->isoFormat('D MMMM YYYY') }}</strong>.
+                @endif
             </p>
         @elseif($demande->type === 'attestation_ambassade')
             <p>

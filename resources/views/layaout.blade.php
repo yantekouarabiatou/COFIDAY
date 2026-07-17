@@ -448,7 +448,7 @@
                                             </li>
                                         @endcan
 
-                                        @canany(['créer des demandes d attestation', 'voir les demandes d attestation', 'valider les demandes d attestation'])
+                                        @canany(['créer des demandes d attestation', 'voir les demandes d attestation'])
                                             <li class="dropdown {{ request()->is('attestations*') ? 'active' : '' }}">
                                                 <a href="#" class="menu-toggle nav-link has-dropdown {{ request()->is('attestations*') ? 'active' : '' }}">
                                                     <i class="fas fa-file-alt"></i>
@@ -473,63 +473,63 @@
                                                     @endcan
 
                                                     @can('valider les demandes d attestation')
-                                                        <li class="{{ request()->routeIs('attestations.validation.index') ? 'active' : '' }}">
-                                                            <a class="nav-link" href="{{ route('attestations.validation.index') }}">
-                                                                <i class="fas fa-check-double"></i> Validation
-                                                                @php $nbAtt = \App\Models\DemandeAttestation::enAttente()->count(); @endphp
-                                                                @if($nbAtt > 0)
-                                                                    <span class="badge badge-danger ml-1">{{ $nbAtt }}</span>
-                                                                @endif
-                                                            </a>
-                                                        </li>
-                                                    @endcan
+                                                    <li class="{{ request()->routeIs('attestations.traiter') ? 'active' : '' }}">
+                                                        <a class="nav-link" href="{{ route('attestations.index') }}">
+                                                            <i class="fas fa-check-double"></i> Validation
+                                                            @php $nbAtt = \App\Models\DemandeAttestation::enAttente()->count(); @endphp
+                                                            @if($nbAtt > 0)
+                                                                <span class="badge badge-danger ml-1">{{ $nbAtt }}</span>
+                                                            @endif
+                                                        </a>
+                                                    </li>
+                                                @endcan
 
                                                 </ul>
                                             </li>
                                         @endcanany
 
-                {{-- ── Démission & Certificat de travail ───────────────────────────────── --}}
-                @canany(['soumettre une démission', 'voir les démissions', 'valider les démissions'])
-                    <li class="dropdown {{ request()->is('demissions*') ? 'active' : '' }}">
-                        <a href="#" class="menu-toggle nav-link has-dropdown {{ request()->is('demissions*') ? 'active' : '' }}">
-                            <i class="fas fa-sign-out-alt"></i>
-                            <span>Démission & Certificat</span>
-                        </a>
-                        <ul class="dropdown-menu" style="{{ request()->is('demissions*') ? 'display:block;' : '' }}">
+                                        {{-- ── Démission & Certificat de travail ───────────────────────────────── --}}
+                                        @canany(['soumettre une démission', 'voir les démissions'])
+                                            <li class="dropdown {{ request()->is('demissions*') ? 'active' : '' }}">
+                                                <a href="#" class="menu-toggle nav-link has-dropdown {{ request()->is('demissions*') ? 'active' : '' }}">
+                                                    <i class="fas fa-sign-out-alt"></i>
+                                                    <span>Démission & Certificat</span>
+                                                </a>
+                                                <ul class="dropdown-menu" style="{{ request()->is('demissions*') ? 'display:block;' : '' }}">
 
-                            @can('soumettre une démission')
-                                <li class="{{ request()->routeIs('demissions.create') ? 'active' : '' }}">
-                                    <a class="nav-link" href="{{ route('demissions.create') }}">
-                                        <i class="fas fa-envelope-open-text"></i> Nouvelle demande
-                                    </a>
-                                </li>
-                            @endcan
+                                                    @can('soumettre une démission')
+                                                        <li class="{{ request()->routeIs('demissions.create') ? 'active' : '' }}">
+                                                            <a class="nav-link" href="{{ route('demissions.create') }}">
+                                                                <i class="fas fa-envelope-open-text"></i> Nouvelle demande
+                                                            </a>
+                                                        </li>
+                                                    @endcan
 
-                            @can('voir les démissions')
-                                <li class="{{ request()->routeIs('demissions.index') ? 'active' : '' }}">
-                                    <a class="nav-link" href="{{ route('demissions.index') }}">
-                                        <i class="fas fa-list"></i> Mes démissions
-                                    </a>
-                                </li>
-                            @endcan
+                                                    @can('voir les démissions')
+                                                        <li class="{{ request()->routeIs('demissions.index') ? 'active' : '' }}">
+                                                            <a class="nav-link" href="{{ route('demissions.index') }}">
+                                                                <i class="fas fa-list"></i> Mes démissions
+                                                            </a>
+                                                        </li>
+                                                    @endcan
 
-                            @can('valider les démissions')
-                                <li class="{{ request()->routeIs('demissions.validation.index') ? 'active' : '' }}">
-                                    <a class="nav-link" href="{{ route('demissions.validation.index') }}">
-                                        <i class="fas fa-check-double"></i> Validation DG
-                                        @php $nbDem = \App\Models\DemandeDemission::enAttente()->count(); @endphp
-                                        @if($nbDem > 0)
-                                            <span class="badge badge-danger ml-1">{{ $nbDem }}</span>
-                                        @endif
-                                    </a>
-                                </li>
-                            @endcan
+                                                    @can('valider les démissions')
+                                            <li class="{{ request()->routeIs('demissions.index') ? 'active' : '' }}">
+                                                <a class="nav-link" href="{{ route('demissions.index') }}">
+                                                    <i class="fas fa-check-double"></i> Validation DG
+                                                    @php $nbDem = \App\Models\DemandeDemission::enAttente()->count(); @endphp
+                                                    @if($nbDem > 0)
+                                                        <span class="badge badge-danger ml-1">{{ $nbDem }}</span>
+                                                    @endif
+                                                </a>
+                                            </li>
+                                        @endcan
 
-                        </ul>
-                    </li>
-                @endcanany
+                                                </ul>
+                                            </li>
+                                        @endcanany
 
-    @endif
+      @endif
 
     {{-- GESTION DES PARAMÈTRES --}}
     @if(

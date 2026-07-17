@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rappel — Demandes de congé en attente</title>
+    <title>Rappel - Demandes de congé en attente</title>
     <style>
         body { background-color: #f4f4f7; margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; }
         .email-container { width: 100%; padding: 20px 0; }
         .logo-container  { text-align: center; margin-bottom: 20px; }
         .logo            { max-width: 140px; height: auto; }
         .header {
-            background: linear-gradient(135deg, #065f46 0%, #059669 100%);
+            background: linear-gradient(135deg, #1A237E 0%, #3949AB 100%);
             color: white; padding: 24px; text-align: center;
             font-size: 20px; font-weight: bold; border-radius: 8px 8px 0 0;
         }
@@ -28,20 +28,20 @@
             margin-right: 10px; vertical-align: middle;
         }
         .demande-row {
-            background: #f0fdf4; border-left: 4px solid #059669;
+            background: #f0f4ff; border-left: 4px solid #3949AB;
             border-radius: 5px; padding: 12px 16px; margin-bottom: 10px;
             font-size: 14px; color: #333;
         }
-        .demande-row .nom    { font-weight: bold; font-size: 15px; color: #065f46; }
+        .demande-row .nom    { font-weight: bold; font-size: 15px; color: #1A237E; }
         .demande-row .detail { color: #555; margin-top: 3px; }
         .demande-row .jours  {
-            display: inline-block; background: #059669; color: white;
+            display: inline-block; background: #3949AB; color: white;
             border-radius: 12px; padding: 2px 10px; font-size: 12px;
             font-weight: bold; margin-left: 8px;
         }
         .btn-action {
             display: block; width: fit-content; margin: 24px auto 0;
-            background: #065f46; color: white; text-decoration: none;
+            background: #1A237E; color: white; text-decoration: none;
             padding: 13px 32px; border-radius: 6px; font-size: 15px;
             font-weight: bold; text-align: center;
         }
