@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Log;
 use App\Mail\UserCreatedMail;
 use App\Mail\UserUpdateMail;
 use App\Models\User as ModelsUser;
+use App\Services\SoldeCongeCalculator;
 use Exception;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -180,6 +181,14 @@ class UserController extends Controller
             $roleName = $role->name;
             $user->assignRole($role);
 
+            // Solde de l'année en cours automatiquement calculé selon le
+            // mois d'embauche + ancienneté (jamais les années antérieures).
+            try {
+                SoldeCongeCalculator::synchroniserSoldeAnneeCourante($user);
+            } catch (Exception $e) {
+                Log::error('Échec synchronisation solde année courante (création) : ' . $e->getMessage());
+            }
+
             // Envoi de l'email de bienvenue
             Mail::to($user->email)->send(new UserCreatedMail($user, $roleName));
 
@@ -297,6 +306,17 @@ class UserController extends Controller
             }
 
             $user->update($updateData);
+
+            // Solde de l'année en cours recalculé automatiquement si la date
+            // d'embauche ou l'ancienneté "reprise" ont changé (jamais les
+            // années antérieures).
+            if ($user->wasChanged(['date_embauche', 'anciennete_reprise_ans', 'anciennete_reprise_mois'])) {
+                try {
+                    SoldeCongeCalculator::synchroniserSoldeAnneeCourante($user);
+                } catch (Exception $e) {
+                    Log::error('Échec synchronisation solde année courante (modification) : ' . $e->getMessage());
+                }
+            }
 
             // Synchronisation du rôle Spatie
             $role = Role::findById($validated['role_id']);

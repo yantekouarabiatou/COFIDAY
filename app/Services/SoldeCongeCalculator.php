@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\RegleConge;
+use App\Models\SoldeConge;
 use App\Models\User;
 use Carbon\Carbon;
 
@@ -10,10 +11,11 @@ use Carbon\Carbon;
  * Calcule les NOUVEAUX droits acquis pour le cycle de congé en cours
  * (majoration ancienneté + prorata mois d'arrivée).
  *
- * ⚠️ Portée strictement prospective : cette classe ne doit être appelée que
- * lors de la CRÉATION de la ligne soldes_conges de l'année en cours (quand
- * elle n'existe pas encore). Elle ne doit jamais recalculer ni modifier une
- * ligne déjà existante (années antérieures déjà acquises/affichées).
+ * ⚠️ Portée strictement prospective : cette classe ne lit/écrit jamais que la
+ * ligne soldes_conges de l'ANNÉE EN COURS (création ou mise à jour de
+ * jours_acquis suite à un changement de date_embauche/ancienneté). Elle ne
+ * doit jamais recalculer ni modifier une ligne d'une année antérieure
+ * (déjà acquise/affichée/validée).
  */
 class SoldeCongeCalculator
 {
@@ -105,7 +107,7 @@ class SoldeCongeCalculator
             $dateEmbauche = Carbon::parse($user->date_embauche);
             if (!$dateEmbauche->greaterThan($reference)) {
                 $ansAuto  = self::anneesAnciennete($dateEmbauche, $reference);
-                $moisAuto = $dateEmbauche->diffInMonths($reference) % 12;
+                $moisAuto = (int) $dateEmbauche->diffInMonths($reference) % 12;
             }
         }
 
@@ -191,5 +193,39 @@ class SoldeCongeCalculator
             'mois_travailles'          => $moisTravailles,
             'jours_acquis'             => $joursAcquis,
         ];
+    }
+
+    /**
+     * Synchronise automatiquement le solde de l'ANNÉE EN COURS d'un salarié
+     * avec sa date d'embauche / ancienneté actuelles (crée la ligne si elle
+     * n'existe pas encore, la met à jour sinon). jours_pris n'est jamais
+     * modifié. Aucune autre année n'est jamais touchée.
+     *
+     * À appeler chaque fois que date_embauche ou l'ancienneté "reprise" d'un
+     * salarié changent (ex. création/modification de fiche salarié), pour
+     * que le solde reflète automatiquement le mois d'embauche sans action
+     * manuelle (commande artisan) supplémentaire.
+     */
+    public static function synchroniserSoldeAnneeCourante(User $user, ?int $annee = null, ?RegleConge $regles = null): SoldeConge
+    {
+        $annee ??= Carbon::now()->year;
+        $regles ??= RegleConge::first();
+
+        $calcul      = self::calculerNouveauxDroitsAcquis($user, $annee, $regles);
+        $joursAcquis = $calcul['jours_acquis'];
+
+        $solde = SoldeConge::firstOrNew([
+            'user_id' => $user->id,
+            'annee'   => $annee,
+        ]);
+
+        $joursPris = $solde->exists ? (float) $solde->jours_pris : 0;
+
+        $solde->jours_pris     = $joursPris;
+        $solde->jours_reportes = $solde->jours_reportes ?? 0;
+        $solde->jours_acquis   = $joursAcquis; // saving() du modèle recalcule jours_restants
+        $solde->save();
+
+        return $solde;
     }
 }
