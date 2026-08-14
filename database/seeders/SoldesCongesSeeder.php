@@ -5,6 +5,8 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
+use App\Models\RegleConge;
+use App\Services\SoldeCongeCalculator;
 
 class SoldesCongesSeeder extends Seeder
 {
@@ -106,7 +108,7 @@ class SoldesCongesSeeder extends Seeder
 
             // Résumé par utilisateur
             $total = collect($data['soldes'])->filter(fn($v) => $v > 0)->sum();
-            $this->command->line("  ✔  {$data['email']} — total disponible (années passées) : {$total} j.");
+            $this->command->line("  ✔  {$data['email']}  total disponible (années passées) : {$total} j.");
         }
     }
 
@@ -133,7 +135,7 @@ class SoldesCongesSeeder extends Seeder
      */
     private function creerAnneeCourante(): void
     {
-        $emailsImportes = array_column($this->soldesData, 'email');
+        $regles = RegleConge::first();
 
         foreach ($this->soldesData as $data) {
             $user = User::where('email', $data['email'])->first();
@@ -141,8 +143,15 @@ class SoldesCongesSeeder extends Seeder
                 continue;
             }
 
-            // Calculer le quota réel pour 2026 (RegleConge si disponible, sinon constante)
-            $quota2026 = $this->getQuotaAnnuel();
+            // Droits de l'année courante = base (RegleConge) + majoration
+            // ancienneté (totale : COFIDAY + reprise RH) + prorata mois
+            // d'arrivée + plafond légal 30 j. Ne touche jamais aux années
+            // 2022-2025 déjà figées par importerAnneesHistoriques().
+            $calcul    = SoldeCongeCalculator::calculerNouveauxDroitsAcquis($user, self::ANNEE_COURANTE, $regles);
+            $quota2026 = $calcul['jours_acquis'];
+            $detailCalcul = "ancienneté {$calcul['annees_anciennete']} an(s), "
+                . "+{$calcul['majoration_anciennete']} j. majoration, "
+                . "{$calcul['mois_travailles']}/12 mois travaillés";
 
             // Jours déjà pris en 2026 (si le seeder est rejoué en cours d'année,
             // on ne réinitialise pas les jours_pris existants)
@@ -165,8 +174,8 @@ class SoldesCongesSeeder extends Seeder
                     ]);
 
                 $this->command->line(
-                    "  ↺  {$data['email']} (2026) — solde existant conservé, "
-                    . "jours_pris={$existant->jours_pris}, jours_restants=" . max(0, $quota2026 - $existant->jours_pris)
+                    "  ↺  {$data['email']} (2026)  solde recalculé ($detailCalcul) : "
+                    . "jours_acquis={$quota2026}, jours_pris={$existant->jours_pris}, jours_restants=" . max(0, $quota2026 - $existant->jours_pris)
                 );
             } else {
                 // Créer un solde 2026 vierge (les reports 2025 restent dans leur propre ligne)
@@ -182,7 +191,7 @@ class SoldesCongesSeeder extends Seeder
                 ]);
 
                 $this->command->line(
-                    "  ✔  {$data['email']} (2026) — {$quota2026} j. acquis créés."
+                    "  ✔  {$data['email']} (2026)  {$quota2026} j. acquis créés ($detailCalcul)."
                 );
             }
         }
@@ -195,7 +204,7 @@ class SoldesCongesSeeder extends Seeder
     private function creerSoldesManquants(): void
     {
         $emailsImportes = collect($this->soldesData)->pluck('email')->toArray();
-        $quota2026      = $this->getQuotaAnnuel();
+        $regles         = RegleConge::first();
 
         $usersManquants = User::whereNotIn('email', $emailsImportes)->get();
 
@@ -210,6 +219,9 @@ class SoldesCongesSeeder extends Seeder
                 continue; // ne pas écraser un solde déjà géré
             }
 
+            $calcul    = SoldeCongeCalculator::calculerNouveauxDroitsAcquis($user, self::ANNEE_COURANTE, $regles);
+            $quota2026 = $calcul['jours_acquis'];
+
             DB::table('soldes_conges')->insert([
                 'user_id'        => $user->id,
                 'annee'          => self::ANNEE_COURANTE,
@@ -222,26 +234,9 @@ class SoldesCongesSeeder extends Seeder
             ]);
 
             $this->command->line(
-                "  ➕  {$user->email} (non listé) — solde 2026 vierge créé ({$quota2026} j.)."
+                "  ➕  {$user->email} (non listé)  solde 2026 créé ({$quota2026} j., "
+                . "ancienneté {$calcul['annees_anciennete']} an(s), {$calcul['mois_travailles']}/12 mois travaillés)."
             );
         }
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Helper : récupère le quota annuel depuis RegleConge ou utilise la constante
-    // ─────────────────────────────────────────────────────────────────────────
-
-    private function getQuotaAnnuel(): int
-    {
-        try {
-            $regles = DB::table('regles_conges')->first();
-            if ($regles && isset($regles->jours_par_mois) && $regles->jours_par_mois > 0) {
-                return (int) ($regles->jours_par_mois * 12);
-            }
-        } catch (\Exception $e) {
-            // Table non disponible (ex : premier run avant migration) → fallback
-        }
-
-        return self::QUOTA_ANNUEL;
     }
 }

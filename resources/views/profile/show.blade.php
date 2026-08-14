@@ -129,6 +129,16 @@
                             <span class="text-muted">Nom d'utilisateur</span>
                             <span class="font-weight-bold">{{ $user->username }}</span>
                         </div>
+                        @if($user->date_embauche)
+                        <div class="list-group-item d-flex justify-content-between px-3">
+                            <span class="text-muted">Date d'embauche</span>
+                            <span>{{ \Carbon\Carbon::parse($user->date_embauche)->isoFormat('D MMMM YYYY') }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between px-3">
+                            <span class="text-muted">Ancienneté</span>
+                            <span class="font-weight-bold">{{ $user->anciennete_texte }}</span>
+                        </div>
+                        @endif
                         <div class="list-group-item d-flex justify-content-between px-3">
                             <span class="text-muted">Créé le</span>
                             <span>{{ $user->created_at->format('d/m/Y à H:i') }}</span>

@@ -28,7 +28,9 @@ class User extends Authenticatable implements MustVerifyEmail
         'telephone',
         'sexe',
         'is_active',
-        'date_embauche'
+        'date_embauche',
+        'anciennete_reprise_ans',
+        'anciennete_reprise_mois',
     ];
 
     protected $hidden = ['password', 'remember_token', 'otp_code'];
@@ -48,6 +50,46 @@ class User extends Authenticatable implements MustVerifyEmail
     public function getFullNameAttribute(): string
     {
         return trim("{$this->prenom} {$this->nom}");
+    }
+
+    /**
+     * Ancienneté en années complètes (purement informatif, recalculé à
+     * chaque accès — n'est jamais stocké et n'affecte jamais directement
+     * le solde de congés stocké).
+     */
+    public function getAncienneteAnsAttribute(): ?int
+    {
+        if (!$this->date_embauche) {
+            return null;
+        }
+
+        return \App\Services\SoldeCongeCalculator::ancienneteTotaleDetail($this)['ans'];
+    }
+
+    /** Mois complémentaires (0-11) au-delà des années complètes d'ancienneté. */
+    public function getAncienneteMoisAttribute(): ?int
+    {
+        if (!$this->date_embauche) {
+            return null;
+        }
+
+        return \App\Services\SoldeCongeCalculator::ancienneteTotaleDetail($this)['mois'];
+    }
+
+    /** Texte formaté pour l'affichage, ex. "22 ans 4 mois" (inclut la reprise d'ancienneté saisie par RH). */
+    public function getAncienneteTexteAttribute(): ?string
+    {
+        if (!$this->date_embauche) {
+            return null;
+        }
+
+        $detail = \App\Services\SoldeCongeCalculator::ancienneteTotaleDetail($this);
+        $ans    = $detail['ans'];
+        $mois   = $detail['mois'];
+        $ansTexte  = $ans > 0 ? $ans . ' an' . ($ans > 1 ? 's' : '') : '';
+        $moisTexte = $mois > 0 ? $mois . ' mois' : '';
+
+        return trim("$ansTexte $moisTexte") ?: 'Moins d\'un mois';
     }
 
     /** Vérifie si $this est le manager de $userId */

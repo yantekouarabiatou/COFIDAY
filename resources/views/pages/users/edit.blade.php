@@ -278,6 +278,33 @@
                                         </small>
                                     </div>
                                 </div>
+
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label>Reprise d'ancienneté (ans)</label>
+                                        <input type="number" name="anciennete_reprise_ans" min="0" max="60"
+                                            class="form-control @error('anciennete_reprise_ans') is-invalid @enderror"
+                                            value="{{ old('anciennete_reprise_ans', $user->anciennete_reprise_ans ?? 0) }}">
+                                        @error('anciennete_reprise_ans')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                        <small class="text-muted">
+                                            <i class="fas fa-briefcase"></i> Expérience reconnue dans d'autres entreprises
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label>Reprise d'ancienneté (mois)</label>
+                                        <input type="number" name="anciennete_reprise_mois" min="0" max="11"
+                                            class="form-control @error('anciennete_reprise_mois') is-invalid @enderror"
+                                            value="{{ old('anciennete_reprise_mois', $user->anciennete_reprise_mois ?? 0) }}">
+                                        @error('anciennete_reprise_mois')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
                                 </div>
 
 

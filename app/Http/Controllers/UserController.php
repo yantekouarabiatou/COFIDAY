@@ -120,6 +120,8 @@ class UserController extends Controller
             'photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
             'manager_id' => 'nullable|exists:users,id',
             'date_embauche' => 'nullable|date|before_or_equal:today',
+            'anciennete_reprise_ans' => 'nullable|integer|min:0|max:60',
+            'anciennete_reprise_mois' => 'nullable|integer|min:0|max:11',
         ], [
             'nom.required' => 'Le nom est obligatoire',
             'prenom.required' => 'Le prénom est obligatoire',
@@ -168,6 +170,8 @@ class UserController extends Controller
                 'created_by' => auth()->id(),
                 'manager_id' => $validated['manager_id'] ?? null,
                 'date_embauche' => $validated['date_embauche'] ?? null,
+                'anciennete_reprise_ans' => $validated['anciennete_reprise_ans'] ?? 0,
+                'anciennete_reprise_mois' => $validated['anciennete_reprise_mois'] ?? 0,
 
             ]);
 
@@ -229,6 +233,8 @@ class UserController extends Controller
             'photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
             'manager_id' => 'nullable|exists:users,id',
             'date_embauche' => 'nullable|date|before_or_equal:today',
+            'anciennete_reprise_ans' => 'nullable|integer|min:0|max:60',
+            'anciennete_reprise_mois' => 'nullable|integer|min:0|max:11',
         ], [
             'nom.required' => 'Le nom est obligatoire',
             'prenom.required' => 'Le prénom est obligatoire',
@@ -277,6 +283,8 @@ class UserController extends Controller
                 'is_active' => $validated['is_active'],
                 'manager_id' => $validated['manager_id'] ?? null,
                 'date_embauche' => $validated['date_embauche'] ?? null,
+                'anciennete_reprise_ans' => $validated['anciennete_reprise_ans'] ?? 0,
+                'anciennete_reprise_mois' => $validated['anciennete_reprise_mois'] ?? 0,
 
             ];
 

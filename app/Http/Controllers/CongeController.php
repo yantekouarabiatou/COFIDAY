@@ -9,6 +9,7 @@ use App\Models\SoldeConge;
 use App\Models\HistoriqueConge;
 use App\Models\RegleConge;
 use App\Models\User;
+use App\Services\SoldeCongeCalculator;
 use Barryvdh\DomPDF\Facade\Pdf;
 use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Facades\Auth;
@@ -454,7 +455,7 @@ class CongeController extends Controller
                 if ($totalDisponible < $nombreJours) {
                     Alert::error(
                         'Solde insuffisant',
-                        "Solde global disponible (toutes années) : {$totalDisponible} j. — Demandé : {$nombreJours} j."
+                        "Solde global disponible (toutes années) : {$totalDisponible} j.  Demandé : {$nombreJours} j."
                     );
                     return back()->withInput();
                 }
@@ -650,7 +651,7 @@ class CongeController extends Controller
                     DB::rollBack();
                     Alert::error(
                         'Solde insuffisant',
-                        "Solde global disponible (toutes années) : {$totalDisponible} j. — Demandé : {$nombreJours} j."
+                        "Solde global disponible (toutes années) : {$totalDisponible} j.  Demandé : {$nombreJours} j."
                     );
                     return back()->withInput();
                 }
@@ -779,7 +780,7 @@ class CongeController extends Controller
                 'demande_conge_id' => $demande->id,
                 'action'           => 'demande_annulee',
                 'effectue_par'     => $user->id,
-                'commentaire'      => $request->commentaire ?? 'Demande annulée — jours restitués.',
+                'commentaire'      => $request->commentaire ?? 'Demande annulée  jours restitués.',
             ]);
 
             DB::commit();
@@ -864,7 +865,7 @@ class CongeController extends Controller
                 'demande_conge_id' => $demande->id,
                 'action'           => 'retour_anticipe',
                 'effectue_par'     => $user->id,
-                'commentaire'      => "Retour anticipé le {$dateRetour->format('d/m/Y')} — {$joursRestitues} jour(s) restitué(s)." . ($request->motif_suspension ? ' Motif : ' . $request->motif_suspension : ''),
+                'commentaire'      => "Retour anticipé le {$dateRetour->format('d/m/Y')}  {$joursRestitues} jour(s) restitué(s)." . ($request->motif_suspension ? ' Motif : ' . $request->motif_suspension : ''),
             ]);
 
             DB::commit();
@@ -973,7 +974,7 @@ class CongeController extends Controller
                 // Mail au demandeur
                 Mail::to($demandeur->email)->send(new LeavePreApprovedMail($demande));
 
-                // Mail au DG pour validation finale — emails récupérés depuis la config
+                // Mail au DG pour validation finale  emails récupérés depuis la config
                 $dgEmails = config('cofima.email_dg');
                 $dgEmails = is_array($dgEmails) ? $dgEmails : [$dgEmails];
                 $dgEmails = array_filter($dgEmails);
@@ -1041,17 +1042,9 @@ class CongeController extends Controller
         $soldeCourant = $soldesExistants->get($anneeCourante);
 
         if (!$soldeCourant) {
-            $regles      = RegleConge::first();
-            $joursAcquis = $regles ? $regles->jours_par_mois * 12 : 24;
-
-            $soldeCourant = SoldeConge::create([
-                'user_id'        => $user->id,
-                'annee'          => $anneeCourante,
-                'jours_acquis'   => $joursAcquis,
-                'jours_pris'     => 0,
-                'jours_restants' => $joursAcquis,
-                'jours_reportes' => 0,
-            ]);
+            // Même logique centralisée que creerSoldeInitial() : ne crée que
+            // la ligne de l'année courante, sans jamais toucher à l'historique.
+            $soldeCourant = $this->creerSoldeInitial($user->id, $anneeCourante);
             $soldesExistants->put($anneeCourante, $soldeCourant);
         }
 
@@ -1415,8 +1408,15 @@ class CongeController extends Controller
 
     private function creerSoldeInitial(int $userId, int $annee): SoldeConge
     {
-        $regles      = RegleConge::first();
-        $joursAcquis = $regles ? $regles->jours_par_mois * 12 : 24;
+        $user   = User::findOrFail($userId);
+        $regles = RegleConge::first();
+
+        // Nouveaux droits du cycle en cours (base + majoration ancienneté +
+        // prorata mois d'arrivée + plafond légal). Ne touche jamais aux
+        // lignes soldes_conges des années antérieures : cette méthode ne
+        // s'exécute que lorsque la ligne de $annee n'existe pas encore.
+        $calcul      = SoldeCongeCalculator::calculerNouveauxDroitsAcquis($user, $annee, $regles);
+        $joursAcquis = $calcul['jours_acquis'];
 
         return SoldeConge::create([
             'user_id'        => $userId,
@@ -1501,7 +1501,7 @@ class CongeController extends Controller
                     ->isoFormat('dddd D MMMM YYYY');
 
                 $numeroNote = str_pad($demande->id, 3, '0', STR_PAD_LEFT)
-                    . '/COFIMA/SA/JCA/GAT/'
+                    . '/COFIMA/SA/JCA/COFIDAY/GAT/'
                     . now()->year;
 
                 $secretaireEmails = config('cofima.email_secretaire');

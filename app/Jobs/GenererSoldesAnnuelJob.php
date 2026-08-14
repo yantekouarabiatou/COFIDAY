@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\User;
 use App\Models\SoldeConge;
 use App\Models\RegleConge;
+use App\Services\SoldeCongeCalculator;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -25,9 +26,7 @@ class GenererSoldesAnnuelJob implements ShouldQueue
     public function handle(): void
     {
         $regles = RegleConge::first();
-        $joursAcquis = $regles ? $regles->jours_par_mois * 12 : 25; // ex: 2.5 × 12 = 30 jours
-
-        $users = User::all();
+        $users  = User::all();
 
         foreach ($users as $user) {
             // Vérifier si un solde existe déjà pour cette année
@@ -36,6 +35,12 @@ class GenererSoldesAnnuelJob implements ShouldQueue
                 ->exists();
 
             if (!$soldeExistant) {
+                // Nouveaux droits du cycle en cours (base + majoration ancienneté
+                // + prorata mois d'arrivée + plafond légal). N'a aucun effet sur
+                // les lignes soldes_conges déjà existantes des années antérieures.
+                $calcul      = SoldeCongeCalculator::calculerNouveauxDroitsAcquis($user, $this->annee, $regles);
+                $joursAcquis = $calcul['jours_acquis'];
+
                 SoldeConge::create([
                     'user_id' => $user->id,
                     'annee' => $this->annee,
