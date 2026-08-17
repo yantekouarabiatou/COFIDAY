@@ -124,31 +124,57 @@ class SoldeCongeCalculator
 
     /**
      * Nombre de mois "travaillés" pour l'année $annee, en fonction de la date
-     * d'embauche : un salarié déjà présent les années précédentes est réputé
-     * avoir travaillé les 12 mois du cycle. Un salarié arrivé en cours
-     * d'année $annee ne compte que les mois à partir de son entrée, avec la
-     * règle : présence au plus tard le 15 du mois = mois compté entier,
-     * sinon le mois d'arrivée n'est pas compté (on démarre au mois suivant).
+     * d'embauche — accrual PROGRESSIF pour tous les salariés : le solde ne
+     * monte que mois après mois, jamais d'un coup en début d'année.
+     *
+     * - Année $annee déjà terminée (< année de référence) : les 12 mois
+     *   comptent (année figée, plus rien à accumuler).
+     * - Année $annee future : 0 mois.
+     * - Année $annee = année de référence (année en cours) : voir le détail
+     *   des trois cas ci-dessous.
+     *
+     * Cas "année en cours" :
+     * - Embauche PENDANT l'année en cours : présence au plus tard le 15 du
+     *   mois = mois compté entier, sinon le mois d'arrivée n'est pas compté
+     *   (on démarre au mois suivant) ; on compte jusqu'au mois courant inclus.
+     * - Embauche une année antérieure, quelle que soit l'ancienneté : le
+     *   cycle d'acquisition est ANCRÉ SUR LE MOIS D'EMBAUCHE, pas sur
+     *   l'année civile. Le compteur repart à 0 à chaque anniversaire
+     *   d'embauche (cycle glissant de 12 mois), pas au 1er janvier — on
+     *   prend donc le nombre de mois pleins écoulés depuis l'embauche,
+     *   modulo 12.
      */
-    public static function moisTravailles(Carbon $dateEmbauche, int $annee): int
+    public static function moisTravailles(Carbon $dateEmbauche, int $annee, ?Carbon $reference = null): int
     {
-        if ($dateEmbauche->year < $annee) {
-            return 12;
-        }
+        $reference ??= Carbon::now();
 
         if ($dateEmbauche->year > $annee) {
             return 0;
         }
 
-        $premierMoisCompte = $dateEmbauche->day <= 15
-            ? $dateEmbauche->month
-            : $dateEmbauche->month + 1;
-
-        if ($premierMoisCompte > 12) {
+        if ($annee > $reference->year) {
             return 0;
         }
 
-        return 12 - $premierMoisCompte + 1;
+        if ($annee < $reference->year) {
+            return 12;
+        }
+
+        if ($dateEmbauche->year === $annee) {
+            $premierMoisCompte = $dateEmbauche->day <= 15
+                ? $dateEmbauche->month
+                : $dateEmbauche->month + 1;
+
+            if ($premierMoisCompte > $reference->month) {
+                return 0;
+            }
+
+            return $reference->month - $premierMoisCompte + 1;
+        }
+
+        $moisDepuisEmbauche = (int) $dateEmbauche->diffInMonths($reference);
+
+        return $moisDepuisEmbauche % 12;
     }
 
     /**
@@ -166,12 +192,14 @@ class SoldeCongeCalculator
 
         $dateEmbauche = $user->date_embauche ? Carbon::parse($user->date_embauche) : null;
 
-        // Ancienneté TOTALE (temps dans l'entreprise + reprise d'ancienneté
-        // saisie par les RH pour l'expérience acquise ailleurs) : c'est elle
-        // qui détermine le palier de majoration légale, jamais la seule
-        // ancienneté "maison".
+        // Ancienneté DANS L'ENTREPRISE uniquement (Code du travail, art. 158 :
+        // majoration après "vingt ans de service continus ou non DANS LA
+        // MÊME ENTREPRISE"). La reprise d'ancienneté saisie par les RH pour
+        // une expérience acquise ailleurs (anciennete_reprise_ans/mois)
+        // n'entre PAS dans ce calcul — elle reste purement informative
+        // (affichage, cf. User::ancienneteTexte).
         $anneesAnciennete = $dateEmbauche
-            ? self::ancienneteTotaleDetail($user, Carbon::now())['ans']
+            ? self::anneesAnciennete($dateEmbauche, Carbon::now())
             : 0;
         $majoration = $dateEmbauche ? self::majorationAnciennete($anneesAnciennete) : 0;
 
@@ -196,10 +224,85 @@ class SoldeCongeCalculator
     }
 
     /**
+     * Détecte si le salarié vient de franchir un ou plusieurs anniversaires
+     * d'embauche depuis le dernier calcul (cycle de 12 mois clos). Si oui :
+     * reporte le solde restant du cycle qui vient de se clore dans
+     * jours_reportes (plafonné à regles.limite_report si report_autorise,
+     * sinon 0), puis remet jours_pris à 0 pour repartir sur un compteur
+     * propre au nouveau cycle. N'écrit rien si $persist=false (dry-run).
+     *
+     * Idempotent : ne fait rien si aucun nouveau cycle n'a démarré depuis le
+     * dernier appel (comparaison à users.cycles_conges_reportes).
+     *
+     * Cas "bootstrap" : la toute première fois que cette fonction s'exécute
+     * pour un utilisateur (cycles_conges_reportes encore NULL en base), il
+     * est impossible de reconstituer les cycles déjà passés (aucun solde
+     * n'a jamais été figé par cycle avant cette fonctionnalité) : on
+     * initialise juste le compteur sur le cycle actuel, sans report
+     * rétroactif.
+     */
+    public static function appliquerReportSiNouveauCycle(
+        User $user,
+        SoldeConge $solde,
+        Carbon $dateEmbauche,
+        ?RegleConge $regles = null,
+        ?Carbon $reference = null,
+        bool $persist = true
+    ): array {
+        $regles ??= RegleConge::first();
+        $reference ??= Carbon::now();
+
+        $cycleActuel      = intdiv((int) $dateEmbauche->diffInMonths($reference), 12);
+        $dernierCycleConnu = $user->cycles_conges_reportes;
+
+        if ($dernierCycleConnu === null) {
+            if ($persist) {
+                $user->cycles_conges_reportes = $cycleActuel;
+                $user->save();
+            }
+
+            return ['nouveau_cycle' => false, 'bootstrap' => true];
+        }
+
+        if ($cycleActuel <= $dernierCycleConnu) {
+            return ['nouveau_cycle' => false, 'bootstrap' => false];
+        }
+
+        $soldeRestantAvant = max(0, (float) $solde->jours_acquis + (float) ($solde->jours_reportes ?? 0) - (float) $solde->jours_pris);
+
+        $peutReporter = $regles && $regles->report_autorise;
+        $plafond      = $regles && $regles->limite_report !== null ? (float) $regles->limite_report : null;
+
+        $nouveauReport = $peutReporter
+            ? ($plafond !== null ? min($soldeRestantAvant, $plafond) : $soldeRestantAvant)
+            : 0.0;
+
+        $solde->jours_reportes = round($nouveauReport, 2);
+        $solde->jours_pris     = 0;
+
+        if ($persist) {
+            $user->cycles_conges_reportes = $cycleActuel;
+            $user->save();
+        }
+
+        return [
+            'nouveau_cycle'       => true,
+            'bootstrap'           => false,
+            'solde_restant_avant' => round($soldeRestantAvant, 2),
+            'jours_reportes'      => $solde->jours_reportes,
+        ];
+    }
+
+    /**
      * Synchronise automatiquement le solde de l'ANNÉE EN COURS d'un salarié
      * avec sa date d'embauche / ancienneté actuelles (crée la ligne si elle
-     * n'existe pas encore, la met à jour sinon). jours_pris n'est jamais
-     * modifié. Aucune autre année n'est jamais touchée.
+     * n'existe pas encore, la met à jour sinon). Aucune autre année n'est
+     * jamais touchée.
+     *
+     * Avant de recalculer jours_acquis, vérifie si un nouveau cycle
+     * d'ancienneté vient de démarrer (anniversaire d'embauche franchi) :
+     * si oui, reporte le solde restant du cycle clos dans jours_reportes et
+     * remet jours_pris à 0 — voir appliquerReportSiNouveauCycle().
      *
      * À appeler chaque fois que date_embauche ou l'ancienneté "reprise" d'un
      * salarié changent (ex. création/modification de fiche salarié), pour
@@ -211,9 +314,6 @@ class SoldeCongeCalculator
         $annee ??= Carbon::now()->year;
         $regles ??= RegleConge::first();
 
-        $calcul      = self::calculerNouveauxDroitsAcquis($user, $annee, $regles);
-        $joursAcquis = $calcul['jours_acquis'];
-
         $solde = SoldeConge::firstOrNew([
             'user_id' => $user->id,
             'annee'   => $annee,
@@ -223,7 +323,13 @@ class SoldeCongeCalculator
 
         $solde->jours_pris     = $joursPris;
         $solde->jours_reportes = $solde->jours_reportes ?? 0;
-        $solde->jours_acquis   = $joursAcquis; // saving() du modèle recalcule jours_restants
+
+        if ($user->date_embauche) {
+            self::appliquerReportSiNouveauCycle($user, $solde, Carbon::parse($user->date_embauche), $regles);
+        }
+
+        $calcul = self::calculerNouveauxDroitsAcquis($user, $annee, $regles);
+        $solde->jours_acquis = $calcul['jours_acquis']; // saving() du modèle recalcule jours_restants
         $solde->save();
 
         return $solde;

@@ -31,6 +31,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'date_embauche',
         'anciennete_reprise_ans',
         'anciennete_reprise_mois',
+        'cycles_conges_reportes',
     ];
 
     protected $hidden = ['password', 'remember_token', 'otp_code'];

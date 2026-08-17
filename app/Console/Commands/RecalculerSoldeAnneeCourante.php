@@ -42,38 +42,66 @@ class RecalculerSoldeAnneeCourante extends Command
         $modifies = 0;
 
         foreach ($soldes as $solde) {
-            if (!$solde->user) {
+            $user = $solde->user;
+            if (!$user) {
                 continue;
             }
 
-            $calcul          = SoldeCongeCalculator::calculerNouveauxDroitsAcquis($solde->user, $annee, $regles);
-            $nouveauxAcquis  = $calcul['jours_acquis'];
-            $ancienJoursAcquis = (float) $solde->jours_acquis;
+            $ancienJoursAcquis   = (float) $solde->jours_acquis;
+            $ancienJoursReportes = (float) $solde->jours_reportes;
+            $ancienJoursPris     = (float) $solde->jours_pris;
 
-            if (abs($nouveauxAcquis - $ancienJoursAcquis) < 0.005) {
+            $report = ['nouveau_cycle' => false, 'bootstrap' => false];
+            if ($user->date_embauche) {
+                $report = SoldeCongeCalculator::appliquerReportSiNouveauCycle(
+                    $user,
+                    $solde,
+                    \Carbon\Carbon::parse($user->date_embauche),
+                    $regles,
+                    now(),
+                    !$dryRun
+                );
+            }
+
+            $calcul         = SoldeCongeCalculator::calculerNouveauxDroitsAcquis($user, $annee, $regles);
+            $nouveauxAcquis = $calcul['jours_acquis'];
+
+            $rienNAChange = abs($nouveauxAcquis - $ancienJoursAcquis) < 0.005 && !$report['nouveau_cycle'];
+
+            if ($rienNAChange) {
                 continue; // déjà à jour
             }
 
-            $nouveauxRestants = max(0, $nouveauxAcquis - (float) $solde->jours_pris);
+            if ($report['nouveau_cycle']) {
+                $this->line(sprintf(
+                    '  %s %s : cycle clos → %.2f j. reportés (plafond appliqué), jours_pris remis à 0 (était %.2f)',
+                    $dryRun ? '👁' : '↺',
+                    $user->email,
+                    $report['jours_reportes'],
+                    $ancienJoursPris,
+                ));
+            }
+
+            $nouveauxRestants = max(0, $nouveauxAcquis + (float) $solde->jours_reportes - (float) $solde->jours_pris);
 
             $this->line(sprintf(
-                '  %s %s (%d) : %.2f → %.2f j. acquis (ancienneté %d an(s), +%d j. majoration, %d/12 mois) — jours_pris inchangé (%.2f)',
+                '  %s %s (%d) : %.2f → %.2f j. acquis (ancienneté %d an(s), +%d j. majoration, %d/12 mois) — reportés %.2f → %.2f, restants %.2f',
                 $dryRun ? '👁' : '✔',
-                $solde->user->email,
+                $user->email,
                 $annee,
                 $ancienJoursAcquis,
                 $nouveauxAcquis,
                 $calcul['annees_anciennete'],
                 $calcul['majoration_anciennete'],
                 $calcul['mois_travailles'],
-                $solde->jours_pris,
+                $ancienJoursReportes,
+                (float) $solde->jours_reportes,
+                $nouveauxRestants,
             ));
 
             if (!$dryRun) {
-                $solde->update([
-                    'jours_acquis'   => $nouveauxAcquis,
-                    'jours_restants' => $nouveauxRestants,
-                ]);
+                $solde->jours_acquis = $nouveauxAcquis; // jours_pris/jours_reportes déjà positionnés ci-dessus
+                $solde->save(); // saving() du modèle recalcule jours_restants
             }
 
             $modifies++;

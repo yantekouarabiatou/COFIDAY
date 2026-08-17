@@ -23,6 +23,15 @@ Schedule::command('attestations:send-reminders')
     ->dailyAt('14:00')
     ->withoutOverlapping();
 
+// ── Congés : accrual mensuel progressif ──────────────────────────────────────
+// Le 1er de chaque mois, recalcule jours_acquis de l'année en cours pour tous
+// les salariés (2 j./mois écoulé depuis l'embauche), sans jamais toucher
+// jours_pris ni les années antérieures.
+Schedule::command('conges:recalculer-solde-annee-courante')
+    ->monthlyOn(1, '00:30')
+    ->withoutOverlapping()
+    ->runInBackground();
+
 // ── Notification fin de mois ─────────────────────────────────────────────────
 Schedule::command('notify:fin-de-mois')
     ->when(fn() => Carbon::now()->isLastOfMonth())

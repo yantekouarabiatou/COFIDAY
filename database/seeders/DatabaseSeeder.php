@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
             CompanySettingSeeder::class,
             TypesCongesSeeder::class,
             ReglesCongesSeeder::class,
+            DateEmbaucheSeeder::class,
             DemandesCongesSeeder::class,
             SoldesCongesSeeder::class,
             HistoriquesCongesSeeder::class,
