@@ -1,6 +1,6 @@
 {{--
     ══════════════════════════════════════════════════════════════════════════
-    MENU SIDEBAR — Attestations & Certificats   (v2 — séparation claire)
+    MENU SIDEBAR  Attestations & Certificats   (v2  séparation claire)
     À insérer après le bloc "Gestion des Congés" dans votre sidebar
     ══════════════════════════════════════════════════════════════════════════
 --}}
@@ -11,7 +11,7 @@
 
 {{--
     ══════════════════════════════════════════════════════════════════════════
-    PERMISSIONS SPATIE — à ajouter dans votre PermissionSeeder
+    PERMISSIONS SPATIE  à ajouter dans votre PermissionSeeder
     ══════════════════════════════════════════════════════════════════════════
 
     // Attestations

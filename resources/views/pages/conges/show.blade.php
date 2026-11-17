@@ -14,110 +14,57 @@
     </div>
 
     <div class="section-body">
-        <div class="row">
-            <div class="col-12">
-                <!-- Carte principale -->
-                <div class="card">
-                    <div class="card-header">
-                        <h4>Informations de la demande</h4>
-                        <div class="card-header-action">
-                            <a href="{{ route('conges.index') }}" class="btn btn-icon icon-left btn-secondary">
-                                <i class="fas fa-arrow-left"></i> Retour
-                            </a>
 
-                            <!-- Actions selon statut et permissions -->
-                            <div class="btn-group ml-2">
-                                @if($demande->statut === 'en_attente' &&
-                                    (auth()->user()->hasRole('admin') || auth()->id() === $demande->user_id))
-                                    <a href="{{ route('conges.edit', $demande) }}"
-                                       class="btn btn-icon icon-left btn-primary">
-                                        <i class="fas fa-edit"></i> Modifier
-                                    </a>
-                                @endif
-
-                                @if(auth()->user()->hasAnyRole(['admin', 'manager', 'directeur-general']) && $demande->statut === 'en_attente')
-                                    <div class="dropdown d-inline">
-                                        <button class="btn btn-icon icon-left btn-success dropdown-toggle"
-                                                type="button" id="actionDropdown" data-toggle="dropdown">
-                                            <i class="fas fa-cogs"></i> Actions
-                                        </button>
-                                        <div class="dropdown-menu">
-                                            <form action="{{ route('conges.traiter', $demande) }}" method="POST"
-                                                  class="d-inline approve-form">
-                                                @csrf
-                                                <input type="hidden" name="action" value="pre_approuve">
-                                                <button type="button" class="dropdown-item approve-btn">
-                                                    <i class="fas fa-check text-success"></i> Pre-approuver
-                                                </button>
-                                            </form>
-                                            <div class="dropdown-divider"></div>
-                                            <form action="{{ route('conges.traiter', $demande) }}" method="POST"
-                                                  class="d-inline refuse-form">
-                                                @csrf
-                                                <input type="hidden" name="action" value="refuser">
-                                                <button type="button" class="dropdown-item refuse-btn">
-                                                    <i class="fas fa-times text-danger"></i> Refuser
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                @endif
-
-                                @if($demande->statut === 'en_attente' &&
-                                    (auth()->user()->hasRole('admin') || auth()->id() === $demande->user_id))
-                                    <form action="{{ route('conges.annuler', $demande) }}" method="POST"
-                                          class="d-inline cancel-form ml-1">
-                                        @csrf
-                                        <button type="button" class="btn btn-icon icon-left btn-warning cancel-btn">
-                                            <i class="fas fa-ban"></i> Annuler
-                                        </button>
-                                    </form>
-                                @endif
+        {{-- ── Bandeau d'identité + statut ─────────────────────────────────── --}}
+        <div class="card conge-hero border-left-{{ $statutColor }}">
+            <div class="card-body">
+                <div class="d-flex flex-wrap align-items-center justify-content-between">
+                    <div class="d-flex align-items-center flex-wrap conge-hero-identity">
+                        @if($demande->user && $demande->user->photo)
+                            <img src="{{ asset('storage/' . $demande->user->photo) }}"
+                                 class="rounded-circle conge-hero-avatar" width="56" height="56" alt="Photo">
+                        @elseif($demande->user && $demande->user->exists)
+                            <div class="avatar bg-primary text-white rounded-circle conge-hero-avatar">
+                                {{ strtoupper(substr($demande->user->prenom ?? 'U', 0, 1) . substr($demande->user->nom ?? 'N', 0, 1)) }}
                             </div>
-                        </div>
-                    </div>
-
-                    <div class="card-body">
-                        <!-- Bannière de statut -->
-                        <div class="alert alert-{{ $statutColor }} alert-has-icon">
-                            <div class="alert-icon">
-                                @switch($demande->statut)
-                                    @case('en_attente')
-                                        <i class="fas fa-clock"></i>
-                                        @break
-                                    @case('approuve')
-                                        <i class="fas fa-check-circle"></i>
-                                        @break
-                                    @case('refuse')
-                                        <i class="fas fa-times-circle"></i>
-                                        @break
-                                    @case('annule')
-                                        <i class="fas fa-ban"></i>
-                                        @break
-                                @endswitch
+                        @else
+                            <div class="avatar bg-secondary text-white rounded-circle conge-hero-avatar">
+                                <i class="fas fa-user-slash"></i>
                             </div>
-                            <div class="alert-body">
-                                <div class="alert-title">
+                        @endif
+
+                        <div class="ml-3">
+                            @if($demande->user && $demande->user->exists)
+                                <h4 class="mb-0">{{ $demande->user->prenom ?? 'Prénom' }} {{ $demande->user->nom ?? 'Nom' }}</h4>
+                                <div class="text-muted small">{{ $demande->user->email ?? 'Email non disponible' }}</div>
+                            @else
+                                <h4 class="mb-0 text-danger">Utilisateur supprimé</h4>
+                                <div class="text-muted small">ID : {{ $demande->user_id }}</div>
+                            @endif
+
+                            <div class="mt-2 d-flex flex-wrap align-items-center conge-hero-meta">
+                                <span class="badge badge-{{ $statutColor }} badge-pill conge-status-pill">
                                     @switch($demande->statut)
-                                        @case('en_attente')
-                                            Demande en attente de validation
-                                            @break
-                                        @case('approuve')
-                                            Demande approuvée
-                                            @break
-                                        @case('refuse')
-                                            Demande refusée
-                                            @break
-                                        @case('annule')
-                                            Demande annulée
-                                            @break
+                                        @case('en_attente') <i class="fas fa-clock"></i> En attente @break
+                                        @case('pre_approuve') <i class="fas fa-hourglass-half"></i> Pré-approuvé @break
+                                        @case('approuve') <i class="fas fa-check-circle"></i> Approuvé @break
+                                        @case('refuse') <i class="fas fa-times-circle"></i> Refusé @break
+                                        @case('annule') <i class="fas fa-ban"></i> Annulé @break
+                                        @default {{ ucfirst($demande->statut) }}
                                     @endswitch
-                                </div>
-                                <div class="alert-text">
+                                </span>
+
+                                @if($demande->typeConge)
+                                    <span class="badge badge-{{ $demande->typeConge->est_paye ? 'success' : 'warning' }} ml-2">
+                                        {{ $demande->typeConge->libelle }}
+                                    </span>
+                                @endif
+
+                                <span class="text-muted small ml-2">
                                     @if($demande->statut === 'en_attente')
                                         Soumise le {{ $demande->created_at->format('d/m/Y à H:i') }}
                                         @if($demande->created_at->diffInDays(now()) > 0)
-                                            (il y a {{ $demande->created_at->diffInDays(now()) }} jours)
+                                            (il y a {{ $demande->created_at->diffInDays(now()) }} j.)
                                         @endif
                                     @elseif($demande->date_validation)
                                         Traitée le {{ $demande->date_validation->format('d/m/Y à H:i') }}
@@ -125,459 +72,493 @@
                                             par {{ $demande->validePar->name ?? $demande->validePar->prenom . ' ' . $demande->validePar->nom }}
                                         @endif
                                     @endif
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="conge-hero-actions mt-3 mt-md-0">
+                        <a href="{{ route('conges.index') }}" class="btn btn-icon icon-left btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Retour
+                        </a>
+                        <button type="button" id="print-btn" class="btn btn-icon icon-left btn-light ml-1">
+                            <i class="fas fa-print"></i> Imprimer
+                        </button>
+
+                        <div class="btn-group ml-1">
+                            @if($demande->statut === 'en_attente' &&
+                                (auth()->user()->hasRole('admin') || auth()->id() === $demande->user_id))
+                                <a href="{{ route('conges.edit', $demande) }}"
+                                   class="btn btn-icon icon-left btn-primary">
+                                    <i class="fas fa-edit"></i> Modifier
+                                </a>
+                            @endif
+
+                            @if(auth()->user()->hasAnyRole(['admin', 'manager', 'directeur-general']) && $demande->statut === 'en_attente')
+                                <div class="dropdown d-inline">
+                                    <button class="btn btn-icon icon-left btn-success dropdown-toggle"
+                                            type="button" id="actionDropdown" data-toggle="dropdown">
+                                        <i class="fas fa-cogs"></i> Actions
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-right">
+                                        <form action="{{ route('conges.traiter', $demande) }}" method="POST"
+                                              class="d-inline approve-form">
+                                            @csrf
+                                            <input type="hidden" name="action" value="pre_approuve">
+                                            <button type="button" class="dropdown-item approve-btn">
+                                                <i class="fas fa-check text-success"></i> Pre-approuver
+                                            </button>
+                                        </form>
+                                        <div class="dropdown-divider"></div>
+                                        <form action="{{ route('conges.traiter', $demande) }}" method="POST"
+                                              class="d-inline refuse-form">
+                                            @csrf
+                                            <input type="hidden" name="action" value="refuser">
+                                            <button type="button" class="dropdown-item refuse-btn">
+                                                <i class="fas fa-times text-danger"></i> Refuser
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            @endif
+
+                            @if($demande->statut === 'en_attente' &&
+                                (auth()->user()->hasRole('admin') || auth()->id() === $demande->user_id))
+                                <form action="{{ route('conges.annuler', $demande) }}" method="POST"
+                                      class="d-inline cancel-form ml-1">
+                                    @csrf
+                                    <button type="button" class="btn btn-icon icon-left btn-warning cancel-btn">
+                                        <i class="fas fa-ban"></i> Annuler
+                                    </button>
+                                </form>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            {{-- ── Colonne principale ──────────────────────────────────────── --}}
+            <div class="col-lg-8">
+
+                {{-- Chiffres clés --}}
+                <div class="row conge-stat-row">
+                    <div class="col-sm-4">
+                        <div class="conge-stat-tile">
+                            <div class="conge-stat-icon text-primary"><i class="fas fa-calendar-day"></i></div>
+                            <div>
+                                <div class="conge-stat-label">Début</div>
+                                <div class="conge-stat-value">
+                                    {{ optional($demande->date_debut)->format('d/m/Y') }}
+                                    <small class="text-muted d-block">{{ optional($demande->date_debut)->locale('fr')->isoFormat('dddd') }}</small>
                                 </div>
                             </div>
                         </div>
-
-                        <div class="row">
-                            <!-- Informations principales -->
-                            <div class="col-md-8">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h4><i class="fas fa-info-circle"></i> Détails de la demande</h4>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <label class="font-weight-bold">Demandeur</label>
-                                                    <div class="d-flex align-items-center">
-                                                        @if($demande->user && $demande->user->photo)
-                                                            <img src="{{ asset('storage/' . $demande->user->photo) }}"
-                                                                class="rounded-circle mr-2" width="40" height="40"
-                                                                alt="Photo">
-                                                        @elseif($demande->user)
-                                                            <div class="avatar bg-primary text-white rounded-circle mr-2"
-                                                                style="width: 40px; height: 40px; line-height: 40px; text-align: center;">
-                                                                {{ strtoupper(substr($demande->user->prenom ?? 'U', 0, 1) . substr($demande->user->nom ?? 'N', 0, 1)) }}
-                                                            </div>
-                                                        @else
-                                                            <div class="avatar bg-secondary text-white rounded-circle mr-2"
-                                                                style="width: 40px; height: 40px; line-height: 40px; text-align: center;">
-                                                                <i class="fas fa-user-slash"></i>
-                                                            </div>
-                                                        @endif
-                                                        <div>
-                                                            @if($demande->user)
-                                                                <strong>{{ $demande->user->prenom ?? 'Prénom' }} {{ $demande->user->nom ?? 'Nom' }}</strong><br>
-                                                                <small class="text-muted">{{ $demande->user->email ?? 'Email non disponible' }}</small>
-                                                            @else
-                                                                <strong class="text-danger">Utilisateur supprimé</strong><br>
-                                                                <small class="text-muted">ID: {{ $demande->user_id }}</small>
-                                                            @endif
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <label class="font-weight-bold">Type de congé</label>
-                                                    <div class="mt-2">
-                                                        @if($demande->typeConge)
-                                                            <span class="badge badge-{{ $demande->typeConge->est_paye ? 'success' : 'warning' }} p-2" style="font-size: 1em;">
-                                                                {{ $demande->typeConge->libelle }}
-                                                            </span>
-                                                            @if($demande->typeConge->est_paye)
-                                                                <span class="badge badge-info ml-2">Payé</span>
-                                                            @else
-                                                                <span class="badge badge-secondary ml-2">Non payé</span>
-                                                            @endif
-                                                            @if($demande->typeConge->nombre_jours_max)
-                                                                <div class="mt-2">
-                                                                    <small class="text-muted">
-                                                                        Maximum {{ $demande->typeConge->nombre_jours_max }} jours
-                                                                    </small>
-                                                                </div>
-                                                            @endif
-                                                        @else
-                                                            <span class="badge badge-secondary p-2">Type inconnu</span>
-                                                        @endif
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <label class="font-weight-bold">Période</label>
-                                                    <div class="mt-2">
-                                                        @if($demande->date_debut)
-                                                            <div class="d-flex align-items-center mb-2">
-                                                                <i class="fas fa-calendar-day text-primary mr-2"></i>
-                                                                <div>
-                                                                    <strong>Date de début :</strong><br>
-                                                                    {{ $demande->date_debut->format('d/m/Y') }}
-                                                                    <small class="text-muted">
-                                                                        ({{ $demande->date_debut->locale('fr')->isoFormat('dddd') }})
-                                                                    </small>
-                                                                </div>
-                                                            </div>
-                                                        @endif
-                                                        @if($demande->date_fin)
-                                                            <div class="d-flex align-items-center">
-                                                                <i class="fas fa-calendar-check text-primary mr-2"></i>
-                                                                <div>
-                                                                    <strong>Date de fin :</strong><br>
-                                                                    {{ $demande->date_fin->format('d/m/Y') }}
-                                                                    <small class="text-muted">
-                                                                        ({{ $demande->date_fin->locale('fr')->isoFormat('dddd') }})
-                                                                    </small>
-                                                                </div>
-                                                            </div>
-                                                        @endif
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <label class="font-weight-bold">Durée</label>
-                                                    <div class="mt-2">
-                                                        <div class="d-flex align-items-center">
-                                                            <i class="fas fa-clock text-primary mr-2 fa-2x"></i>
-                                                            <div>
-                                                                <h3 class="mb-0">{{ $demande->nombre_jours ?? 0 }} jour(s)</h3>
-                                                                @if($demande->date_debut && $demande->date_fin)
-                                                                    <small class="text-muted">
-                                                                        {{ $demande->date_debut->diffInDays($demande->date_fin) + 1 }} jours calendaires
-                                                                    </small>
-                                                                @endif
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        @if($demande->motif)
-                                        <div class="row">
-                                            <div class="col-md-12">
-                                                <div class="form-group">
-                                                    <label class="font-weight-bold">Motif</label>
-                                                    <div class="card bg-light">
-                                                        <div class="card-body">
-                                                            <p class="mb-0">{{ $demande->motif }}</p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        @endif
-
-                                        {{-- Fichier justificatif soumis à la demande --}}
-                                        @if($demande->fichier_justificatif)
-                                        <div class="row">
-                                            <div class="col-md-12">
-                                                <div class="form-group">
-                                                    <label class="font-weight-bold">
-                                                        <i class="fas fa-paperclip text-primary mr-1"></i>
-                                                        Justificatif joint à la demande
-                                                    </label>
-                                                    <div class="card bg-light">
-                                                        <div class="card-body py-2 d-flex align-items-center justify-content-between">
-                                                            <span>
-                                                                <i class="fas fa-file mr-2 text-muted"></i>
-                                                                Document fourni par l'employé
-                                                            </span>
-                                                            <a href="{{ Storage::url($demande->fichier_justificatif) }}"
-                                                            target="_blank"
-                                                            class="btn btn-sm btn-outline-primary">
-                                                                <i class="fas fa-eye mr-1"></i> Consulter
-                                                            </a>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        @endif
-
-                                        {{-- Justificatif au retour --}}
-                                        @if($demande->justificatif_retour)
-                                        <div class="row">
-                                            <div class="col-md-12">
-                                                <div class="form-group">
-                                                    <label class="font-weight-bold">
-                                                        <i class="fas fa-file-medical text-success mr-1"></i>
-                                                        Justificatif médical (déposé au retour)
-                                                    </label>
-                                                    <div class="card border-success">
-                                                        <div class="card-body py-2 d-flex align-items-center justify-content-between">
-                                                            <span>
-                                                                <i class="fas fa-check-circle text-success mr-2"></i>
-                                                                Déposé le {{ optional($demande->date_depot_justificatif)->format('d/m/Y') }}
-                                                            </span>
-                                                            <a href="{{ Storage::url($demande->justificatif_retour) }}"
-                                                               target="_blank" class="btn btn-sm btn-outline-success">
-                                                                <i class="fas fa-eye mr-1"></i> Consulter
-                                                            </a>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        @elseif(auth()->id() === $demande->user_id
-                                            && in_array($demande->statut, ['approuve', 'pre_approuve'])
-                                            && optional($demande->typeConge)->justificatif_requis
-                                            && $demande->date_fin && $demande->date_fin->lte(now()))
-                                        {{-- L'employé doit encore déposer son justificatif --}}
-                                        <div class="row">
-                                            <div class="col-md-12">
-                                                <div class="alert" style="background:#fff3cd; border-left:5px solid #e6a817;">
-                                                    <div class="d-flex align-items-center justify-content-between">
-                                                        <div>
-                                                            <i class="fas fa-exclamation-triangle text-warning mr-2"></i>
-                                                            <strong>Justificatif médical requis</strong><br>
-                                                            <small class="text-dark">Votre congé est terminé. Veuillez déposer votre certificat médical.</small>
-                                                        </div>
-                                                        <button class="btn btn-warning btn-sm ml-3"
-                                                                data-toggle="collapse" data-target="#form-justif-retour">
-                                                            <i class="fas fa-upload mr-1"></i> Déposer
-                                                        </button>
-                                                    </div>
-                                                    <div class="collapse mt-3" id="form-justif-retour">
-                                                        <form action="{{ route('conges.justificatif-retour', $demande) }}"
-                                                              method="POST" enctype="multipart/form-data">
-                                                            @csrf
-                                                            <div class="input-group">
-                                                                <input type="file" name="justificatif_retour"
-                                                                       class="form-control @error('justificatif_retour') is-invalid @enderror"
-                                                                       accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" required>
-                                                                <div class="input-group-append">
-                                                                    <button type="submit" class="btn btn-success">
-                                                                        <i class="fas fa-check"></i> Valider
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                            @error('justificatif_retour')
-                                                                <div class="text-danger small mt-1">{{ $message }}</div>
-                                                            @enderror
-                                                            <small class="text-muted d-block mt-1">PDF, Word ou image — max 5 Mo</small>
-                                                        </form>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        @endif
-
-                                        {{-- Retour anticipé : bouton pour admin/manager/DG --}}
-                                        @if(auth()->user()->hasAnyRole(['admin', 'manager', 'directeur-general', 'rh'])
-                                            && $demande->statut === 'approuve'
-                                            && $demande->date_debut && $demande->date_fin
-                                            && now()->between($demande->date_debut, $demande->date_fin)
-                                            && ($demande->statut_suspension ?? 'actif') !== 'repris')
-                                        <div class="row mt-2">
-                                            <div class="col-md-12">
-                                                <div class="alert alert-info">
-                                                    <div class="d-flex align-items-center justify-content-between">
-                                                        <div>
-                                                            <i class="fas fa-undo mr-2"></i>
-                                                            <strong>Retour anticipé</strong><br>
-                                                            <small>L'employé est actuellement en congé. Enregistrez un retour avant la date prévue pour restituer les jours non utilisés.</small>
-                                                        </div>
-                                                        <button class="btn btn-info btn-sm ml-3"
-                                                                data-toggle="collapse" data-target="#form-retour-anticipe">
-                                                            <i class="fas fa-sign-in-alt mr-1"></i> Enregistrer le retour
-                                                        </button>
-                                                    </div>
-                                                    <div class="collapse mt-3" id="form-retour-anticipe">
-                                                        <form action="{{ route('conges.retour-anticipe', $demande) }}"
-                                                              method="POST">
-                                                            @csrf
-                                                            <div class="row">
-                                                                <div class="col-md-5">
-                                                                    <label class="small font-weight-bold">Date de retour effectif</label>
-                                                                    <input type="date" name="date_retour_effectif"
-                                                                           class="form-control form-control-sm"
-                                                                           min="{{ $demande->date_debut->toDateString() }}"
-                                                                           max="{{ $demande->date_fin->toDateString() }}"
-                                                                           value="{{ now()->toDateString() }}" required>
-                                                                </div>
-                                                                <div class="col-md-5">
-                                                                    <label class="small font-weight-bold">Motif (optionnel)</label>
-                                                                    <input type="text" name="motif_suspension"
-                                                                           class="form-control form-control-sm"
-                                                                           placeholder="Ex : Rétablissement plus rapide que prévu">
-                                                                </div>
-                                                                <div class="col-md-2 d-flex align-items-end">
-                                                                    <button type="submit" class="btn btn-success btn-sm w-100">
-                                                                        <i class="fas fa-check"></i> Confirmer
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                            <small class="text-muted d-block mt-2">
-                                                                Les jours non consommés (du retour à la fin du congé) seront automatiquement restitués au solde.
-                                                            </small>
-                                                        </form>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        @endif
-
-                                        {{-- Attestation de congé --}}
-                                        <div class="row">
-                                            <div class="col-md-12">
-                                                <div class="form-group">
-                                                    <label class="font-weight-bold">
-                                                        <i class="fas fa-file-alt text-primary mr-1"></i>
-                                                        Attestation de congé
-                                                    </label>
-                                                    <div class="card bg-light">
-                                                        <div class="card-body py-2">
-                                                            @if($demande->demande_attestation)
-                                                                <span class="badge badge-success p-2">
-                                                                    <i class="fas fa-check-circle mr-1"></i>
-                                                                    Attestation demandée — sera générée à l'approbation
-                                                                </span>
-                                                            @else
-                                                                <span class="badge badge-secondary p-2">
-                                                                    <i class="fas fa-minus-circle mr-1"></i>
-                                                                    Pas d'attestation demandée
-                                                                </span>
-                                                            @endif
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Informations de validation -->
-                                        @if($demande->statut !== 'en_attente' && $demande->statut !== 'annule')
-                                        <div class="row">
-                                            <div class="col-md-12">
-                                                <div class="form-group">
-                                                    <label class="font-weight-bold">Décision</label>
-                                                    <div class="card border-{{ $demande->statut === 'approuve' ? 'success' : 'danger' }}">
-                                                        <div class="card-body">
-                                                            <div class="d-flex justify-content-between align-items-center">
-                                                                <div>
-                                                                    <h5 class="mb-0">
-                                                                        @if($demande->statut === 'approuve')
-                                                                            <i class="fas fa-check-circle text-success"></i> Approuvé
-                                                                        @else
-                                                                            <i class="fas fa-times-circle text-danger"></i> Refusé
-                                                                        @endif
-                                                                    </h5>
-                                                                    @if($demande->validePar)
-                                                                        <small class="text-muted">
-                                                                            Par {{ $demande->validePar->name ?? $demande->validePar->prenom . ' ' . $demande->validePar->nom }}
-                                                                        </small>
-                                                                    @endif
-                                                                </div>
-                                                                <div class="text-right">
-                                                                    @if($demande->date_validation)
-                                                                        <small class="text-muted">
-                                                                            Le {{ $demande->date_validation->format('d/m/Y à H:i') }}
-                                                                        </small>
-                                                                    @else
-                                                                        <small class="text-muted">
-                                                                            Date de validation non disponible
-                                                                        </small>
-                                                                    @endif
-                                                                </div>
-                                                            </div>
-                                                            @if($demande->historiques && $demande->historiques->isNotEmpty())
-                                                                @php
-                                                                    $historiqueValidation = $demande->historiques
-                                                                        ->whereIn('action', ['demande_approuvee', 'demande_refusee'])
-                                                                        ->first();
-                                                                @endphp
-                                                                @if($historiqueValidation && $historiqueValidation->commentaire)
-                                                                <hr>
-                                                                <div class="mt-2">
-                                                                    <strong>Commentaire :</strong>
-                                                                    <p class="mb-0 mt-1">{{ $historiqueValidation->commentaire }}</p>
-                                                                </div>
-                                                                @endif
-                                                            @endif
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        @endif
-                                    </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="conge-stat-tile">
+                            <div class="conge-stat-icon text-primary"><i class="fas fa-calendar-check"></i></div>
+                            <div>
+                                <div class="conge-stat-label">Fin</div>
+                                <div class="conge-stat-value">
+                                    {{ optional($demande->date_fin)->format('d/m/Y') }}
+                                    <small class="text-muted d-block">{{ optional($demande->date_fin)->locale('fr')->isoFormat('dddd') }}</small>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="conge-stat-tile">
+                            <div class="conge-stat-icon text-primary"><i class="fas fa-clock"></i></div>
+                            <div>
+                                <div class="conge-stat-label">Durée</div>
+                                <div class="conge-stat-value">
+                                    {{ $demande->nombre_jours ?? 0 }} jour(s)
+                                    @if($demande->date_debut && $demande->date_fin)
+                                        <small class="text-muted d-block">
+                                            {{ $demande->date_debut->diffInDays($demande->date_fin) + 1 }} j. calendaires
+                                        </small>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-                            <!-- Informations complémentaires -->
-                            <div class="col-md-4">
-                                <!-- Carte d'information -->
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h4><i class="fas fa-chart-bar"></i> Informations</h4>
-                                    </div>
-                                    <div class="card-body">
-                                        <ul class="list-group list-group-flush">
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <span>Référence</span>
-                                                <span class="badge badge-light">#{{ $demande->id }}</span>
-                                            </li>
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <span>Soumis le</span>
-                                                <span>
-                                                    {{ optional($demande->created_at)->format('d/m/Y H:i') ?? '—' }}
-                                                </span>
-                                            </li>
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <span>Dernière mise à jour</span>
-                                                <span>
-                                                    {{ optional($demande->updated_at)->format('d/m/Y H:i') ?? '—' }}
-                                                </span>
-                                            </li>
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <span>Statut</span>
-                                                <span class="badge badge-{{ $statutColor }}">
-                                                    @if($demande->statut === 'en_attente')
-                                                        En attente
-                                                    @elseif($demande->statut === 'approuve')
-                                                        Approuvé
-                                                    @elseif($demande->statut === 'refuse')
-                                                        Refusé
-                                                    @else
-                                                        Annulé
-                                                    @endif
-                                                </span>
-                                            </li>
-                                            @if($demande->typeConge && $demande->typeConge->est_paye)
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <span>Impact solde</span>
-                                                <span class="text-{{ $demande->statut === 'approuve' ? 'success' : 'secondary' }}">
-                                                    @if($demande->statut === 'approuve')
-                                                        -{{ $demande->nombre_jours }} jours
-                                                    @else
-                                                        Aucun impact
-                                                    @endif
-                                                </span>
-                                            </li>
-                                            @endif
-                                        </ul>
+                @if($demande->motif)
+                <div class="card conge-panel">
+                    <div class="card-body">
+                        <div class="conge-panel-title">
+                            <span class="conge-panel-icon bg-primary"><i class="fas fa-comment-alt"></i></span>
+                            Motif
+                        </div>
+                        <p class="mb-0">{{ $demande->motif }}</p>
+                    </div>
+                </div>
+                @endif
+
+                {{-- Fichier justificatif soumis à la demande --}}
+                @if($demande->fichier_justificatif)
+                <div class="card conge-panel">
+                    <div class="card-body">
+                        <div class="conge-panel-title">
+                            <span class="conge-panel-icon bg-primary"><i class="fas fa-paperclip"></i></span>
+                            Justificatif joint à la demande
+                        </div>
+                        <div class="d-flex align-items-center justify-content-between flex-wrap">
+                            <span class="text-muted"><i class="fas fa-file mr-2"></i>Document fourni par l'employé</span>
+                            <a href="{{ Storage::url($demande->fichier_justificatif) }}"
+                               target="_blank" class="btn btn-sm btn-outline-primary mt-2 mt-sm-0">
+                                <i class="fas fa-eye mr-1"></i> Consulter
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                @endif
+
+                {{-- Justificatif au retour --}}
+                @if($demande->justificatif_retour)
+                <div class="card conge-panel border-left-success">
+                    <div class="card-body">
+                        <div class="conge-panel-title">
+                            <span class="conge-panel-icon bg-success"><i class="fas fa-file-medical"></i></span>
+                            Justificatif médical (déposé au retour)
+                        </div>
+                        <div class="d-flex align-items-center justify-content-between flex-wrap">
+                            <span class="text-muted">
+                                <i class="fas fa-check-circle text-success mr-2"></i>
+                                Déposé le {{ optional($demande->date_depot_justificatif)->format('d/m/Y') }}
+                            </span>
+                            <a href="{{ Storage::url($demande->justificatif_retour) }}"
+                               target="_blank" class="btn btn-sm btn-outline-success mt-2 mt-sm-0">
+                                <i class="fas fa-eye mr-1"></i> Consulter
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                @elseif(auth()->id() === $demande->user_id
+                    && in_array($demande->statut, ['approuve', 'pre_approuve'])
+                    && optional($demande->typeConge)->justificatif_requis
+                    && $demande->date_fin && $demande->date_fin->lte(now()))
+                {{-- L'employé doit encore déposer son justificatif --}}
+                <div class="card conge-panel border-left-warning">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap">
+                            <div>
+                                <div class="conge-panel-title mb-1">
+                                    <span class="conge-panel-icon bg-warning"><i class="fas fa-exclamation-triangle"></i></span>
+                                    Justificatif médical requis
+                                </div>
+                                <small class="text-muted">Votre congé est terminé. Veuillez déposer votre certificat médical.</small>
+                            </div>
+                            <button class="btn btn-warning btn-sm mt-2 mt-sm-0"
+                                    data-toggle="collapse" data-target="#form-justif-retour">
+                                <i class="fas fa-upload mr-1"></i> Déposer
+                            </button>
+                        </div>
+                        <div class="collapse mt-3" id="form-justif-retour">
+                            <form action="{{ route('conges.justificatif-retour', $demande) }}"
+                                  method="POST" enctype="multipart/form-data">
+                                @csrf
+                                <div class="input-group">
+                                    <input type="file" name="justificatif_retour"
+                                           class="form-control @error('justificatif_retour') is-invalid @enderror"
+                                           accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" required>
+                                    <div class="input-group-append">
+                                        <button type="submit" class="btn btn-success">
+                                            <i class="fas fa-check"></i> Valider
+                                        </button>
                                     </div>
                                 </div>
+                                @error('justificatif_retour')
+                                    <div class="text-danger small mt-1">{{ $message }}</div>
+                                @enderror
+                                <small class="text-muted d-block mt-1">PDF, Word ou image max 5 Mo</small>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                @endif
 
-                    <!-- Carte de solde -->
+                {{-- Retour anticipé : bouton pour admin/manager/DG --}}
+                @if(auth()->user()->hasAnyRole(['admin', 'manager', 'directeur-general', 'rh'])
+                    && $demande->statut === 'approuve'
+                    && $demande->date_debut && $demande->date_fin
+                    && now()->between($demande->date_debut, $demande->date_fin)
+                    && ($demande->statut_suspension ?? 'actif') !== 'repris')
+                <div class="card conge-panel border-left-info">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap">
+                            <div>
+                                <div class="conge-panel-title mb-1">
+                                    <span class="conge-panel-icon bg-info"><i class="fas fa-undo"></i></span>
+                                    Retour anticipé
+                                </div>
+                                <small class="text-muted">L'employé est actuellement en congé. Enregistrez un retour avant la date prévue pour restituer les jours non utilisés.</small>
+                            </div>
+                            <button class="btn btn-info btn-sm mt-2 mt-sm-0"
+                                    data-toggle="collapse" data-target="#form-retour-anticipe">
+                                <i class="fas fa-sign-in-alt mr-1"></i> Enregistrer le retour
+                            </button>
+                        </div>
+                        <div class="collapse mt-3" id="form-retour-anticipe">
+                            <form action="{{ route('conges.retour-anticipe', $demande) }}" method="POST">
+                                @csrf
+                                <div class="row">
+                                    <div class="col-md-5">
+                                        <label class="small font-weight-bold">Date de retour effectif</label>
+                                        <input type="date" name="date_retour_effectif"
+                                               class="form-control form-control-sm"
+                                               min="{{ $demande->date_debut->toDateString() }}"
+                                               max="{{ $demande->date_fin->toDateString() }}"
+                                               value="{{ now()->toDateString() }}" required>
+                                    </div>
+                                    <div class="col-md-5">
+                                        <label class="small font-weight-bold">Motif (optionnel)</label>
+                                        <input type="text" name="motif_suspension"
+                                               class="form-control form-control-sm"
+                                               placeholder="Ex : Rétablissement plus rapide que prévu">
+                                    </div>
+                                    <div class="col-md-2 d-flex align-items-end">
+                                        <button type="submit" class="btn btn-success btn-sm w-100">
+                                            <i class="fas fa-check"></i> Confirmer
+                                        </button>
+                                    </div>
+                                </div>
+                                <small class="text-muted d-block mt-2">
+                                    Les jours non consommés (du retour à la fin du congé) seront automatiquement restitués au solde.
+                                </small>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                @endif
+
+                {{-- Attestation de congé --}}
+                <div class="card conge-panel">
+                    <div class="card-body">
+                        <div class="conge-panel-title">
+                            <span class="conge-panel-icon bg-primary"><i class="fas fa-file-alt"></i></span>
+                            Attestation de congé
+                        </div>
+
+                        @if($demande->demande_attestation)
+                            @if($demande->attestation_remise_le)
+                                <span class="badge badge-success p-2">
+                                    <i class="fas fa-check-double mr-1"></i>
+                                    Remise à l'employé le {{ $demande->attestation_remise_le->format('d/m/Y à H:i') }}
+                                    @if($demande->attestationRemisePar)
+                                        par {{ $demande->attestationRemisePar->name ?? $demande->attestationRemisePar->prenom . ' ' . $demande->attestationRemisePar->nom }}
+                                    @endif
+                                </span>
+                            @elseif($demande->statut === 'approuve')
+                                <div class="d-flex align-items-center justify-content-between flex-wrap">
+                                    <span class="badge badge-warning p-2 mb-2 mb-md-0">
+                                        <i class="fas fa-clock mr-1"></i>
+                                        Approuvée: en attente de signature DG / remise au secrétariat
+                                    </span>
+                                    @if(Auth::user()->hasAnyRole(['admin', 'rh', 'directeur-general']))
+                                        <form action="{{ route('conges.attestation.remise', $demande) }}" method="POST"
+                                              onsubmit="return confirm('Confirmer que l\'attestation signée a été remise en main propre à l\'employé ?');">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-success">
+                                                <i class="fas fa-hand-holding mr-1"></i>
+                                                Marquer comme remise (décharge)
+                                            </button>
+                                        </form>
+                                    @endif
+                                </div>
+                            @else
+                                <span class="badge badge-info p-2">
+                                    <i class="fas fa-file-alt mr-1"></i>
+                                    Attestation demandée - sera générée à l'approbation
+                                </span>
+                            @endif
+                        @else
+                            <span class="badge badge-secondary p-2">
+                                <i class="fas fa-minus-circle mr-1"></i>
+                                Pas d'attestation demandée
+                            </span>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Décision --}}
+                @if($demande->statut !== 'en_attente' && $demande->statut !== 'annule')
+                <div class="card conge-panel border-left-{{ $demande->statut === 'approuve' ? 'success' : 'danger' }}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start flex-wrap">
+                            <div>
+                                <div class="conge-panel-title mb-1">
+                                    <span class="conge-panel-icon bg-{{ $demande->statut === 'approuve' ? 'success' : 'danger' }}">
+                                        <i class="fas fa-{{ $demande->statut === 'approuve' ? 'check-circle' : 'times-circle' }}"></i>
+                                    </span>
+                                    {{ $demande->statut === 'approuve' ? 'Approuvé' : 'Refusé' }}
+                                </div>
+                                @if($demande->validePar)
+                                    <small class="text-muted">
+                                        Par {{ $demande->validePar->name ?? $demande->validePar->prenom . ' ' . $demande->validePar->nom }}
+                                    </small>
+                                @endif
+                            </div>
+                            <small class="text-muted">
+                                @if($demande->date_validation)
+                                    Le {{ $demande->date_validation->format('d/m/Y à H:i') }}
+                                @else
+                                    Date de validation non disponible
+                                @endif
+                            </small>
+                        </div>
+                        @if($demande->historiques && $demande->historiques->isNotEmpty())
+                            @php
+                                $historiqueValidation = $demande->historiques
+                                    ->whereIn('action', ['demande_approuvee', 'demande_refusee'])
+                                    ->first();
+                            @endphp
+                            @if($historiqueValidation && $historiqueValidation->commentaire)
+                            <hr>
+                            <div>
+                                <strong>Commentaire :</strong>
+                                <p class="mb-0 mt-1">{{ $historiqueValidation->commentaire }}</p>
+                            </div>
+                            @endif
+                        @endif
+                    </div>
+                </div>
+                @endif
+
+                {{-- Historique --}}
+                @if($demande->historiques && $demande->historiques->isNotEmpty())
+                <div class="card conge-panel">
+                    <div class="card-header">
+                        <h4><i class="fas fa-history"></i> Historique des actions</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="activities">
+                            @php
+                                $historiqueColors = [
+                                    'demande_soumise' => 'primary',
+                                    'demande_modifiee' => 'warning',
+                                    'demande_annulee' => 'secondary',
+                                    'demande_approuvee' => 'success',
+                                    'demande_approuvee_finale' => 'success',
+                                    'demande_refusee' => 'danger',
+                                    'demande_refusee_finale' => 'danger',
+                                    'solde_ajuste' => 'info',
+                                    'relance_envoyee' => 'info',
+                                    'rappel_automatique' => 'warning',
+                                    'attestation_remise' => 'success',
+                                ];
+                            @endphp
+                            @foreach($demande->historiques->sortByDesc('date_action') as $historique)
+                                @php $couleur = $historiqueColors[$historique->action] ?? 'primary'; @endphp
+                                <div class="activity">
+                                    <div class="activity-icon bg-{{ $couleur }}">
+                                        <i class="{{ $historique->action_icon ?? 'fas fa-history' }}"></i>
+                                    </div>
+                                    <div class="activity-detail">
+                                        <div class="mb-2">
+                                            <span class="text-job text-muted">
+                                                {{ $historique->date_action->format('d/m/Y à H:i') }}
+                                                ({{ $historique->date_action->diffForHumans() }})
+                                            </span>
+                                            <span class="bullet"></span>
+                                            <span class="badge badge-{{ $couleur }}">
+                                                {{ $historique->action_label ?? ucfirst(str_replace('_', ' ', $historique->action)) }}
+                                            </span>
+                                        </div>
+                                        <p class="mb-0">
+                                            @if($historique->effectuePar)
+                                                <strong>{{ $historique->effectuePar->name ?? $historique->effectuePar->prenom . ' ' . $historique->effectuePar->nom }}</strong>
+                                            @else
+                                                <strong>Système</strong>
+                                            @endif
+                                            @if($historique->commentaire)
+                                                : {{ $historique->commentaire }}
+                                            @endif
+                                        </p>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+                @endif
+
+            </div>
+
+            {{-- ── Colonne latérale ────────────────────────────────────────── --}}
+            <div class="col-lg-4">
+
+                <div class="card conge-panel">
+                    <div class="card-header">
+                        <h4><i class="fas fa-info-circle"></i> Informations</h4>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>Référence</span>
+                                <span class="badge badge-light">#{{ $demande->id }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>Soumis le</span>
+                                <span>{{ optional($demande->created_at)->format('d/m/Y H:i') }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>Dernière mise à jour</span>
+                                <span>{{ optional($demande->updated_at)->format('d/m/Y H:i') }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>Statut</span>
+                                <span class="badge badge-{{ $statutColor }}">
+                                    @if($demande->statut === 'en_attente') En attente
+                                    @elseif($demande->statut === 'approuve') Approuvé
+                                    @elseif($demande->statut === 'refuse') Refusé
+                                    @else Annulé
+                                    @endif
+                                </span>
+                            </li>
+                            @if($demande->typeConge && $demande->typeConge->est_paye)
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>Impact solde</span>
+                                <span class="text-{{ $demande->statut === 'approuve' ? 'success' : 'secondary' }} font-weight-bold">
+                                    @if($demande->statut === 'approuve')
+                                        -{{ $demande->nombre_jours }} jours
+                                    @else
+                                        Aucun impact
+                                    @endif
+                                </span>
+                            </li>
+                            @endif
+                        </ul>
+                    </div>
+                </div>
+
+                {{-- Carte de solde --}}
+                @php
+                    $solde = \App\Models\SoldeConge::where('user_id', $demande->user_id)
+                        ->where('annee', now()->year)
+                        ->first();
+                @endphp
+                @if($solde)
                     @php
-                        $solde = \App\Models\SoldeConge::where('user_id', $demande->user_id)
-                            ->where('annee', now()->year)
-                            ->first();
+                        $totalDisponible = $solde->jours_acquis + ($solde->jours_reportes ?? 0);
+                        $pourcentage = $totalDisponible > 0 ? min(100, ($solde->jours_restants / $totalDisponible) * 100) : 0;
+                        $soldeCouleur = $pourcentage >= 50 ? '#28a745' : ($pourcentage >= 20 ? '#ffc107' : '#dc3545');
                     @endphp
-                    @if($solde)
-                    <div class="card mt-3">
+                    <div class="card conge-panel">
                         <div class="card-header">
                             <h4><i class="fas fa-wallet"></i> Solde de congés {{ now()->year }}</h4>
                         </div>
                         <div class="card-body">
                             <div class="text-center mb-3">
-                                @php
-                                    $totalDisponible = $solde->jours_acquis + ($solde->jours_reportes ?? 0);
-                                    $pourcentage = $totalDisponible > 0 ? min(100, ($solde->jours_restants / $totalDisponible) * 100) : 0;
-                                @endphp
-                                <div class="progress-circle-wrapper">
-                                    <div class="circular-progress" data-percent="{{ $pourcentage }}">
-                                        <span class="progress-value">{{ $solde->jours_restants }}</span>
+                                <div class="circular-progress"
+                                     style="background: conic-gradient({{ $soldeCouleur }} {{ $pourcentage }}%, #e9ecef {{ $pourcentage }}% 100%);">
+                                    <div class="circular-progress-inner">
+                                        <span class="circular-progress-value">{{ $solde->jours_restants }}</span>
+                                        <span class="circular-progress-label">restants</span>
                                     </div>
                                 </div>
                                 <div class="mt-2">
@@ -608,245 +589,144 @@
                             </ul>
                         </div>
                     </div>
-                    @endif
+                @endif
 
-                                            <!-- Historique -->
-                                                @if($demande->historiques && $demande->historiques->isNotEmpty())
-                                                <div class="row mt-4">
-                                                    <div class="col-md-12">
-                                                        <div class="card">
-                                                            <div class="card-header">
-                                                                <h4><i class="fas fa-history"></i> Historique des actions</h4>
-                                                            </div>
-                                                            <div class="card-body">
-                                                                <div class="activities">
-                                                                    @foreach($demande->historiques->sortByDesc('date_action') as $historique)
-                                                                    <div class="activity">
-                                                                        <div class="activity-icon bg-{{ $historique->action_class ?? 'primary' }}">
-                                                                            @switch($historique->action)
-                                                                                @case('demande_soumise')
-                                                                                    <i class="fas fa-paper-plane"></i>
-                                                                                    @break
-                                                                                @case('demande_modifiee')
-                                                                                    <i class="fas fa-edit"></i>
-                                                                                    @break
-                                                                                @case('demande_approuvee')
-                                                                                    <i class="fas fa-check"></i>
-                                                                                    @break
-                                                                                @case('demande_refusee')
-                                                                                    <i class="fas fa-times"></i>
-                                                                                    @break
-                                                                                @case('demande_annulee')
-                                                                                    <i class="fas fa-ban"></i>
-                                                                                    @break
-                                                                                @default
-                                                                                    <i class="fas fa-history"></i>
-                                                                            @endswitch
-                                                                        </div>
-                                                                        <div class="activity-detail">
-                                                                            <div class="mb-2">
-                                                                                <span class="text-job text-muted">
-                                                                                    {{ $historique->date_action->format('d/m/Y à H:i') }}
-                                                                                    ({{ $historique->date_action->diffForHumans() }})
-                                                                                </span>
-                                                                                <span class="bullet"></span>
-                                                                                <span class="badge badge-{{ $historique->action_class ?? 'primary' }}">
-                                                                                    {{ $historique->action_label ?? ucfirst(str_replace('_', ' ', $historique->action)) }}
-                                                                                </span>
-                                                                            </div>
-                                                                            <p>
-                                                                                @if($historique->effectuePar)
-                                                                                    <strong>{{ $historique->effectuePar->name ?? $historique->effectuePar->prenom . ' ' . $historique->effectuePar->nom }}</strong>
-                                                                                @else
-                                                                                    <strong>Système</strong>
-                                                                                @endif
-                                                                                @if($historique->commentaire)
-                                                                                    : {{ $historique->commentaire }}
-                                                                                @endif
-                                                                            </p>
-                                                                        </div>
-                                                                    </div>
-                                                                    @endforeach
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                @endif
-                                            </div>
-
-                    <div class="card-footer text-right">
-                        <a href="{{ route('conges.index') }}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left"></i> Retour à la liste
-                        </a>
-                        @if($demande->statut === 'en_attente' &&
-                            (auth()->user()->hasRole('admin') || auth()->id() === $demande->user_id))
-                            <a href="{{ route('conges.edit', $demande) }}" class="btn btn-primary">
-                                <i class="fas fa-edit"></i> Modifier
-                            </a>
-                        @endif
-                        @if(auth()->user()->hasRole('admin') ||
-                            (auth()->id() === $demande->user_id &&
-                             in_array($demande->statut, ['en_attente', 'annule'])))
-                            <form action="{{ route('conges.destroy', $demande) }}" method="POST"
-                                  class="d-inline delete-form">
-                                @csrf
-                                @method('DELETE')
-                                <button type="button" class="btn btn-danger delete-btn">
-                                    <i class="fas fa-trash"></i> Supprimer
-                                </button>
-                            </form>
-                        @endif
-                    </div>
-                </div>
             </div>
         </div>
+
+        {{-- ── Barre d'actions bas de page ─────────────────────────────────── --}}
+        <div class="card conge-panel">
+            <div class="card-body text-right">
+                <a href="{{ route('conges.index') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Retour à la liste
+                </a>
+                @if($demande->statut === 'en_attente' &&
+                    (auth()->user()->hasRole('admin') || auth()->id() === $demande->user_id))
+                    <a href="{{ route('conges.edit', $demande) }}" class="btn btn-primary">
+                        <i class="fas fa-edit"></i> Modifier
+                    </a>
+                @endif
+                @if(auth()->user()->hasRole('admin') ||
+                    (auth()->id() === $demande->user_id &&
+                     in_array($demande->statut, ['en_attente', 'annule'])))
+                    <form action="{{ route('conges.destroy', $demande) }}" method="POST"
+                          class="d-inline delete-form">
+                        @csrf
+                        @method('DELETE')
+                        <button type="button" class="btn btn-danger delete-btn">
+                            <i class="fas fa-trash"></i> Supprimer
+                        </button>
+                    </form>
+                @endif
+            </div>
+        </div>
+
     </div>
 </section>
 @endsection
 
 @push('styles')
 <style>
-    /* Styles pour les badges */
-    .badge {
-        font-size: 0.85em;
-        font-weight: 500;
-        padding: 0.5em 0.75em;
+    /* ── Bandeau d'identité ──────────────────────────────────────────── */
+    .conge-hero { border-left: 4px solid transparent; }
+    .conge-hero-avatar {
+        width: 56px; height: 56px; line-height: 56px; text-align: center;
+        font-weight: bold; font-size: 1.1rem; flex-shrink: 0;
     }
+    .conge-hero-identity { min-width: 0; }
+    .conge-status-pill { font-size: 0.85em; padding: 0.45em 0.9em; }
+    .conge-hero-actions { display: flex; flex-wrap: wrap; align-items: center; }
 
-    /* Avatar */
-    .avatar {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-    }
+    .border-left-primary   { border-left: 4px solid #467fcf !important; }
+    .border-left-success   { border-left: 4px solid #28a745 !important; }
+    .border-left-warning   { border-left: 4px solid #ffc107 !important; }
+    .border-left-danger    { border-left: 4px solid #dc3545 !important; }
+    .border-left-info      { border-left: 4px solid #17a2b8 !important; }
+    .border-left-secondary { border-left: 4px solid #6c757d !important; }
 
-    /* Historique */
-    .activities {
-        margin: 0;
-        padding: 0;
-        list-style: none;
-    }
-
-    .activity {
-        position: relative;
-        padding-left: 60px;
-        margin-bottom: 30px;
-    }
-
-    .activity-icon {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 45px;
-        height: 45px;
-        border-radius: 50%;
+    /* ── Chiffres clés ───────────────────────────────────────────────── */
+    .conge-stat-row { margin-bottom: 0.5rem; }
+    .conge-stat-tile {
+        background: #fff;
+        border: 1px solid #e9ecef;
+        border-radius: 0.5rem;
+        padding: 1rem;
         display: flex;
         align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 1.2em;
+        gap: 0.75rem;
+        height: 100%;
+        margin-bottom: 1rem;
+    }
+    .conge-stat-icon {
+        font-size: 1.4rem;
+        width: 42px; height: 42px;
+        border-radius: 50%;
+        background: rgba(70, 127, 207, 0.1);
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+    }
+    .conge-stat-label { font-size: 0.78rem; color: #8898aa; text-transform: uppercase; letter-spacing: .03em; }
+    .conge-stat-value { font-size: 1.05rem; font-weight: 600; color: #343a40; }
+
+    /* ── Panneaux de contenu ─────────────────────────────────────────── */
+    .conge-panel { border-left: 4px solid transparent; }
+    .conge-panel-title {
+        display: flex; align-items: center; gap: 0.6rem;
+        font-weight: 700; margin-bottom: 0.75rem; color: #343a40;
+    }
+    .conge-panel-icon {
+        width: 32px; height: 32px; border-radius: 50%;
+        display: inline-flex; align-items: center; justify-content: center;
+        color: #fff; font-size: 0.85rem; flex-shrink: 0;
     }
 
+    /* ── Badges ───────────────────────────────────────────────────────── */
+    .badge { font-size: 0.85em; font-weight: 500; padding: 0.5em 0.75em; }
+
+    /* ── Avatar générique (fallback list) ────────────────────────────── */
+    .avatar { display: inline-flex; align-items: center; justify-content: center; font-weight: bold; border-radius: 50%; }
+
+    /* ── Historique (timeline) ───────────────────────────────────────── */
+    .activities { margin: 0; padding: 0; list-style: none; }
+    .activity { position: relative; padding-left: 60px; margin-bottom: 24px; }
+    .activity:last-child { margin-bottom: 0; }
+    .activity-icon {
+        position: absolute; left: 0; top: 0;
+        width: 42px; height: 42px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-size: 1.05em;
+    }
     .activity-detail {
         background-color: #f8f9fa;
-        border-radius: 5px;
-        padding: 15px;
-        border-left: 4px solid #e9ecef;
+        border-radius: 0.5rem;
+        padding: 12px 15px;
+        border-left: 3px solid #e9ecef;
     }
-
-    .activity-detail .text-job {
-        font-size: 0.85em;
-    }
-
+    .activity-detail .text-job { font-size: 0.82em; }
     .activity-detail .bullet {
-        width: 5px;
-        height: 5px;
-        background-color: #6c757d;
-        border-radius: 50%;
-        display: inline-block;
-        margin: 0 10px;
+        width: 4px; height: 4px; background-color: #6c757d; border-radius: 50%;
+        display: inline-block; margin: 0 8px;
     }
 
-    /* Progress circle */
-    .progress-circle {
-        width: 100px;
-        height: 100px;
+    /* ── Cercle de progression du solde ──────────────────────────────── */
+    .circular-progress {
+        width: 110px; height: 110px;
+        border-radius: 50%;
         margin: 0 auto;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .circular-progress-inner {
+        width: 86px; height: 86px;
+        background: #fff;
         border-radius: 50%;
-        position: relative;
-        background: conic-gradient(
-            #28a745 0% {{ min(100, ($solde->jours_restants / $solde->jours_acquis) * 100) }}%,
-            #e9ecef {{ min(100, ($solde->jours_restants / $solde->jours_acquis) * 100) }}% 100%
-        );
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
     }
+    .circular-progress-value { font-size: 1.5rem; font-weight: 700; color: #343a40; line-height: 1.1; }
+    .circular-progress-label { font-size: 0.7rem; color: #8898aa; text-transform: uppercase; letter-spacing: .03em; }
 
-    .progress-circle:before {
-        content: '';
-        position: absolute;
-        width: 80px;
-        height: 80px;
-        background: white;
-        border-radius: 50%;
-        top: 10px;
-        left: 10px;
+    @media print {
+        .conge-hero-actions, .section-header-breadcrumb, .card-footer, .btn { display: none !important; }
     }
-
-    .progress-circle.progress-warning {
-        background: conic-gradient(
-            #ffc107 0% {{ min(100, ($solde->jours_restants / $solde->jours_acquis) * 100) }}%,
-            #e9ecef {{ min(100, ($solde->jours_restants / $solde->jours_acquis) * 100) }}% 100%
-        );
-    }
-
-    .progress-circle.progress-danger {
-        background: conic-gradient(
-            #dc3545 0% {{ min(100, ($solde->jours_restants / $solde->jours_acquis) * 100) }}%,
-            #e9ecef {{ min(100, ($solde->jours_restants / $solde->jours_acquis) * 100) }}% 100%
-        );
-    }
-
-    .progress-circle-value {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        font-size: 1.5em;
-        font-weight: bold;
-        color: #343a40;
-        z-index: 1;
-    }
-
-    /* Alert colors */
-    .alert-success {
-        border-left-color: #28a745;
-    }
-
-    .alert-warning {
-        border-left-color: #ffc107;
-    }
-
-    .alert-danger {
-        border-left-color: #dc3545;
-    }
-
-    .alert-secondary {
-        border-left-color: #6c757d;
-    }
-
-    /* Badge colors */
-    .bg-demande_soumise { background-color: #3b82f6 !important; }
-    .bg-demande_modifiee { background-color: #f59e0b !important; }
-    .bg-demande_approuvee { background-color: #10b981 !important; }
-    .bg-demande_refusee { background-color: #ef4444 !important; }
-    .bg-demande_annulee { background-color: #6b7280 !important; }
-
-    .badge-demande_soumise { background-color: #3b82f6 !important; color: white; }
-    .badge-demande_modifiee { background-color: #f59e0b !important; color: white; }
-    .badge-demande_approuvee { background-color: #10b981 !important; color: white; }
-    .badge-demande_refusee { background-color: #ef4444 !important; color: white; }
-    .badge-demande_annulee { background-color: #6b7280 !important; color: white; }
 </style>
 @endpush
 

@@ -101,7 +101,7 @@
     </div>
 
     <div class="ref-bloc">
-        Réf. : {{ $reference ?? '—' }}<br>
+        Réf. : {{ $reference ?? '' }}<br>
         Le {{ $date ?? now()->isoFormat('D MMMM YYYY') }}
     </div>
 

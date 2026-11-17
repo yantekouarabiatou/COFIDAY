@@ -448,6 +448,15 @@
                                             </li>
                                         @endcan
 
+                                        {{-- Rapport des soldes : admin & directeur général uniquement --}}
+                                        @if(auth()->user()->hasAnyRole(['admin', 'directeur-general']))
+                                            <li class="{{ request()->routeIs('soldes-rapport.*') ? 'active' : '' }}">
+                                                <a href="{{ route('soldes-rapport.index') }}" class="nav-link">
+                                                    <i class="fas fa-chart-bar"></i><span>Rapport des soldes</span>
+                                                </a>
+                                            </li>
+                                        @endif
+
                                         @canany(['créer des demandes d attestation', 'voir les demandes d attestation'])
                                             <li class="dropdown {{ request()->is('attestations*') ? 'active' : '' }}">
                                                 <a href="#" class="menu-toggle nav-link has-dropdown {{ request()->is('attestations*') ? 'active' : '' }}">

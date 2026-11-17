@@ -51,7 +51,7 @@ class SoldeCongeNonRetroactifTest extends TestCase
         // (b) Nouveaux jours acquis calculés pour le cycle en cours (2026), avec majoration ancienneté.
         $regles = RegleConge::first() ?? new RegleConge(['jours_par_mois' => 2]);
         $calcul = SoldeCongeCalculator::calculerNouveauxDroitsAcquis($user->fresh(), 2026, $regles);
-        $this->assertEqualsWithDelta(26.0, $calcul['jours_acquis'], 0.01); // (24 base + 2 majoration)
+        $this->assertEqualsWithDelta(15.17, $calcul['jours_acquis'], 0.01); // (24 base + 2 majoration) / 12 × 7 mois entièrement écoulés (janvier→juillet, août en cours exclu)
 
         // Point d'insertion réel du delta : création de la ligne 2026 (comme creerSoldeInitial()).
         $soldeCourant = SoldeConge::create([
@@ -71,7 +71,7 @@ class SoldeCongeNonRetroactifTest extends TestCase
         $this->assertSame($avant2025, $apres2025, 'Le solde 2025 déjà acquis a été altéré rétroactivement.');
 
         // Le seul changement est l'ajout de la nouvelle ligne 2026 (le delta).
-        $this->assertSame(26.0, (float) $soldeCourant->jours_acquis);
+        $this->assertSame(15.17, (float) $soldeCourant->jours_acquis);
         $this->assertSame(3, SoldeConge::where('user_id', $user->id)->count());
     }
 }

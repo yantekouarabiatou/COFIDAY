@@ -9,7 +9,7 @@
     <div style="padding:28px;">
         <p style="color:#333;">Bonjour,</p>
         <p style="color:#555;line-height:1.8;">
-            Une demande d'<strong>attestation de travail — format spécifique</strong> vient d'être
+            Une demande d'<strong>attestation de travail  format spécifique</strong> vient d'être
             approuvée par la Direction Générale pour l'employé(e) suivant(e) :
         </p>
         <table style="width:100%;border-collapse:collapse;margin:16px 0;">

@@ -250,7 +250,7 @@
                                                         {{ old('manager_id', $user->manager_id) == $manager->id ? 'selected' : '' }}>
                                                         {{ $manager->nom }} {{ $manager->prenom }}
                                                         @if($manager->roles->isNotEmpty())
-                                                            — {{ $manager->roles->first()->name }}
+                                                             {{ $manager->roles->first()->name }}
                                                         @endif
                                                     </option>
                                                 @endforeach

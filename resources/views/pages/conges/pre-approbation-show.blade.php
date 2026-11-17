@@ -140,7 +140,7 @@
         <div class="review-card">
 
             <div class="review-header">
-                <h2><i class="fas fa-clipboard-check mr-2"></i>Demande de congé — Pré-approbation</h2>
+                <h2><i class="fas fa-clipboard-check mr-2"></i>Demande de congé  Pré-approbation</h2>
                 <p>Veuillez examiner la demande ci-dessous avant de prendre votre décision.</p>
             </div>
 
@@ -160,15 +160,15 @@
                         </div>
                         <div class="info-item">
                             <div class="info-label"><i class="fas fa-tag mr-1"></i> Type de congé</div>
-                            <div class="info-value">{{ $demande->typeConge->libelle ?? '—' }}</div>
+                            <div class="info-value">{{ $demande->typeConge->libelle ?? '' }}</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label"><i class="fas fa-calendar-alt mr-1"></i> Date de début</div>
-                            <div class="info-value">{{ $demande->date_debut ? \Carbon\Carbon::parse($demande->date_debut)->isoFormat('D MMMM YYYY') : '—' }}</div>
+                            <div class="info-value">{{ $demande->date_debut ? \Carbon\Carbon::parse($demande->date_debut)->isoFormat('D MMMM YYYY') : '' }}</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label"><i class="fas fa-calendar-check mr-1"></i> Date de fin</div>
-                            <div class="info-value">{{ $demande->date_fin ? \Carbon\Carbon::parse($demande->date_fin)->isoFormat('D MMMM YYYY') : '—' }}</div>
+                            <div class="info-value">{{ $demande->date_fin ? \Carbon\Carbon::parse($demande->date_fin)->isoFormat('D MMMM YYYY') : '' }}</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label"><i class="fas fa-sun mr-1"></i> Nombre de jours</div>

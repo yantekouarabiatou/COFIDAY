@@ -66,7 +66,7 @@
     </div>
 
     <div class="header">
-        🔴 Rappel — Démission(s) en attente de traitement
+        🔴 Rappel  Démission(s) en attente de traitement
         <div class="sub">{{ $demandes->count() }} démission(s) nécessitent votre attention</div>
     </div>
 
@@ -120,13 +120,13 @@
 
             <p style="margin-top: 28px; color: #888; font-size: 13px;">
                 Cordialement,<br>
-                <strong>COFIDAY — Système de gestion RH COFIMA</strong>
+                <strong>COFIDAY  Système de gestion RH COFIMA</strong>
             </p>
         </div>
     </div>
 
     <div class="footer">
-        © {{ date('Y') }} COFIMA BENIN — Tous droits réservés.<br>
+        © {{ date('Y') }} COFIMA BENIN  Tous droits réservés.<br>
         Cet email est généré automatiquement, merci de ne pas y répondre.
     </div>
 </div>

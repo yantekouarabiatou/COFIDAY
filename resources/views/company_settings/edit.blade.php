@@ -244,7 +244,7 @@
     <script>
         $(document).ready(function () {
 
-            // ✅ Chaque input gère son propre label — ciblage par ID précis
+            // ✅ Chaque input gère son propre label  ciblage par ID précis
             $('#logo').on('change', function () {
                 let fileName = $(this).val().split('\\').pop();
                 $('#logo-label').html(fileName || 'Choisir un logo...');

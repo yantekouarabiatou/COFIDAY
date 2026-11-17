@@ -84,6 +84,12 @@
                             <!-- Jours fériés -->
                             <div class="mb-3">
                                 <label>Jours fériés</label>
+                                <small class="form-text text-muted d-block mb-2">
+                                    Les jours fériés ne sont jamais décomptés du solde. Laisser l'année vide pour un férié
+                                    fixe (1er janvier, 25 décembre…) ; renseigner l'année pour un férié à date variable
+                                    (ex. Vodun days 07-01 et 08-01 en 2027, Tabaski, Maouloud). Le Lundi de Pentecôte est
+                                    ajouté automatiquement chaque année.
+                                </small>
                                 <div id="jours-feries-container">
                                     @foreach($regles->jours_feries_array as $i => $jour)
                                     @php
@@ -102,6 +108,13 @@
                                                            value="{{ $dd }}-{{ $mm }}" 
                                                            placeholder="JJ-MM" required readonly>
                                                     <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                                                </div>
+                                                <div class="col-3">
+                                                    <input type="number" name="jours_feries[{{ $i }}][annee]"
+                                                           class="form-control" min="2020" max="2100"
+                                                           value="{{ $jour['annee'] ?? '' }}"
+                                                           placeholder="Chaque année"
+                                                           title="Laisser vide si le jour est férié chaque année (ex. 1er janvier, 25 décembre). Indiquer l'année pour un férié à date variable (Vodun days, Tabaski, Maouloud…).">
                                                 </div>
                                                 <div class="col-auto">
                                                     <button class="btn btn-danger remove-jour" type="button">
@@ -231,6 +244,12 @@ $(document).ready(function() {
                                placeholder="JJ-MM" required readonly>
                         <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
                     </div>
+                    <div class="col-3">
+                        <input type="number" name="jours_feries[${index}][annee]"
+                               class="form-control" min="2020" max="2100"
+                               placeholder="Chaque année"
+                               title="Laisser vide si le jour est férié chaque année. Indiquer l'année pour un férié à date variable.">
+                    </div>
                     <div class="col-auto">
                         <button class="btn btn-danger remove-jour" type="button">
                             <i class="fas fa-trash"></i>
@@ -278,7 +297,6 @@ $(document).ready(function() {
         element.flatpickr({
             locale: "fr",
             dateFormat: "d-m",
-            minDate: "today",
             disableMobile: true,
             onChange: function(selectedDates, dateStr, instance) {
                 // Validation basique du format JJ-MM

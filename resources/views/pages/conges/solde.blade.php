@@ -40,6 +40,33 @@
                         </div>
                         @endif
 
+                        {{-- Solde cumulé toutes années confondues --}}
+                        <div class="row mb-4">
+                            <div class="col-md-12">
+                                <div class="card card-statistic-1">
+                                    <div class="card-icon bg-success">
+                                        <i class="fas fa-layer-group"></i>
+                                    </div>
+                                    <div class="card-wrap">
+                                        <div class="card-header">
+                                            <h4>Solde cumulé disponible (toutes années)</h4>
+                                        </div>
+                                        <div class="card-body">
+                                            {{ $totalJoursDisponibles }}
+                                        </div>
+                                        <div class="card-footer">
+                                            @if($soldesDisponibles->isNotEmpty())
+                                                @foreach($soldesDisponibles as $s)
+                                                    <span class="badge badge-light border mr-1">{{ $s->annee }} : {{ $s->jours_restants }} j.</span>
+                                                @endforeach
+                                            @endif
+                                            <small class="d-block mt-1">Déduction par ordre d'ancienneté (FIFO) en cas de demande</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         {{-- Année courante --}}
                         <div class="row mb-4">
                             <div class="col-md-12">
@@ -82,7 +109,13 @@
                                             {{ $soldeCourant ? $soldeCourant->jours_pris : 0 }}
                                         </div>
                                         <div class="card-footer">
-                                            <small>Congés payés utilisés</small>
+                                            @php
+                                                // FIFO : tant que le solde de l'année précédente n'est pas
+                                                // épuisé, les jours pris s'y imputent en premier, pas sur
+                                                // l'année en cours.
+                                                $anneePrecedenteFifo = $soldesDisponibles->firstWhere('annee', now()->year - 1);
+                                            @endphp
+                                            <small>Sur le solde {{ $anneePrecedenteFifo?->annee ?? now()->year }} (FIFO)</small>
                                         </div>
                                     </div>
                                 </div>
@@ -114,7 +147,7 @@
                                     </div>
                                     <div class="card-wrap">
                                         <div class="card-header">
-                                            <h4>Taux d'utilisation</h4>
+                                            <h4>Taux utilisation</h4>
                                         </div>
                                         <div class="card-body">
                                             @if($soldeCourant && $soldeCourant->jours_acquis > 0)

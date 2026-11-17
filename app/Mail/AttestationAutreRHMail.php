@@ -1,6 +1,6 @@
 <?php
 // ══════════════════════════════════════════════════════════════════════════════
-// FICHIER : app/Mail/  — À diviser en fichiers séparés dans votre projet
+// FICHIER : app/Mail/   À diviser en fichiers séparés dans votre projet
 // Contient les 5 classes Mail du module Démission + Attestation
 // ══════════════════════════════════════════════════════════════════════════════
 
@@ -15,7 +15,7 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 1. DemissionReçueMail  — Notifie le DG/RH qu'une démission a été soumise
+// 1. DemissionReçueMail   Notifie le DG/RH qu'une démission a été soumise
 // ─────────────────────────────────────────────────────────────────────────────
 class DemissionReçueMail extends Mailable
 {
@@ -25,7 +25,7 @@ class DemissionReçueMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: '[COFIMA] Nouvelle lettre de démission — ' . $this->demande->user->username);
+        return new Envelope(subject: '[COFIMA] Nouvelle lettre de démission  ' . $this->demande->user->username);
     }
 
     public function content(): Content
@@ -35,7 +35,7 @@ class DemissionReçueMail extends Mailable
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 2. DemissionRefuseeMail  — Notifie l'employé du refus
+// 2. DemissionRefuseeMail   Notifie l'employé du refus
 // ─────────────────────────────────────────────────────────────────────────────
 class DemissionRefuseeMail extends Mailable
 {
@@ -55,7 +55,7 @@ class DemissionRefuseeMail extends Mailable
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3. CertificatTravailMail  — Envoyé à l'employé + secrétaire après approbation
+// 3. CertificatTravailMail   Envoyé à l'employé + secrétaire après approbation
 // ─────────────────────────────────────────────────────────────────────────────
 class CertificatTravailMail extends Mailable
 {
@@ -65,7 +65,7 @@ class CertificatTravailMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: '[COFIMA] Votre certificat de travail — Réf. ' . $this->demande->certificat_reference);
+        return new Envelope(subject: '[COFIMA] Votre certificat de travail  Réf. ' . $this->demande->certificat_reference);
     }
 
     public function content(): Content
@@ -75,7 +75,7 @@ class CertificatTravailMail extends Mailable
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 4. AttestationApprouvéeMail  — Employé + secrétaire reçoivent l'attestation
+// 4. AttestationApprouvéeMail   Employé + secrétaire reçoivent l'attestation
 // ─────────────────────────────────────────────────────────────────────────────
 class AttestationApprouvéeMail extends Mailable
 {
@@ -91,7 +91,7 @@ class AttestationApprouvéeMail extends Mailable
             'attestation_ambassade' => 'Votre attestation de travail (ambassade) est disponible',
             default                 => 'Votre attestation de travail est disponible',
         };
-        return new Envelope(subject: '[COFIMA] ' . $sujet . ' — Réf. ' . $this->demande->numero_reference);
+        return new Envelope(subject: '[COFIMA] ' . $sujet . '  Réf. ' . $this->demande->numero_reference);
     }
 
     public function content(): Content
@@ -121,7 +121,7 @@ class AttestationRefuseeMail extends Mailable
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 6. AttestationAutreRHMail  — Notifie le RH pour rédaction manuelle
+// 6. AttestationAutreRHMail   Notifie le RH pour rédaction manuelle
 // ─────────────────────────────────────────────────────────────────────────────
 class AttestationAutreRHMail extends Mailable
 {
@@ -131,7 +131,7 @@ class AttestationAutreRHMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: '[COFIMA Secrétaire] Nouvelle demande d\'attestation format spécifique — ' . $this->demande->user->username);
+        return new Envelope(subject: '[COFIMA Secrétaire] Nouvelle demande d\'attestation format spécifique  ' . $this->demande->user->username);
     }
 
     public function content(): Content

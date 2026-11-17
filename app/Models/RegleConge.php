@@ -110,10 +110,7 @@ class RegleConge extends Model
      */
     public function estJourFerie(\DateTime $date): bool
     {
-        $joursFeries = $this->jours_feries ? json_decode($this->jours_feries, true) : [];
-        $formatDate = $date->format('m-d');
-
-        return in_array($formatDate, $joursFeries);
+        return \App\Services\JoursFeriesService::estFerie($date);
     }
 
     /**
@@ -200,14 +197,14 @@ class RegleConge extends Model
         return number_format($this->calculerJoursAcquisAnnuels(), 2, ',', ' ');
     }
 
+    /**
+     * Liste normalisée : [{nom, date: 'MM-JJ', annee: null|AAAA}]
+     */
     public function getJoursFeriesArrayAttribute(): array
     {
-        if (is_array($this->jours_feries)) {
-            return $this->jours_feries;
-        }
-
-        return json_decode($this->jours_feries, true) ?? [];
+        return \App\Services\JoursFeriesService::decoder($this->getRawOriginal('jours_feries') ?? $this->jours_feries);
     }
+
     public function getPeriodesBloqueesArrayAttribute(): array
     {
         if (is_array($this->periodes_bloquees)) {

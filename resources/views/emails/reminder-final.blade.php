@@ -61,7 +61,7 @@
     </div>
 
     <div class="header">
-        ⏳ Rappel — Validation finale requise
+        ⏳ Rappel  Validation finale requise
         <div class="sub">{{ $demandes->count() }} demande(s) de congé attendent votre décision</div>
     </div>
 
@@ -85,7 +85,7 @@
                     <span class="jours">{{ $demande->nombre_jours }} j</span>
                 </div>
                 <div class="detail">
-                    <strong>Type :</strong> {{ $demande->typeConge->libelle ?? '—' }}<br>
+                    <strong>Type :</strong> {{ $demande->typeConge->libelle ?? '' }}<br>
                     <strong>Période :</strong>
                     {{ \Carbon\Carbon::parse($demande->date_debut)->isoFormat('D MMM YYYY') }}
                     →
@@ -105,13 +105,13 @@
 
             <p style="margin-top: 28px; color: #888; font-size: 13px;">
                 Cordialement,<br>
-                <strong>COFIDAY — Système de gestion RH COFIMA</strong>
+                <strong>COFIDAY  Système de gestion RH COFIMA</strong>
             </p>
         </div>
     </div>
 
     <div class="footer">
-        © {{ date('Y') }} COFIMA BENIN — Tous droits réservés.<br>
+        © {{ date('Y') }} COFIMA BENIN  Tous droits réservés.<br>
         Cet email est généré automatiquement, merci de ne pas y répondre.
     </div>
 </div>

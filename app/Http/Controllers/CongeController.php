@@ -10,6 +10,7 @@ use App\Models\HistoriqueConge;
 use App\Models\RegleConge;
 use App\Models\User;
 use App\Services\SoldeCongeCalculator;
+use App\Services\JoursFeriesService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Facades\Auth;
@@ -138,41 +139,30 @@ class CongeController extends Controller
 
     private function estJourOuvrable($date): bool
     {
-        $date = Carbon::parse($date);
-
-        if ($date->isWeekend()) {
-            return false;
-        }
-
-        $regles = RegleConge::first();
-        if ($regles && $regles->jours_feries) {
-            $joursFeries = json_decode($regles->jours_feries, true);
-            if (is_array($joursFeries)) {
-                $dateStr = $date->format('m-d');
-                foreach ($joursFeries as $jour) {
-                    if (isset($jour['date']) && $jour['date'] === $dateStr) {
-                        return false;
-                    }
-                }
-            }
-        }
-
-        return true;
+        return JoursFeriesService::estJourOuvrable($date);
     }
 
     private function calculerJoursOuvres(Carbon $start, Carbon $end): int
     {
-        $jours   = 0;
-        $current = $start->copy();
+        return JoursFeriesService::calculerJoursOuvres($start, $end);
+    }
 
-        while ($current->lte($end)) {
-            if ($this->estJourOuvrable($current)) {
-                $jours++;
-            }
-            $current->addDay();
+    /**
+     * Message de refus si le type a une durée fixée et qu'elle est dépassée, sinon null.
+     */
+    private function verifierPlafondStrict(TypeConge $typeConge, float $nombreJours): ?string
+    {
+        if ($typeConge->est_horaire ?? false) {
+            return null;
         }
 
-        return $jours;
+        $plafond = $typeConge->plafondStrict();
+        if ($plafond && $nombreJours > $plafond) {
+            return "Le congé « {$typeConge->libelle} » est fixé à {$plafond} jour(s) ouvré(s) maximum. "
+                . "Demandé : {$nombreJours} j. (dépassement de " . ($nombreJours - $plafond) . " j.). Veuillez réduire la période.";
+        }
+
+        return null;
     }
 
     private function estPeriodeBloquee($date): bool
@@ -214,7 +204,7 @@ class CongeController extends Controller
         $isManager = $user->hasRole('manager');
         $isSimpleUser = !$isAdmin && !$isManager;
 
-        $query = DemandeConge::with(['user', 'typeConge', 'validePar']);
+        $query = DemandeConge::with(['user', 'typeConge', 'validePar', 'attestationRemisePar']);
 
         // 1. Restriction selon le rôle
         if ($isAdmin) {
@@ -420,6 +410,17 @@ class CongeController extends Controller
             $dateFin     = Carbon::parse($request->date_fin);
             $nombreJours = (float) $request->nombre_jours;
 
+            // Recalcul serveur : week-ends et jours fériés ne sont jamais décomptés
+            if (!$isHoraire) {
+                $nombreJours = (float) $this->calculerJoursOuvres($dateDebut, $dateFin);
+                if ($nombreJours <= 0) {
+                    DB::rollBack();
+                    return back()
+                        ->withErrors(['date_fin' => 'La période choisie ne contient aucun jour ouvré (week-ends / jours fériés).'])
+                        ->withInput();
+                }
+            }
+
             $typeConge = TypeConge::findOrFail($request->type_conge_id);
 
             // Déclaration rétrospective (dates dans le passé) : justificatif obligatoire si type l'exige
@@ -431,20 +432,14 @@ class CongeController extends Controller
                     ->withInput();
             }
 
-            // Quota légal strict : maternité et paternité ne peuvent pas dépasser le maximum légal
-            $libelleNorm = mb_strtolower($typeConge->libelle);
-            if ((str_contains($libelleNorm, 'maternit') || str_contains($libelleNorm, 'paternit'))
-                && $typeConge->nombre_jours_max
-                && $nombreJours > $typeConge->nombre_jours_max) {
+            // Congés à durée fixée (mariage, décès, paternité, maternité, déménagement…) : dépassement BLOQUANT
+            if ($refus = $this->verifierPlafondStrict($typeConge, $nombreJours)) {
                 DB::rollBack();
-                Alert::error(
-                    'Quota légal dépassé',
-                    "Le congé « {$typeConge->libelle} » est limité à {$typeConge->nombre_jours_max} jours par la réglementation. Demandé : {$nombreJours} j."
-                );
-                return back()->withInput();
+                Alert::error('Nombre de jours dépassé', $refus);
+                return back()->withErrors(['date_fin' => $refus])->withInput();
             }
 
-            // NOTE : nombre_jours_max est indicatif pour les autres types.
+            // NOTE : nombre_jours_max reste indicatif pour les autres types.
 
             // ── Vérification & déduction du solde (congés annuels) ───────────
             $deductions = [];
@@ -614,7 +609,26 @@ class CongeController extends Controller
             $typeConge       = TypeConge::findOrFail($request->type_conge_id);
             $ancienTypeConge = TypeConge::find($demande->type_conge_id);
 
-            // NOTE : nombre_jours_max est indicatif, pas bloquant.
+            // Recalcul serveur : week-ends et jours fériés ne sont jamais décomptés
+            if (!($typeConge->est_horaire ?? false)) {
+                $nombreJours = (float) $this->calculerJoursOuvres(
+                    Carbon::parse($request->date_debut),
+                    Carbon::parse($request->date_fin)
+                );
+                if ($nombreJours <= 0) {
+                    DB::rollBack();
+                    return back()
+                        ->withErrors(['date_fin' => 'La période choisie ne contient aucun jour ouvré (week-ends / jours fériés).'])
+                        ->withInput();
+                }
+            }
+
+            // Congés à durée fixée : dépassement BLOQUANT (les autres maximums restent indicatifs)
+            if ($refus = $this->verifierPlafondStrict($typeConge, $nombreJours)) {
+                DB::rollBack();
+                Alert::error('Nombre de jours dépassé', $refus);
+                return back()->withErrors(['date_fin' => $refus])->withInput();
+            }
 
             // ── Gestion du solde multi-années ─────────────────────────────────
             $deductions = [];
@@ -1096,20 +1110,8 @@ class CongeController extends Controller
 
     public function getFeries()
     {
-        $regles      = RegleConge::first();
-        $joursFeries = [];
-
-        if ($regles && $regles->jours_feries) {
-            $joursFeries = is_array($regles->jours_feries)
-                ? $regles->jours_feries
-                : json_decode($regles->jours_feries, true);
-
-            if (!$joursFeries) {
-                $joursFeries = [];
-            }
-        }
-
-        return response()->json(['jours_feries' => $joursFeries]);
+        // Chaque entrée : { nom, date: 'MM-JJ', annee: null (chaque année) | AAAA (cette année seulement) }
+        return response()->json(['jours_feries' => JoursFeriesService::liste()]);
     }
 
     /**
@@ -1144,7 +1146,7 @@ class CongeController extends Controller
             abort(403, 'Accès non autorisé');
         }
 
-        $demande->loadMissing(['user', 'typeConge', 'validePar', 'historiques.effectuePar']);
+        $demande->loadMissing(['user', 'typeConge', 'validePar', 'historiques.effectuePar', 'attestationRemisePar']);
 
         if (!$demande->typeConge) {
             $demande->typeConge = TypeConge::find($demande->type_conge_id) ?? tap(new TypeConge(), function ($t) {
@@ -1546,6 +1548,45 @@ class CongeController extends Controller
             : 'Congé refusé. L\'employé a été notifié.');
 
         return redirect()->route('conges.validation-finale.index');
+    }
+
+    /**
+     * Décharge de remise de l'attestation de congé : le secrétariat (RH/DG/admin)
+     * confirme avoir remis en main propre à l'employé l'attestation signée par
+     * la Direction Générale. La signature elle-même reste un acte physique hors
+     * système ; seule cette remise finale est tracée (qui, quand).
+     */
+    public function marquerAttestationRemise(DemandeConge $demande)
+    {
+        $user = Auth::user();
+
+        if (!$user->hasRole('directeur-general') && !$user->hasRole('rh') && !$user->hasRole('admin')) {
+            abort(403, 'Accès non autorisé');
+        }
+
+        if (!$demande->demande_attestation || $demande->statut !== 'approuve') {
+            Alert::warning('Information', 'Aucune attestation à remettre pour cette demande.');
+            return back();
+        }
+
+        if ($demande->attestation_remise_le) {
+            Alert::warning('Information', 'L\'attestation a déjà été marquée comme remise.');
+            return back();
+        }
+
+        $demande->update([
+            'attestation_remise_le'  => now(),
+            'attestation_remise_par' => $user->id,
+        ]);
+
+        HistoriqueConge::create([
+            'demande_conge_id' => $demande->id,
+            'action'           => 'attestation_remise',
+            'effectue_par'     => $user->id,
+        ]);
+
+        Alert::success('Succès', 'Remise de l\'attestation enregistrée.');
+        return back();
     }
 
     public function validationFinaleIndex()

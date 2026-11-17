@@ -659,7 +659,7 @@ function updateCongesAVenir(conges) {
                             <i class="fas ${icon}" style="color:${color}"></i> ${c.type}
                         </div>
                         <div class="conge-dates">
-                            <i class="fas fa-calendar"></i> ${c.debut} — ${c.fin}
+                            <i class="fas fa-calendar"></i> ${c.debut}  ${c.fin}
                         </div>
                     </div>
                     <span class="badge badge-primary badge-pill">${joursDisp} jour(s)</span>
@@ -688,7 +688,7 @@ function updateStatsTable(data) {
         },
         {
             name: 'Certificats générés', icon: 'fa-certificate', color: '#47c363',
-            week: '—', month: m.certificats, percent: '0'
+            week: '', month: m.certificats, percent: '0'
         },
     ];
 

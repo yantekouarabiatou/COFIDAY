@@ -128,7 +128,7 @@
 						<strong>{{ $leave->user->prenom }}
 							{{ $leave->user->nom }}
 						</strong><br>
-						{{ $leave->user->poste->intitule ?? '—' }}
+						{{ $leave->user->poste->intitule ?? '' }}
 						<br>
 						@if($leave->user->email)
                             {{ $leave->user->email }}
@@ -176,7 +176,7 @@
                                                             pour bénéficier d'une
                         <span class="highlight"> permission</span>
                     de type
-                    <span class="highlight">{{ $leave->typeConge->libelle ?? '—' }}</span>,
+                    <span class="highlight">{{ $leave->typeConge->libelle ?? '' }}</span>,
                                                                 du
                     <span class="highlight">{{ $leave->date_debut_formatted }}</span>
                     au
@@ -212,7 +212,7 @@
                                                             de bénéficier d'un
                         <span class="highlight"> congé</span>
                     de type
-                    <span class="highlight">{{ $leave->typeConge->libelle ?? '—' }}</span>,
+                    <span class="highlight">{{ $leave->typeConge->libelle ?? '' }}</span>,
                                                                 du
                     <span class="highlight">{{ $leave->date_debut_formatted }}</span>
                     au

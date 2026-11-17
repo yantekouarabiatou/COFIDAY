@@ -186,7 +186,7 @@
                                                         value="{{ $u->id }}"
                                                         {{ old('superieur_hierarchique_id', $demande->superieur_hierarchique_id) == $u->id ? 'selected' : '' }}
                                                     >
-                                                        {{ $u->prenom }} {{ $u->nom }} — {{ $u->email }}
+                                                        {{ $u->prenom }} {{ $u->nom }}  {{ $u->email }}
                                                     </option>
                                                 @endif
                                             @endforeach
@@ -248,7 +248,7 @@
                                         <input type="file" name="fichier_justificatif" id="fichier_justificatif"
                                             class="form-control @error('fichier_justificatif') is-invalid @enderror"
                                             accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
-                                        <small class="text-muted">PDF, Word, Image — Max 5 Mo.</small>
+                                        <small class="text-muted">PDF, Word, Image  Max 5 Mo.</small>
                                         @error('fichier_justificatif')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
@@ -411,7 +411,8 @@ $(document).ready(function() {
     $('#date_fin').attr('min', today);
 
     // Charger les jours fériés et initialiser
-    var joursFeries = [];
+    // Jours fériés fournis directement par le serveur (rafraîchis ensuite via l'API)
+    var joursFeries = @json(\App\Services\JoursFeriesService::liste());
     loadJoursFeries();
 
     // Calcul initial
@@ -440,10 +441,12 @@ function loadJoursFeries() {
         url: '{{ route("conges.get-feries") }}',
         method: 'GET',
         success: function(data) {
-            joursFeries = data.jours_feries || [];
+            if (data && Array.isArray(data.jours_feries)) {
+                joursFeries = data.jours_feries;
+            }
         },
         error: function() {
-            joursFeries = [];
+            // on garde la liste fournie par le serveur
         }
     });
 }
@@ -463,9 +466,11 @@ function isJourFerie(dateStr) {
     var mois = (date.getMonth() + 1).toString().padStart(2, '0');
     var jour = date.getDate().toString().padStart(2, '0');
     var dateFormatted = mois + '-' + jour;
+    var annee = date.getFullYear();
     
+    // annee vide = férié chaque année ; sinon uniquement l'année indiquée
     return joursFeries.some(function(ferie) {
-        return ferie.date === dateFormatted;
+        return ferie.date === dateFormatted && (!ferie.annee || parseInt(ferie.annee) === annee);
     });
 }
 
@@ -478,8 +483,9 @@ function getNomJourFerie(dateStr) {
     var jour = date.getDate().toString().padStart(2, '0');
     var dateFormatted = mois + '-' + jour;
     
+    var annee = date.getFullYear();
     var ferie = joursFeries.find(function(f) {
-        return f.date === dateFormatted;
+        return f.date === dateFormatted && (!f.annee || parseInt(f.annee) === annee);
     });
     
     return ferie ? ferie.nom : 'Jour férié';

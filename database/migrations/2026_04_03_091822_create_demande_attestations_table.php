@@ -18,7 +18,7 @@ return new class extends Migration
              *   attestation_simple    → démarches admin courantes
              *   attestation_banque    → usage banque/crédit (salaire optionnel)
              *   attestation_ambassade → ambassade / visa
-             *   attestation_autre     → format libre — le RH rédige manuellement
+             *   attestation_autre     → format libre  le RH rédige manuellement
              */
             $table->enum('type', [
                 'attestation_simple',

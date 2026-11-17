@@ -10,7 +10,7 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DemissionSoumiseMail — Confirme à l'employé que sa lettre de démission a été reçue
+// DemissionSoumiseMail  Confirme à l'employé que sa lettre de démission a été reçue
 // ─────────────────────────────────────────────────────────────────────────────
 class DemissionSoumiseMail extends Mailable
 {

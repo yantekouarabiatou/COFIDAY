@@ -83,6 +83,8 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
 
     Route::post('/conges/{demande}/valider-finale', [CongeController::class, 'validerFinale'])
         ->name('conges.valider-finale');
+    Route::post('/conges/{demande}/attestation-remise', [CongeController::class, 'marquerAttestationRemise'])
+        ->name('conges.attestation.remise');
     Route::get('/conges/{demande}/validation-finale', [CongeController::class, 'showValidationFinale'])
         ->name('conges.validation-finale.show');
     Route::get('/conges/pre-approbations', [CongeController::class, 'indexPreApprobation'])
@@ -251,15 +253,17 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
         // Routes pour les employés
         Route::get('/conges/solde', [CongeController::class, 'solde'])->name('conges.solde');
         Route::get('/conges/calendrier', [CongeController::class, 'calendrier'])->name('conges.calendrier');
+        // Jours fériés (doit être déclaré AVANT /conges/{demande}, sinon « get-feries » est pris pour un id → 404)
+        Route::get('/conges/get-feries', [CongeController::class, 'getFeries'])->name('conges.get-feries');
 
         // Route pour annuler une demande
         Route::post('/conges/{demande}/annuler', [CongeController::class, 'annuler'])->name('conges.annuler');
 
-        // Retour anticipé (suspension) — admin/manager/DG
+        // Retour anticipé (suspension)  admin/manager/DG
         Route::post('/conges/{demande}/retour-anticipe', [CongeController::class, 'enregistrerRetourAnticipe'])
             ->name('conges.retour-anticipe');
 
-        // Justificatif au retour — employé concerné
+        // Justificatif au retour  employé concerné
         Route::post('/conges/{demande}/justificatif-retour', [CongeController::class, 'uploadJustificatifRetour'])
             ->name('conges.justificatif-retour');
 
@@ -297,6 +301,7 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
         Route::middleware(['role:directeur-general|rh|admin'])->group(function () {
             Route::get('/validation/liste',            [AttestationController::class, 'validationIndex'])->name('validation.index');
             Route::post('/{attestation}/traiter',      [AttestationController::class, 'traiter'])->name('traiter');
+            Route::post('/{attestation}/remise',       [AttestationController::class, 'marquerRemise'])->name('remise');
         });
     });
 
@@ -317,13 +322,18 @@ Route::middleware(['auth', 'otp.verified'])->group(function () {
         Route::resource('soldes', SoldeCongeController::class);
     });
 
+    // ── Rapport graphique des soldes (admin & directeur général) ────────────────
+    Route::middleware(['role:admin|directeur-general'])->prefix('soldes-rapport')->name('soldes-rapport.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\SoldeRapportController::class, 'index'])->name('index');
+        Route::get('/export/{format}', [\App\Http\Controllers\SoldeRapportController::class, 'export'])
+            ->whereIn('format', ['pdf', 'excel'])
+            ->name('export');
+    });
+
 
     Route::post('/clients/import', [ClientImportController::class, 'import'])
         ->name('clients.import')
         ->middleware('auth'); // si besoin
-    Route::get('/conges/get-feries', [CongeController::class, 'getFeries'])
-        ->name('conges.get-feries')
-        ->middleware('auth');
     // Route API à créer dans routes/api.php
     Route::get('/personnel-details', function (Request $request) {
         $personnel = User::with(['poste', 'timeEntries' => function ($q) use ($request) {

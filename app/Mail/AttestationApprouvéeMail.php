@@ -13,7 +13,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 4. AttestationApprouvéeMail  — Employé + secrétaire reçoivent l'attestation
+// 4. AttestationApprouvéeMail   Employé + secrétaire reçoivent l'attestation
 // ─────────────────────────────────────────────────────────────────────────────
 class AttestationApprouvéeMail extends Mailable
 {
@@ -32,7 +32,7 @@ class AttestationApprouvéeMail extends Mailable
             'attestation_ambassade' => 'Votre attestation de travail (ambassade) est disponible',
             default                 => 'Votre attestation de travail est disponible',
         };
-        return new Envelope(subject: '[COFIMA] ' . $sujet . ' — Réf. ' . $this->demande->numero_reference);
+        return new Envelope(subject: '[COFIMA] ' . $sujet . '  Réf. ' . $this->demande->numero_reference);
     }
 
     public function content(): Content

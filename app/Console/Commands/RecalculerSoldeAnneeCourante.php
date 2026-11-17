@@ -49,43 +49,18 @@ class RecalculerSoldeAnneeCourante extends Command
 
             $ancienJoursAcquis   = (float) $solde->jours_acquis;
             $ancienJoursReportes = (float) $solde->jours_reportes;
-            $ancienJoursPris     = (float) $solde->jours_pris;
-
-            $report = ['nouveau_cycle' => false, 'bootstrap' => false];
-            if ($user->date_embauche) {
-                $report = SoldeCongeCalculator::appliquerReportSiNouveauCycle(
-                    $user,
-                    $solde,
-                    \Carbon\Carbon::parse($user->date_embauche),
-                    $regles,
-                    now(),
-                    !$dryRun
-                );
-            }
 
             $calcul         = SoldeCongeCalculator::calculerNouveauxDroitsAcquis($user, $annee, $regles);
             $nouveauxAcquis = $calcul['jours_acquis'];
 
-            $rienNAChange = abs($nouveauxAcquis - $ancienJoursAcquis) < 0.005 && !$report['nouveau_cycle'];
-
-            if ($rienNAChange) {
+            if (abs($nouveauxAcquis - $ancienJoursAcquis) < 0.005) {
                 continue; // déjà à jour
-            }
-
-            if ($report['nouveau_cycle']) {
-                $this->line(sprintf(
-                    '  %s %s : cycle clos → %.2f j. reportés (plafond appliqué), jours_pris remis à 0 (était %.2f)',
-                    $dryRun ? '👁' : '↺',
-                    $user->email,
-                    $report['jours_reportes'],
-                    $ancienJoursPris,
-                ));
             }
 
             $nouveauxRestants = max(0, $nouveauxAcquis + (float) $solde->jours_reportes - (float) $solde->jours_pris);
 
             $this->line(sprintf(
-                '  %s %s (%d) : %.2f → %.2f j. acquis (ancienneté %d an(s), +%d j. majoration, %d/12 mois) — reportés %.2f → %.2f, restants %.2f',
+                '  %s %s (%d) : %.2f → %.2f j. acquis (ancienneté %d an(s), +%d j. majoration, %d/12 mois)  reportés %.2f → %.2f, restants %.2f',
                 $dryRun ? '👁' : '✔',
                 $user->email,
                 $annee,

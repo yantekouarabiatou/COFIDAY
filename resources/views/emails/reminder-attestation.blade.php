@@ -61,7 +61,7 @@
     </div>
 
     <div class="header">
-        📄 Rappel — Demandes d'attestation à valider
+        📄 Rappel  Demandes d'attestation à valider
         <div class="sub">{{ $demandes->count() }} demande(s) attendent votre validation</div>
     </div>
 
@@ -104,13 +104,13 @@
 
             <p style="margin-top: 28px; color: #888; font-size: 13px;">
                 Cordialement,<br>
-                <strong>COFIDAY — Système de gestion RH COFIMA</strong>
+                <strong>COFIDAY  Système de gestion RH COFIMA</strong>
             </p>
         </div>
     </div>
 
     <div class="footer">
-        © {{ date('Y') }} COFIMA BENIN — Tous droits réservés.<br>
+        © {{ date('Y') }} COFIMA BENIN  Tous droits réservés.<br>
         Cet email est généré automatiquement, merci de ne pas y répondre.
     </div>
 </div>

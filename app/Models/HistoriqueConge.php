@@ -40,6 +40,7 @@ class HistoriqueConge extends Model
         'notification_envoyee' => 'Notification envoyée',
         'statut_modifie' => 'Statut modifié',
         'commentaire_ajoute' => 'Commentaire ajouté',
+        'attestation_remise' => 'Attestation remise à l\'employé',
     ];
 
     /**

@@ -40,7 +40,7 @@
                             </div>
                             <div class="col-md-6">
                                 <p class="text-muted small mb-1">Poste</p>
-                                <p class="font-weight-bold mb-0">{{ $demission->user->poste->intitule ?? '—' }}</p>
+                                <p class="font-weight-bold mb-0">{{ $demission->user->poste->intitule ?? '' }}</p>
                             </div>
                         </div>
 
@@ -75,7 +75,7 @@
                             <div class="mb-3">
                                 <p class="text-muted small mb-1">Validé par</p>
                                 <p class="mb-0">{{ $demission->validateur->prenom }} {{ $demission->validateur->nom }}
-                                    <small class="text-muted ml-1">— {{ $demission->date_validation->isoFormat('D MMMM YYYY [à] HH:mm') }}</small>
+                                    <small class="text-muted ml-1"> {{ $demission->date_validation->isoFormat('D MMMM YYYY [à] HH:mm') }}</small>
                                 </p>
                             </div>
                         @endif

@@ -28,7 +28,7 @@ class CertificatTravailMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: '[COFIMA] Votre certificat de travail — Réf. ' . $this->demande->numero_certificat);
+        return new Envelope(subject: '[COFIMA] Votre certificat de travail  Réf. ' . $this->demande->numero_certificat);
     }
 
     public function content(): Content
@@ -50,7 +50,7 @@ class CertificatTravailMail extends Mailable
                         'dateDepart' => $this->dateDepart,
                         'logoBase64' => $this->logoBase64,
                     ])
-                    ->subject('[COFIMA] Votre certificat de travail — Réf. ' . $this->demande->numero_certificat);
+                    ->subject('[COFIMA] Votre certificat de travail  Réf. ' . $this->demande->numero_certificat);
     }
 
     public function attachments(): array

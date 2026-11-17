@@ -35,6 +35,8 @@ class DemandeConge extends Model
         'date_validation_finale',
         'commentaire_final',
         'demande_attestation',
+        'attestation_remise_le',
+        'attestation_remise_par',
         'heure_debut',
         'heure_fin',
         'nombre_heures',
@@ -59,6 +61,7 @@ class DemandeConge extends Model
         'valide_par_final'        => 'integer',
         'date_validation_finale'  => 'datetime',
         'commentaire_final'       => 'string',
+        'attestation_remise_le'   => 'datetime',
     ];
 
     /**
@@ -86,6 +89,11 @@ class DemandeConge extends Model
     public function annulePar()
     {
         return $this->belongsTo(User::class, 'annule_par');
+    }
+
+    public function attestationRemisePar()
+    {
+        return $this->belongsTo(User::class, 'attestation_remise_par');
     }
 
     public function superieurHierarchique()

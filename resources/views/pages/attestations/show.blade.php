@@ -52,7 +52,7 @@
                             </div>
                             <div class="col-md-6">
                                 <p class="text-muted small mb-1">Poste</p>
-                                <p class="font-weight-bold mb-0">{{ $attestation->user->poste->intitule ?? '—' }}</p>
+                                <p class="font-weight-bold mb-0">{{ $attestation->user->poste->intitule ?? '' }}</p>
                             </div>
                         </div>
 
@@ -122,10 +122,33 @@
                         @endif
 
                         @if($attestation->statut === 'approuve' && $attestation->type !== 'attestation_autre')
-                            <div class="alert alert-warning">
-                                <i class="fas fa-info-circle"></i>
-                                <strong>Rappel :</strong> Passez chez la <strong>secrétaire</strong> pour retirer la version originale cachetée et signée.
-                            </div>
+                            @if($attestation->remise_le)
+                                <div class="alert alert-success">
+                                    <i class="fas fa-check-double"></i>
+                                    <strong>Remise à l'employé</strong> le {{ $attestation->remise_le->format('d/m/Y à H:i') }}
+                                    @if($attestation->remisePar)
+                                        par {{ $attestation->remisePar->name ?? $attestation->remisePar->prenom . ' ' . $attestation->remisePar->nom }}
+                                    @endif
+                                </div>
+                            @else
+                                <div class="alert alert-warning">
+                                    <div class="d-flex align-items-center justify-content-between flex-wrap">
+                                        <div>
+                                            <i class="fas fa-info-circle"></i>
+                                            <strong>Rappel :</strong> Passez chez la <strong>secrétaire</strong> pour retirer la version originale cachetée et signée.
+                                        </div>
+                                        @if(auth()->user()->hasAnyRole(['admin', 'rh', 'directeur-general']))
+                                            <form action="{{ route('attestations.remise', $attestation) }}" method="POST"
+                                                  onsubmit="return confirm('Confirmer que l\'attestation signée a été remise en main propre à l\'employé ?');">
+                                                @csrf
+                                                <button type="submit" class="btn btn-sm btn-success mt-2 mt-md-0">
+                                                    <i class="fas fa-hand-holding mr-1"></i> Marquer comme remise (décharge)
+                                                </button>
+                                            </form>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endif
                         @endif
 
                         @if($attestation->statut === 'approuve' && $attestation->type === 'attestation_autre')

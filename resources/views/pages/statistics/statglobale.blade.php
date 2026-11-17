@@ -1,6 +1,6 @@
 @extends('layaout')
 
-@section('title', 'Statistiques Globales — Administration')
+@section('title', 'Statistiques Globales  Administration')
 
 @section('content')
 <div class="stats-wrapper">
@@ -498,7 +498,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 /* ═══════════════════════════════════════════════
-   CHART.JS — THEME CLAIR
+   CHART.JS  THEME CLAIR
 ═══════════════════════════════════════════════ */
 Chart.defaults.color = '#64748b';
 Chart.defaults.font.family = "'DM Sans', sans-serif";
@@ -552,7 +552,7 @@ function loadEmployes() {
             const select = $('#filtre-employe');
             select.empty().append('<option value="">Tous les employés</option>');
             data.forEach(emp => {
-                select.append(`<option value="${emp.id}">${emp.nom_complet} — ${emp.email}</option>`);
+                select.append(`<option value="${emp.id}">${emp.nom_complet}  ${emp.email}</option>`);
             });
             select.trigger('change.select2');
         },
@@ -872,7 +872,7 @@ function buildBadge(statutBadge) {
             return `<span class="${cls}"><i class="${icon}"></i>${label}</span>`;
         }
     }
-    return `<span class="badge-default">${escHtml(statutBadge || '—')}</span>`;
+    return `<span class="badge-default">${escHtml(statutBadge || '')}</span>`;
 }
 
 function getInitials(name) {

@@ -16,7 +16,7 @@ class AttestationAutreNotifRHMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: '[COFIMA Secrétaire] Nouvelle demande d\'attestation format spécifique — ' . $this->demande->user->username);
+        return new Envelope(subject: '[COFIMA Secrétaire] Nouvelle demande d\'attestation format spécifique  ' . $this->demande->user->username);
     }
 
     public function content(): Content

@@ -386,11 +386,11 @@ Je vous prie d'agréer, Monsieur l'Associé-Gérant, l'expression de mes salutat
     };
 
     const TYPE_TITLES = {
-        attestation_simple:       '<i class="fas fa-file-alt"></i> Attestation simple — Démarches administratives',
-        attestation_banque:       '<i class="fas fa-university"></i> Attestation de travail — Usage bancaire',
-        attestation_ambassade:    '<i class="fas fa-globe"></i> Attestation de travail — Ambassade / Visa',
-        attestation_appel_offre:  '<i class="fas fa-handshake"></i> Attestation — Appel d\'offres / Manifestation d\'intérêt',
-        attestation_autre:        '<i class="fas fa-pen-fancy"></i> Attestation — Format spécifique',
+        attestation_simple:       '<i class="fas fa-file-alt"></i> Attestation simple  Démarches administratives',
+        attestation_banque:       '<i class="fas fa-university"></i> Attestation de travail  Usage bancaire',
+        attestation_ambassade:    '<i class="fas fa-globe"></i> Attestation de travail  Ambassade / Visa',
+        attestation_appel_offre:  '<i class="fas fa-handshake"></i> Attestation  Appel d\'offres / Manifestation d\'intérêt',
+        attestation_autre:        '<i class="fas fa-pen-fancy"></i> Attestation  Format spécifique',
     };
 
     const TYPE_INFOS = {

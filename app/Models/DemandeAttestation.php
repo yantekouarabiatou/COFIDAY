@@ -25,6 +25,8 @@ class DemandeAttestation extends Model
         'date_validation',
         'commentaire_dg',
         'numero_reference',
+        'remise_le',
+        'remise_par',
     ];
 
     protected $casts = [
@@ -33,6 +35,7 @@ class DemandeAttestation extends Model
         'date_retraite'    => 'date',
         'inclure_salaire'  => 'boolean',
         'salaire_net'      => 'decimal:2',
+        'remise_le'        => 'datetime',
     ];
 
     // ── Relations ─────────────────────────────────────────────────────────────
@@ -47,6 +50,11 @@ class DemandeAttestation extends Model
         return $this->belongsTo(User::class, 'valide_par');
     }
 
+    public function remisePar(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'remise_par');
+    }
+
     // ── Accesseurs ───────────────────────────────────────────────────────────
 
     public function getLibelleTypeAttribute(): string
@@ -55,7 +63,7 @@ class DemandeAttestation extends Model
             'attestation_simple'    => 'Attestation de travail simple',
             'attestation_banque'    => 'Attestation de travail (usage bancaire / crédit)',
             'attestation_ambassade' => 'Attestation de travail (ambassade / visa)',
-            'attestation_autre'     => 'Attestation de travail — format spécifique',
+            'attestation_autre'     => 'Attestation de travail  format spécifique',
             default                 => ucfirst($this->type),
         };
     }
@@ -89,7 +97,7 @@ class DemandeAttestation extends Model
             'en_attente' => '<span class="badge-en_attente"><i class="fas fa-clock"></i>En attente</span>',
             'refuse' => '<span class="badge-refuse"><i class="fas fa-times-circle"></i>Refusé</span>',
             'acceptee' => '<span class="badge-acceptee"><i class="fas fa-check"></i>Accepté</span>',
-            default => '<span class="badge-default">—</span>',
+            default => '<span class="badge-default"></span>',
         };
     }
 

@@ -90,7 +90,7 @@
                                         <i class="fas fa-tag mr-1"></i>Type
                                     </label>
                                     <select name="type_conge_id" class="form-control select2-filter">
-                                        <option value="">— Tous les types —</option>
+                                        <option value=""> Tous les types </option>
                                         @foreach($typesConges as $type)
                                             <option value="{{ $type->id }}"
                                                 {{ request('type_conge_id') == $type->id ? 'selected' : '' }}>
@@ -106,7 +106,7 @@
                                         <i class="fas fa-circle mr-1"></i>Statut
                                     </label>
                                     <select name="statut" class="form-control select2-filter">
-                                        <option value="">— Tous —</option>
+                                        <option value=""> Tous </option>
                                         <option value="en_attente"  {{ request('statut') === 'en_attente'  ? 'selected' : '' }}>En attente</option>
                                         <option value="pre_approuve"{{ request('statut') === 'pre_approuve'? 'selected' : '' }}>Pré-approuvé</option>
                                         <option value="approuve"    {{ request('statut') === 'approuve'    ? 'selected' : '' }}>Approuvé</option>
@@ -122,7 +122,7 @@
                                         <i class="fas fa-user mr-1"></i>Collaborateur
                                     </label>
                                     <select name="user_id" id="userFilter" class="form-control select2-filter">
-                                        <option value="">— Tous les collaborateurs —</option>
+                                        <option value=""> Tous les collaborateurs </option>
                                         @foreach($users as $u)
                                             <option value="{{ $u->id }}"
                                                 {{ request('user_id') == $u->id ? 'selected' : '' }}>
@@ -200,7 +200,8 @@
                                         <th>Dates</th>
                                         <th>Durée</th>
                                         <th>Statut</th>
-                                        <th class="text-center">Actions</th>
+                                        <th class="text-center">Attestation</th>
+                                        <th class="text-center conge-actions-col">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -293,12 +294,43 @@
                                             </td>
 
                                             <td class="text-center">
+                                                @if(!$demande->demande_attestation)
+                                                    <span class="text-muted" title="Pas d'attestation demandée">
+                                                        <i class="fas fa-minus-circle"></i>
+                                                    </span>
+                                                @elseif($demande->attestation_remise_le)
+                                                    <span class="badge badge-success" title="Remise le {{ $demande->attestation_remise_le->format('d/m/Y à H:i') }}{{ $demande->attestationRemisePar ? ' par ' . ($demande->attestationRemisePar->name ?? $demande->attestationRemisePar->prenom . ' ' . $demande->attestationRemisePar->nom) : '' }}">
+                                                        <i class="fas fa-check-double"></i>
+                                                    </span>
+                                                @elseif($demande->statut === 'approuve')
+                                                    <span class="badge badge-warning" title="Approuvée - en attente de remise au secrétariat">
+                                                        <i class="fas fa-clock"></i>
+                                                    </span>
+                                                @else
+                                                    <span class="badge badge-info" title="Attestation demandée - sera générée à l'approbation">
+                                                        <i class="fas fa-file-alt"></i>
+                                                    </span>
+                                                @endif
+                                            </td>
+
+                                            <td class="text-center conge-actions-col">
                                                 <div class="btn-group" role="group">
 
                                                     <a href="{{ route('conges.show', $demande) }}"
                                                        class="btn btn-info btn-sm" title="Voir détails">
                                                         <i class="fas fa-eye"></i>
                                                     </a>
+
+                                                    @if($demande->demande_attestation && $demande->statut === 'approuve' && !$demande->attestation_remise_le
+                                                        && auth()->user()->hasAnyRole(['admin', 'rh', 'directeur-general']))
+                                                        <form action="{{ route('conges.attestation.remise', $demande) }}" method="POST" class="d-inline"
+                                                              onsubmit="return confirm('Confirmer que l\'attestation signée a été remise en main propre à l\'employé ?');">
+                                                            @csrf
+                                                            <button type="submit" class="btn btn-success btn-sm" title="Marquer l'attestation comme remise">
+                                                                <i class="fas fa-hand-holding"></i>
+                                                            </button>
+                                                        </form>
+                                                    @endif
 
                                                     @if($demande->statut === 'en_attente' &&
                                                         (auth()->user()->hasRole('admin') || auth()->id() === $demande->user_id))
@@ -354,7 +386,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ $isAdmin ? 7 : 6 }}" class="text-center py-5">
+                                            <td colspan="{{ $isAdmin ? 8 : 7 }}" class="text-center py-5">
                                                 <div class="empty-state">
                                                     <div class="empty-state-icon">
                                                         <i class="fas fa-{{ request()->hasAny(['type_conge_id','statut','user_id','search','date_debut','date_fin']) ? 'search' : 'calendar-times' }}"></i>
@@ -468,6 +500,20 @@
     }
     .select2-container--default .select2-selection--single .select2-selection__arrow { height: 100%; }
     .select2-container--default .select2-results__option--highlighted[aria-selected] { background-color: #4e73df; }
+
+    /* La colonne Actions reste toujours visible même quand le tableau déborde
+       horizontalement (beaucoup de colonnes) : évite que le bouton "voir
+       détails" ne soit accessible qu'en scrollant. */
+    .table-responsive { overflow-x: auto; }
+    #conges-table th.conge-actions-col,
+    #conges-table td.conge-actions-col {
+        position: sticky;
+        right: 0;
+        background-color: #fff;
+        box-shadow: -3px 0 6px rgba(0, 0, 0, 0.08);
+        z-index: 2;
+    }
+    #conges-table thead th.conge-actions-col { z-index: 3; }
 </style>
 @endpush
 

@@ -77,7 +77,7 @@
     </div>
 
     <div class="footer">
-        © {{ date('Y') }} COFIMA BENIN — Tous droits réservés.
+        © {{ date('Y') }} COFIMA BENIN  Tous droits réservés.
     </div>
 
 </div>

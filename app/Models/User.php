@@ -55,7 +55,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * Ancienneté en années complètes (purement informatif, recalculé à
-     * chaque accès — n'est jamais stocké et n'affecte jamais directement
+     * chaque accès  n'est jamais stocké et n'affecte jamais directement
      * le solde de congés stocké).
      */
     public function getAncienneteAnsAttribute(): ?int

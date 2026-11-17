@@ -32,6 +32,15 @@ Schedule::command('conges:recalculer-solde-annee-courante')
     ->withoutOverlapping()
     ->runInBackground();
 
+// ── Congés : jours fériés ────────────────────────────────────────────────────
+// Chaque nuit : garantit 1er janvier / 25 décembre, ajoute le Lundi de Pentecôte
+// de l'année en cours et suivante, puis recalcule les demandes en cours / à venir
+// (un férié dans la période n'est pas décompté → jour rendu au solde).
+Schedule::command('conges:synchroniser-jours-feries')
+    ->dailyAt('01:15')
+    ->withoutOverlapping()
+    ->runInBackground();
+
 // ── Notification fin de mois ─────────────────────────────────────────────────
 Schedule::command('notify:fin-de-mois')
     ->when(fn() => Carbon::now()->isLastOfMonth())

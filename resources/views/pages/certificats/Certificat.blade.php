@@ -98,7 +98,7 @@
         {{-- ════════════════════════════════════════════════════════════════ --}}
 
         <p style="color:#888; font-size:.82rem; margin-top:24px; border-top:1px solid #eee; padding-top:14px;">
-            © {{ date('Y') }} COFIMA BENIN — Ce document est confidentiel.
+            © {{ date('Y') }} COFIMA BENIN  Ce document est confidentiel.
         </p>
 
     </div>

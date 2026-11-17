@@ -57,7 +57,7 @@
 
                     <div class="card-body">
                         <div class="table-responsive">
-                            <table class="table table-striped table-hover">
+                            <table class="table table-striped table-hover" id="demissions-table">
                                 <thead>
                                     <tr>
                                         <th>#</th>
@@ -66,7 +66,7 @@
                                         <th>Statut</th>
                                         <th>Certificat</th>
                                         <th>Date soumission</th>
-                                        <th class="text-center">Actions</th>
+                                        <th class="text-center demission-actions-col">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -92,7 +92,7 @@
                                                     </span>
                                                     <br><small class="text-muted">Réf. {{ $demande->numero_certificat }}</small>
                                                 @else
-                                                    <span class="badge badge-secondary">—</span>
+                                                    <span class="badge badge-secondary"></span>
                                                 @endif
                                             </td>
 
@@ -101,7 +101,7 @@
                                                 <small class="text-muted">{{ $demande->created_at->diffForHumans() }}</small>
                                             </td>
 
-                                            <td class="text-center">
+                                            <td class="text-center demission-actions-col">
                                                 <a href="{{ route('demissions.show', $demande) }}"
                                                    class="btn btn-info btn-sm" title="Voir détails">
                                                     <i class="fas fa-eye"></i>
@@ -159,3 +159,18 @@
     </div>
 </section>
 @endsection
+
+@push('styles')
+<style>
+/* La colonne Actions reste visible même quand le tableau déborde horizontalement */
+#demissions-table th.demission-actions-col,
+#demissions-table td.demission-actions-col {
+    position: sticky;
+    right: 0;
+    background-color: #fff;
+    box-shadow: -3px 0 6px rgba(0, 0, 0, 0.08);
+    z-index: 2;
+}
+#demissions-table thead th.demission-actions-col { z-index: 3; }
+</style>
+@endpush

@@ -167,7 +167,7 @@ class StatisticsController extends Controller
                 'employe' => $a->user->prenom . ' ' . $a->user->nom,
                 'date' => $a->created_at->format('d/m/Y'),
                 'statut_badge' => $this->getStatusBadge($a->statut),
-                'reference' => $a->numero_reference ?? '—',
+                'reference' => $a->numero_reference ?? '',
             ]);
 
         $certificats = DemandeDemission::with('user')
@@ -179,7 +179,7 @@ class StatisticsController extends Controller
                 'employe' => $c->user->prenom . ' ' . $c->user->nom,
                 'date' => $c->created_at->format('d/m/Y'),
                 'statut_badge' => $this->getStatusBadge($c->statut),
-                'reference' => $c->numero_certificat ?? $c->numero_reference ?? '—',
+                'reference' => $c->numero_certificat ?? $c->numero_reference ?? '',
             ]);
 
         return $attestations->merge($certificats)->sortByDesc('date')->take(10)->values();

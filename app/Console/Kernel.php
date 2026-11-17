@@ -1,6 +1,6 @@
 <?php
 
-// Dans app/Console/Kernel.php — méthode schedule()
+// Dans app/Console/Kernel.php  méthode schedule()
 
 namespace App\Console;
 

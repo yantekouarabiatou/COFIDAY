@@ -66,7 +66,7 @@ class DemandeDemission extends Model
         return $query->where('statut', 'en_attente');
     }
 
-    // AJOUTER CE SCOPE — utilisé dans DemissionController::index()
+    // AJOUTER CE SCOPE  utilisé dans DemissionController::index()
     public function scopeApprouve($query)
     {
         return $query->where('statut', 'acceptee');

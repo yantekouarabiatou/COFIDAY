@@ -18,7 +18,7 @@
     $icon = '📋';
     @endphp
 
-    <title>Validation finale requise — Demande de {{ $motLabel }}</title>
+    <title>Validation finale requise  Demande de {{ $motLabel }}</title>
 
     <style>
     body {
@@ -150,7 +150,7 @@
         {{-- HEADER --}}
         <div class="header">
             Validation finale requise - {{ $motLabelCap }}
-            <div class="sub">{{ $demande->typeConge->libelle ?? '—' }}</div>
+            <div class="sub">{{ $demande->typeConge->libelle ?? '' }}</div>
         </div>
 
 
@@ -187,7 +187,7 @@
 
                     <li>
                         <strong>Type de {{ $motLabel }} :</strong>
-                        {{ $demande->typeConge->libelle ?? '—' }}
+                        {{ $demande->typeConge->libelle ?? '' }}
                     </li>
 
                     <li>
@@ -244,7 +244,7 @@
 
         {{-- FOOTER --}}
         <div class="footer">
-            © {{ date('Y') }} COFIMA BENIN — Tous droits réservés.
+            © {{ date('Y') }} COFIMA BENIN  Tous droits réservés.
         </div>
 
     </div>

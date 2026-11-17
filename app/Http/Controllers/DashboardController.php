@@ -168,7 +168,7 @@ class DashboardController extends Controller
                         'nature' => $d->libelleType,
                         'type'   => 'attestation',
                         'statut' => $d->statut,
-                        'ref'    => $d->numero_reference ?? '—',
+                        'ref'    => $d->numero_reference ?? '',
                     ]);
                 });
 
@@ -184,7 +184,7 @@ class DashboardController extends Controller
                         'nature' => $d->typeConge->libelle ?? 'Congé',
                         'type'   => 'conge',
                         'statut' => $d->statut,
-                        'ref'    => '—',
+                        'ref'    => '',
                     ]);
                 });
 
@@ -199,7 +199,7 @@ class DashboardController extends Controller
                         'nature' => 'Demande de démission',
                         'type'   => 'demission',
                         'statut' => $d->statut,
-                        'ref'    => $d->numero_reference ?? '—',
+                        'ref'    => $d->numero_reference ?? '',
                     ]);
                 });
 

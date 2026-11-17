@@ -121,7 +121,7 @@
              <img src="{{ $logoBase64 }}">
             </div>
         </div>
-        
+
     </div>
 
 
@@ -170,10 +170,10 @@
                         {{ $motLabelCap }}s administratifs prélevés sur les années suivantes :<br>
                         @foreach($anneesPrelevees as $annee)
                             Reste dû {{ $annee }} :
-                            <strong>{{ $soldesParAnnee[$annee] ?? '—' }} jour(s)</strong><br>
+                            <strong>{{ $soldesParAnnee[$annee] ?? '' }} jour(s)</strong><br>
                         @endforeach
                     @else
-                        {{ $demande->typeConge->libelle ?? '—' }}<br>
+                        {{ $demande->typeConge->libelle ?? '' }}<br>
                         <strong>{{ $demande->nombre_jours }} jour(s)</strong>
                     @endif
                 </td>
@@ -220,11 +220,11 @@
         <div class="sig-haut">
             Fait à Cotonou, le {{ now()->format('d/m/Y') }}
         </div>
-        
+
         <div class="sig-bas">
             Pour COFIMA,<br><br>
             </div><br>
-            <br><strong>Jean Claude AVANDE</strong><br>
+            <br><strong>Jean Claude Alain AVANDE</strong><br>
             Expert-Comptable Diplômé<br>
             Associé-Gérant
         </div>

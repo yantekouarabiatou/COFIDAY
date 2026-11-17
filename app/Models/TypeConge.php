@@ -33,6 +33,26 @@ class TypeConge extends Model
         'actif'               => 'boolean',
     ];
 
+    /**
+     * Nombre de jours maximum BLOQUANT (congés à durée fixée), ou null si le
+     * maximum n'est qu'indicatif.
+     *  - durée légale renseignée (paternité, mariage, décès, déménagement…) ;
+     *  - maternité / paternité : plafond nombre_jours_max.
+     */
+    public function plafondStrict(): ?int
+    {
+        if (!empty($this->duree_legale_jours)) {
+            return (int) $this->duree_legale_jours;
+        }
+
+        $libelle = mb_strtolower((string) $this->libelle);
+        if ((str_contains($libelle, 'maternit') || str_contains($libelle, 'paternit')) && $this->nombre_jours_max) {
+            return (int) $this->nombre_jours_max;
+        }
+
+        return null;
+    }
+
     public function demandes(): HasMany
     {
         return $this->hasMany(DemandeConge::class, 'type_conge_id');

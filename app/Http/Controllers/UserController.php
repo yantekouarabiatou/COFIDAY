@@ -181,13 +181,10 @@ class UserController extends Controller
             $roleName = $role->name;
             $user->assignRole($role);
 
-            // Solde de l'année en cours automatiquement calculé selon le
-            // mois d'embauche + ancienneté (jamais les années antérieures).
-            try {
-                SoldeCongeCalculator::synchroniserSoldeAnneeCourante($user);
-            } catch (Exception $e) {
-                Log::error('Échec synchronisation solde année courante (création) : ' . $e->getMessage());
-            }
+            // Solde de l'année en cours + solde de l'année d'embauche
+            // (si différente et déjà terminée) automatiquement calculés
+            // selon le mois d'embauche + ancienneté.
+            $this->synchroniserSoldesEmbauche($user, 'création');
 
             // Envoi de l'email de bienvenue
             Mail::to($user->email)->send(new UserCreatedMail($user, $roleName));
@@ -307,15 +304,11 @@ class UserController extends Controller
 
             $user->update($updateData);
 
-            // Solde de l'année en cours recalculé automatiquement si la date
-            // d'embauche ou l'ancienneté "reprise" ont changé (jamais les
-            // années antérieures).
+            // Solde de l'année en cours + solde de l'année d'embauche
+            // recalculés automatiquement si la date d'embauche ou
+            // l'ancienneté "reprise" ont changé.
             if ($user->wasChanged(['date_embauche', 'anciennete_reprise_ans', 'anciennete_reprise_mois'])) {
-                try {
-                    SoldeCongeCalculator::synchroniserSoldeAnneeCourante($user);
-                } catch (Exception $e) {
-                    Log::error('Échec synchronisation solde année courante (modification) : ' . $e->getMessage());
-                }
+                $this->synchroniserSoldesEmbauche($user, 'modification');
             }
 
             // Synchronisation du rôle Spatie
@@ -383,6 +376,36 @@ class UserController extends Controller
             'success' => true,
             'status' => $user->is_active ? 'Actif' : 'Inactif'
         ]);
+    }
+
+    /**
+     * Synchronise le solde de l'année en cours ET, si elle est différente et
+     * déjà terminée, celui de l'année d'embauche elle-même (ex. : date
+     * d'embauche recalée de novembre à août 2025 doit recalculer le prorata
+     * 2025, pas seulement le solde 2026). jours_pris n'est jamais modifié ;
+     * aucune autre année n'est touchée.
+     */
+    private function synchroniserSoldesEmbauche(User $user, string $contexte): void
+    {
+        $anneeCourante = Carbon::now()->year;
+
+        try {
+            SoldeCongeCalculator::synchroniserSoldeAnneeCourante($user);
+        } catch (Exception $e) {
+            Log::error("Échec synchronisation solde année courante ({$contexte}) : " . $e->getMessage());
+        }
+
+        if ($user->date_embauche) {
+            $anneeEmbauche = Carbon::parse($user->date_embauche)->year;
+
+            if ($anneeEmbauche < $anneeCourante) {
+                try {
+                    SoldeCongeCalculator::synchroniserSoldeAnneeCourante($user, $anneeEmbauche);
+                } catch (Exception $e) {
+                    Log::error("Échec synchronisation solde année d'embauche ({$contexte}) : " . $e->getMessage());
+                }
+            }
+        }
     }
 
     /**

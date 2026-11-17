@@ -42,7 +42,7 @@
                                 <div class="col-md-3">
                                     <label class="small font-weight-bold text-muted mb-1">Type</label>
                                     <select name="type" class="form-control select2-filter">
-                                        <option value="">— Tous les types —</option>
+                                        <option value=""> Tous les types </option>
                                         <option value="attestation_simple"    {{ request('type') === 'attestation_simple'    ? 'selected' : '' }}>Simple</option>
                                         <option value="attestation_banque"    {{ request('type') === 'attestation_banque'    ? 'selected' : '' }}>Banque / Crédit</option>
                                         <option value="attestation_ambassade" {{ request('type') === 'attestation_ambassade' ? 'selected' : '' }}>Ambassade / Visa</option>
@@ -52,7 +52,7 @@
                                 <div class="col-md-2">
                                     <label class="small font-weight-bold text-muted mb-1">Statut</label>
                                     <select name="statut" class="form-control select2-filter">
-                                        <option value="">— Tous —</option>
+                                        <option value=""> Tous </option>
                                         <option value="en_attente" {{ request('statut') === 'en_attente' ? 'selected' : '' }}>En attente</option>
                                         <option value="approuve"   {{ request('statut') === 'approuve'   ? 'selected' : '' }}>Approuvée</option>
                                         <option value="refuse"     {{ request('statut') === 'refuse'     ? 'selected' : '' }}>Refusée</option>
@@ -62,7 +62,7 @@
                                     <div class="col-md-3">
                                         <label class="small font-weight-bold text-muted mb-1">Collaborateur</label>
                                         <select name="user_id" class="form-control select2-filter">
-                                            <option value="">— Tous —</option>
+                                            <option value=""> Tous </option>
                                             @foreach($users as $u)
                                                 <option value="{{ $u->id }}" {{ request('user_id') == $u->id ? 'selected' : '' }}>
                                                     {{ $u->prenom }} {{ $u->nom }}
@@ -88,7 +88,7 @@
 
                         {{-- Tableau --}}
                         <div class="table-responsive">
-                            <table class="table table-striped table-hover">
+                            <table class="table table-striped table-hover" id="attestations-table">
                                 <thead>
                                     <tr>
                                         <th>#</th>
@@ -97,7 +97,7 @@
                                         <th>Motif</th>
                                         <th>Statut</th>
                                         <th>Date</th>
-                                        <th class="text-center">Actions</th>
+                                        <th class="text-center attestation-actions-col">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -134,14 +134,27 @@
                                                 </span>
                                             </td>
 
-                                            <td>{!! $demande->statut_badge !!}</td>
+                                            <td>
+                                                {!! $demande->statut_badge !!}
+                                                @if($demande->statut === 'approuve' && $demande->type !== 'attestation_autre')
+                                                    @if($demande->remise_le)
+                                                        <span class="badge badge-success ml-1" title="Remise le {{ $demande->remise_le->format('d/m/Y à H:i') }}">
+                                                            <i class="fas fa-check-double"></i> Remise
+                                                        </span>
+                                                    @else
+                                                        <span class="badge badge-warning ml-1" title="En attente de remise au secrétariat">
+                                                            <i class="fas fa-clock"></i> À remettre
+                                                        </span>
+                                                    @endif
+                                                @endif
+                                            </td>
 
                                             <td>
                                                 {{ $demande->created_at->format('d/m/Y') }}<br>
                                                 <small class="text-muted">{{ $demande->created_at->diffForHumans() }}</small>
                                             </td>
 
-                                            <td class="text-center">
+                                            <td class="text-center attestation-actions-col">
                                                 <div class="btn-group">
                                                     <a href="{{ route('attestations.show', $demande) }}"
                                                        class="btn btn-info btn-sm" title="Voir détails">
@@ -155,6 +168,17 @@
                                                             @method('DELETE')
                                                             <button type="button" class="btn btn-danger btn-sm cancel-btn" title="Annuler">
                                                                 <i class="fas fa-ban"></i>
+                                                            </button>
+                                                        </form>
+                                                    @endif
+
+                                                    @if($demande->statut === 'approuve' && $demande->type !== 'attestation_autre' && !$demande->remise_le
+                                                        && auth()->user()->hasAnyRole(['admin', 'rh', 'directeur-general']))
+                                                        <form action="{{ route('attestations.remise', $demande) }}" method="POST" class="d-inline"
+                                                              onsubmit="return confirm('Confirmer que l\'attestation signée a été remise en main propre à l\'employé ?');">
+                                                            @csrf
+                                                            <button type="submit" class="btn btn-success btn-sm" title="Marquer l'attestation comme remise">
+                                                                <i class="fas fa-hand-holding"></i>
                                                             </button>
                                                         </form>
                                                     @endif
@@ -232,6 +256,17 @@
 <link rel="stylesheet" href="{{ asset('assets/bundles/select2/dist/css/select2.min.css') }}">
 <style>
 .empty-state { text-align: center; padding: 30px 20px; }
+
+/* La colonne Actions reste visible même quand le tableau déborde horizontalement */
+#attestations-table th.attestation-actions-col,
+#attestations-table td.attestation-actions-col {
+    position: sticky;
+    right: 0;
+    background-color: #fff;
+    box-shadow: -3px 0 6px rgba(0, 0, 0, 0.08);
+    z-index: 2;
+}
+#attestations-table thead th.attestation-actions-col { z-index: 3; }
 </style>
 @endpush
 

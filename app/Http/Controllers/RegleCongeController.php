@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\RegleConge;
+use App\Services\JoursFeriesService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log;
 use RealRashid\SweetAlert\Facades\Alert;
 
 class RegleCongeController extends Controller
@@ -65,8 +68,12 @@ class RegleCongeController extends Controller
         // Décoder les tableaux JSON s'ils existent
         $data = $request->all();
 
+        // Jours fériés : {nom, date 'MM-JJ', annee (vide = chaque année)}
         if ($request->has('jours_feries')) {
-            $data['jours_feries'] = json_encode($request->jours_feries);
+            $data['jours_feries'] = json_encode(
+                JoursFeriesService::normaliser(array_values((array) $request->input('jours_feries', []))),
+                JSON_UNESCAPED_UNICODE
+            );
         }
 
         if ($request->has('periodes_bloquees')) {
@@ -74,6 +81,14 @@ class RegleCongeController extends Controller
         }
 
         $regles->update($data);
+        JoursFeriesService::viderCache();
+
+        // Réajuste immédiatement les demandes en cours / à venir et les soldes
+        try {
+            Artisan::call('conges:synchroniser-jours-feries');
+        } catch (\Throwable $e) {
+            Log::warning('[JoursFeries] Synchronisation après mise à jour des règles échouée : ' . $e->getMessage());
+        }
 
         Alert::success('Succès', 'Les règles de congés ont été mises à jour.');
         return redirect()->route('admin.regles-conges.index');

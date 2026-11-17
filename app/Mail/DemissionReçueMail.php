@@ -10,7 +10,7 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 1. DemissionReçueMail  — Notifie le DG/RH qu'une démission a été soumise
+// 1. DemissionReçueMail   Notifie le DG/RH qu'une démission a été soumise
 // ─────────────────────────────────────────────────────────────────────────────
 class DemissionReçueMail extends Mailable
 {
@@ -20,7 +20,7 @@ class DemissionReçueMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: '[COFIMA] Nouvelle lettre de démission — ' . $this->demande->user->username);
+        return new Envelope(subject: '[COFIMA] Nouvelle lettre de démission  ' . $this->demande->user->username);
     }
 
     public function content(): Content

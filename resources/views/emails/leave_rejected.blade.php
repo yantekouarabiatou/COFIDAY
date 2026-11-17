@@ -118,7 +118,7 @@
     {{-- HEADER --}}
     <div class="header">
         Demande de {{ $motLabel }} refusée
-        <div class="sub">{{ $demande->typeConge->libelle ?? '—' }}</div>
+        <div class="sub">{{ $demande->typeConge->libelle ?? '' }}</div>
     </div>
 
     {{-- CARD --}}
@@ -136,7 +136,7 @@
             <ul class="info-list">
                 <li>
                     <strong>Type de {{ $motLabel }} :</strong>
-                    {{ $demande->typeConge->libelle ?? '—' }}
+                    {{ $demande->typeConge->libelle ?? '' }}
                 </li>
                 <li>
                     <strong>Date de début :</strong>
@@ -182,7 +182,7 @@
 
     {{-- FOOTER --}}
     <div class="footer">
-        © {{ date('Y') }} COFIMA BENIN — Tous droits réservés.
+        © {{ date('Y') }} COFIMA BENIN  Tous droits réservés.
     </div>
 
 </div>

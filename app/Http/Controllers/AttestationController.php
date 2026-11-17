@@ -151,7 +151,7 @@ class AttestationController extends Controller
             abort(403);
         }
         // Charge la relation user pour éviter un N+1 dans la vue
-        $attestation->load('user', 'validateur');
+        $attestation->load('user', 'validateur', 'remisePar');
         return view('pages.attestations.show', compact('attestation'));
     }
 
@@ -259,6 +259,37 @@ class AttestationController extends Controller
         }
 
         return redirect()->route('attestations.validation.index');
+    }
+
+    // ── Décharge de remise (secrétariat/RH/DG) ───────────────────────────────
+
+    /**
+     * Confirme que l'attestation signée par la Direction Générale a été
+     * remise en main propre à l'employé. La signature elle-même reste un
+     * acte physique hors système ; seule cette remise finale est tracée
+     * (qui, quand) — même mécanisme que pour les attestations de congé.
+     */
+    public function marquerRemise(DemandeAttestation $attestation)
+    {
+        $this->authorizeAdmin();
+
+        if ($attestation->statut !== 'approuve') {
+            Alert::warning('Information', 'Aucune attestation approuvée à remettre pour cette demande.');
+            return back();
+        }
+
+        if ($attestation->remise_le) {
+            Alert::warning('Information', 'Cette attestation a déjà été marquée comme remise.');
+            return back();
+        }
+
+        $attestation->update([
+            'remise_le'  => now(),
+            'remise_par' => Auth::id(),
+        ]);
+
+        Alert::success('Succès', 'Remise de l\'attestation enregistrée.');
+        return back();
     }
 
     // ── Annulation par l’employé ─────────────────────────────────────────────

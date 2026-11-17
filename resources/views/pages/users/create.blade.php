@@ -230,7 +230,7 @@
                                                     <option value="{{ $manager->id }}" {{ old('superieur_id') == $manager->id ? 'selected' : '' }}>
                                                         {{ $manager->nom }} {{ $manager->prenom }}
                                                         @if($manager->roles->isNotEmpty())
-                                                            — {{ $manager->roles->first()->name }}
+                                                             {{ $manager->roles->first()->name }}
                                                         @endif
                                                     </option>
                                                 @endforeach

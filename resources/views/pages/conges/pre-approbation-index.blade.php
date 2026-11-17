@@ -140,9 +140,9 @@
                                 <span class="employee-name">{{ $demande->user->prenom ?? '' }} {{ $demande->user->nom ?? '' }}</span>
                             </div>
                         </td>
-                        <td><span class="badge-type">{{ $demande->typeConge->libelle ?? '—' }}</span></td>
-                        <td><span class="date-text">{{ $demande->date_debut ? \Carbon\Carbon::parse($demande->date_debut)->format('d/m/Y') : '—' }}</span></td>
-                        <td><span class="date-text">{{ $demande->date_fin ? \Carbon\Carbon::parse($demande->date_fin)->format('d/m/Y') : '—' }}</span></td>
+                        <td><span class="badge-type">{{ $demande->typeConge->libelle ?? '' }}</span></td>
+                        <td><span class="date-text">{{ $demande->date_debut ? \Carbon\Carbon::parse($demande->date_debut)->format('d/m/Y') : '' }}</span></td>
+                        <td><span class="date-text">{{ $demande->date_fin ? \Carbon\Carbon::parse($demande->date_fin)->format('d/m/Y') : '' }}</span></td>
                         <td><span class="badge-days">{{ $demande->nombre_jours }}j</span></td>
                         <td><span class="date-text">{{ $demande->created_at->format('d/m/Y') }}</span></td>
                         <td>

@@ -193,7 +193,7 @@ class RolePermissionSeeder extends Seeder
         // DG
         $dg = Role::firstOrCreate(['name' => 'directeur-general']);
         $dg->syncPermissions([
-            // Congés — accès complet (peut aussi jouer le rôle de manager)
+            // Congés  accès complet (peut aussi jouer le rôle de manager)
             'voir les demandes de congés',
             'voir toutes les demandes de congés',
             'créer des demandes de congés',

@@ -9,7 +9,7 @@ use App\Services\SoldeCongeCalculator;
 use Illuminate\Database\Seeder;
 
 /**
- * Seeder ADDITIF UNIQUEMENT — sûr à exécuter sur une base déjà en production
+ * Seeder ADDITIF UNIQUEMENT  sûr à exécuter sur une base déjà en production
  * ("en ligne") : il ne fait jamais d'UPDATE, seulement des INSERT.
  *
  * Crée le solde de l'année en cours (nouvelle logique : majoration

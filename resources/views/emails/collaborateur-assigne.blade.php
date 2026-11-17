@@ -41,7 +41,7 @@
                 </tr>
                 <tr>
                     <td>Référence</td>
-                    <td>{{ $dossier->reference ?? '—' }}</td>
+                    <td>{{ $dossier->reference ?? '' }}</td>
                 </tr>
                 <tr>
                     <td>Client</td>
@@ -82,7 +82,7 @@
     </div>
 
     <div class="footer">
-        Ce mail a été généré automatiquement — Merci de ne pas y répondre.<br>
+        Ce mail a été généré automatiquement  Merci de ne pas y répondre.<br>
         {{ config('app.name') }}
     </div>
 </div>

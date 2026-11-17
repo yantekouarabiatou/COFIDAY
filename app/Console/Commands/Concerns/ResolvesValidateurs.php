@@ -10,7 +10,7 @@ trait ResolvesValidateurs
     /**
      * Destinataires des relances de validation : utilisateurs ayant le rôle Spatie
      * admin / rh / directeur-general, UNION emails configurés dans config/cofima.php
-     * (email_secretaire, email_dg, email_rh) — utile car le secrétariat n'a pas de
+     * (email_secretaire, email_dg, email_rh)  utile car le secrétariat n'a pas de
      * rôle Spatie dédié, et personne ne porte forcément le rôle "rh". Dédupliqué par email.
      */
     private function getValidateurs(): Collection

@@ -121,7 +121,7 @@
                                     <li class="list-group-item d-flex justify-content-between">
                                         <span>Limite de report</span>
                                         <strong>
-                                            {{ $regles->limite_report ? $regles->limite_report . ' jours' : '—' }}
+                                            {{ $regles->limite_report ? $regles->limite_report . ' jours' : '' }}
                                         </strong>
                                     </li>
                                 </ul>
@@ -177,7 +177,7 @@
                                                                 // Format: MM-DD stocké dans la base
                                                                 [$month, $day] = explode('-', $jour['date']);
                                                                 // Créer une date avec l'année actuelle pour l'affichage
-                                                                $currentYear = date('Y');
+                                                                $currentYear = $jour['annee'] ?? date('Y');
                                                                 $fullDate = \Carbon\Carbon::createFromDate($currentYear, $month, $day);
                                                                 
                                                                 // Formater la date en français
@@ -197,6 +197,11 @@
                                                                 <td>{{ $loop->iteration }}</td>
                                                                 <td>
                                                                     <strong>{{ $jour['nom'] }}</strong>
+                                                                    @if(!empty($jour['annee']))
+                                                                        <span class="badge bg-warning text-dark ms-1">{{ $jour['annee'] }} uniquement</span>
+                                                                    @else
+                                                                        <span class="badge bg-secondary ms-1">Chaque année</span>
+                                                                    @endif
                                                                 </td>
                                                                 <td>
                                                                     <span class="badge bg-info">
@@ -273,7 +278,7 @@
                                                                     // En cas d'erreur, définir des valeurs par défaut pour éviter le plantage
                                                                     $debut = null;
                                                                     $fin = null;
-                                                                    $duree = '—';
+                                                                    $duree = '';
                                                                     $debutFormate = 'Date invalide';
                                                                     $finFormatee = 'Date invalide';
                                                                 }
@@ -287,7 +292,7 @@
                                                                             {{ $debut->format('d/m/Y') }}
                                                                         </span>
                                                                     @else
-                                                                        <span class="text-muted">—</span>
+                                                                        <span class="text-muted"></span>
                                                                     @endif
                                                                 </td>
                                                                 <td>
@@ -296,7 +301,7 @@
                                                                             {{ $fin->format('d/m/Y') }}
                                                                         </span>
                                                                     @else
-                                                                        <span class="text-muted">—</span>
+                                                                        <span class="text-muted"></span>
                                                                     @endif
                                                                 </td>
                                                                 <td>
@@ -306,7 +311,7 @@
                                                                     @if(!empty($periode['raison']))
                                                                         <small>{{ $periode['raison'] }}</small>
                                                                     @else
-                                                                        <span class="text-muted">—</span>
+                                                                        <span class="text-muted"></span>
                                                                     @endif
                                                                 </td>
                                                             </tr>
@@ -340,7 +345,7 @@
                                                     @foreach($regles->jours_feries_array as $jour)
                                                         @php
                                                             [$month, $day] = explode('-', $jour['date']);
-                                                            $currentYear = date('Y');
+                                                            $currentYear = $jour['annee'] ?? date('Y');
                                                             $fullDate = \Carbon\Carbon::createFromDate($currentYear, $month, $day);
                                                             \Carbon\Carbon::setLocale('fr');
                                                         @endphp

@@ -27,7 +27,7 @@
 
                 {{-- Avertissement important --}}
                 <div class="alert alert-danger mb-4">
-                    <h6 class="alert-heading"><i class="fas fa-exclamation-triangle"></i> Attention — Acte définitif</h6>
+                    <h6 class="alert-heading"><i class="fas fa-exclamation-triangle"></i> Attention  Acte définitif</h6>
                     <p class="mb-1">Soumettre cette lettre déclenche la procédure officielle de démission.</p>
                     <p class="mb-0">Une fois acceptée par le Directeur Général, votre <strong>certificat de travail</strong>
                         sera généré automatiquement et envoyé par mail.</p>

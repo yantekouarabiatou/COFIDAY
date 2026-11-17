@@ -133,9 +133,9 @@
                                                         data-max-jours="{{ $type->nombre_jours_max }}"
                                                         {{ old('type_conge_id') == $type->id ? 'selected' : '' }}>
                                                     {{ $type->libelle }}
-                                                    @if($type->est_annuel) (Annuel — déduit du solde) @endif
+                                                    @if($type->est_annuel) (Annuel  déduit du solde) @endif
                                                     @if(($type->est_horaire ?? false)) (Permission horaire) @endif
-                                                    @if($type->est_paye && !$type->est_annuel && !($type->est_horaire ?? false)) (Payé — non déduit) @endif
+                                                    @if($type->est_paye && !$type->est_annuel && !($type->est_horaire ?? false)) (Payé  non déduit) @endif
                                                     @if(!$type->est_paye && !$type->est_annuel) (Non payé) @endif
                                                     @if($type->duree_legale_jours) ({{ $type->duree_legale_jours }} j légaux) @endif
                                                 </option>
@@ -179,7 +179,7 @@
                                     <div>
                                         <strong>Déclaration rétrospective</strong><br>
                                         <small class="text-dark">
-                                            Vos dates sont <strong>dans le passé</strong> — cela correspond à une absence déjà survenue.
+                                            Vos dates sont <strong>dans le passé</strong>  cela correspond à une absence déjà survenue.
                                             Si vous n'avez pas pu prévenir à l'avance (ex&nbsp;: maladie soudaine),
                                             vous déclarez votre absence au retour.<br>
                                             <span id="texte-retroactive-justif" class="text-danger fw-bold" style="display:none;">
@@ -196,7 +196,7 @@
                                     <div class="col-12">
                                         <div class="alert alert-info">
                                             <i class="fas fa-clock me-2"></i>
-                                            <strong>Permission horaire</strong> — Indiquez la date et les heures de la permission.
+                                            <strong>Permission horaire</strong>  Indiquez la date et les heures de la permission.
                                         </div>
                                     </div>
                                     <div class="col-md-4">
@@ -271,7 +271,7 @@
                 <input type="hidden" name="superieur_hierarchique_id" value="{{ $manager->id }}">
                 <div class="form-control-plaintext">
                     <i class="fas fa-user-tie me-2"></i>
-                    {{ $manager->prenom }} {{ $manager->nom }} — {{ $manager->email }}
+                    {{ $manager->prenom }} {{ $manager->nom }}  {{ $manager->email }}
                 </div>
                 <small class="form-text text-muted">Votre supérieur hiérarchique est défini dans votre profil.</small>
             @else
@@ -315,7 +315,7 @@
                                             class="form-control @error('fichier_justificatif') is-invalid @enderror"
                                             accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
                                         <small class="form-text text-muted">
-                                            PDF, Word, Image — Max 5 Mo. Utile pour les permissions exceptionnelles.
+                                            PDF, Word, Image  Max 5 Mo. Utile pour les permissions exceptionnelles.
                                         </small>
                                         @error('fichier_justificatif')
                                             <div class="invalid-feedback">{{ $message }}</div>
@@ -420,14 +420,17 @@
     $(document).ready(function () {
         var soldesParAnnee        = @json($soldesParAnneeJson);
         var totalJoursDisponibles = @json($totalJoursDisponiblesVal);
-        var joursFeries           = [];
+        // Jours fériés fournis directement par le serveur (rafraîchis ensuite via l'API)
+        var joursFeries           = @json(\App\Services\JoursFeriesService::liste());
 
         // Select2
         $('.select2').select2({ placeholder: 'Sélectionner…', allowClear: true });
 
         // Jours fériés
         $.get('{{ route("conges.get-feries") }}', function(data) {
-            joursFeries = data.jours_feries || [];
+            if (data && Array.isArray(data.jours_feries)) {
+                joursFeries = data.jours_feries;
+            }
         });
 
         // Helpers dates (même que ton code)
@@ -441,7 +444,9 @@
             var mm = String(d.getMonth() + 1).padStart(2, '0');
             var jj = String(d.getDate()).padStart(2, '0');
             var fmt = mm + '-' + jj;
-            return joursFeries.some(f => f.date === fmt);
+            var an  = d.getFullYear();
+            // annee vide = férié chaque année ; sinon uniquement l'année indiquée
+            return joursFeries.some(f => f.date === fmt && (!f.annee || parseInt(f.annee) === an));
         }
 
         function getNomJourFerie(dateStr) {
@@ -449,7 +454,8 @@
             var mm = String(d.getMonth() + 1).padStart(2, '0');
             var jj = String(d.getDate()).padStart(2, '0');
             var fmt = mm + '-' + jj;
-            var f = joursFeries.find(f => f.date === fmt);
+            var an  = d.getFullYear();
+            var f = joursFeries.find(f => f.date === fmt && (!f.annee || parseInt(f.annee) === an));
             return f ? f.nom : 'Jour férié';
         }
 
@@ -578,6 +584,10 @@
             var typeText  = option.text().toLowerCase();
             var estMat    = typeText.includes('maternit');
             var estPat    = typeText.includes('paternit');
+            // Durée fixée (mariage, décès, paternité, déménagement…) ou maternité/paternité → plafond bloquant
+            var dureeLegale = parseInt(option.data('duree-legale')) || 0;
+            var plafondStrict = dureeLegale > 0 ? dureeLegale : ((estMat || estPat) ? maxJours : 0);
+            var estHoraire = option.data('est-horaire') == '1';
 
             // Réinitialisation
             $('#submit-btn').prop('disabled', true);
@@ -586,16 +596,16 @@
 
             if (jours <= 0) return;
 
-            // ── Dépassement légal maternité / paternité (BLOQUANT) ───────────
-            if ((estMat || estPat) && maxJours > 0 && jours > maxJours) {
-                var typeLabel = estMat ? 'maternité' : 'paternité';
-                var depasse   = jours - maxJours;
+            // ── Dépassement d'un congé à durée fixée (BLOQUANT) ──────────────
+            if (!estHoraire && plafondStrict > 0 && jours > plafondStrict) {
+                var typeLabel = '« ' + $.trim(option.text()).split('(')[0].trim() + ' »';
+                var depasse   = jours - plafondStrict;
                 $('#alerte-depassement-legal')
                     .html(`<i class="fas fa-ban me-2"></i>
-                           <strong>Quota légal dépassé :</strong>
-                           Le congé de ${typeLabel} est limité à <strong>${maxJours} jours</strong>
-                           par la réglementation. Vous avez sélectionné <strong>${jours} jours</strong>
-                           — dépassement de <strong>${depasse} jour(s)</strong>.
+                           <strong>Nombre de jours dépassé :</strong>
+                           Le congé ${typeLabel} est fixé à <strong>${plafondStrict} jour(s)</strong>
+                           maximum. Vous avez sélectionné <strong>${jours} jours</strong>
+                            dépassement de <strong>${depasse} jour(s)</strong>.
                            Veuillez réduire la période.`)
                     .show();
                 return; // bouton reste désactivé

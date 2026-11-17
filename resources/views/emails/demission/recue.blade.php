@@ -9,7 +9,7 @@
             Nouvelle lettre de démission
         </h2>
         <p style="color: #ffc9c9; margin: 8px 0 0; font-size: .9rem;">
-            Action requise — Validation Direction Générale
+            Action requise  Validation Direction Générale
         </p>
     </div>
 
@@ -32,7 +32,7 @@
                 </tr>
                 <tr>
                     <td style="padding: 8px 0; color: #6c757d; font-size: .9rem;">Poste</td>
-                    <td style="padding: 8px 0; color: #333;">{{ $employe->poste->libelle ?? '—' }}</td>
+                    <td style="padding: 8px 0; color: #333;">{{ $employe->poste->libelle ?? '' }}</td>
                 </tr>
                 <tr>
                     <td style="padding: 8px 0; color: #6c757d; font-size: .9rem;">Email</td>
@@ -82,7 +82,7 @@
 
         <p style="color: #888; font-size: .85rem; margin-top: 28px;
                   border-top: 1px solid #eee; padding-top: 16px;">
-            Ceci est une notification automatique — COFIMA RH
+            Ceci est une notification automatique  COFIMA RH
         </p>
 
     </div>

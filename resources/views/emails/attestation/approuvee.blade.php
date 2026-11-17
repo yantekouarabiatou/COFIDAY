@@ -29,7 +29,7 @@
         @if($enAttentePrepRH)
         {{-- ── Type "autre" : RH va préparer manuellement ──────────────────── --}}
         <p style="color:#555; line-height:1.8;">
-            Votre demande d'<strong>attestation de travail — format spécifique</strong> a été
+            Votre demande d'<strong>attestation de travail  format spécifique</strong> a été
             <span style="color:#28a745; font-weight:700;">approuvée</span>
             par la Direction Générale le {{ $demande->date_validation->isoFormat('D MMMM YYYY') }}.
         </p>
@@ -197,7 +197,7 @@
         @endif {{-- fin @if(!enAttentePrepRH) --}}
 
         <p style="color:#888; font-size:.82rem; margin-top:24px; border-top:1px solid #eee; padding-top:14px;">
-            © {{ date('Y') }} COFIMA BENIN — Document confidentiel.
+            © {{ date('Y') }} COFIMA BENIN  Document confidentiel.
         </p>
     </div>
 </div>

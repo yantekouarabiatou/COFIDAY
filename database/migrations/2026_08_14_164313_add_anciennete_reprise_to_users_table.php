@@ -15,7 +15,7 @@ return new class extends Migration
             // Ancienneté "reprise" : expérience professionnelle antérieure
             // (autres entreprises) reconnue par contrat/RH et créditée en plus
             // de l'ancienneté calculée automatiquement depuis date_embauche.
-            // Saisie manuelle par les RH — ne remplace jamais date_embauche.
+            // Saisie manuelle par les RH  ne remplace jamais date_embauche.
             $table->unsignedSmallInteger('anciennete_reprise_ans')->default(0)->after('date_embauche');
             $table->unsignedTinyInteger('anciennete_reprise_mois')->default(0)->after('anciennete_reprise_ans');
         });

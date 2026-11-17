@@ -4,35 +4,16 @@ namespace App\Helpers;
 
 use Carbon\Carbon;
 use App\Models\RegleConge;
+use App\Services\JoursFeriesService;
 
 class CongeHelper
 {
     public static function estJourOuvrable($date)
     {
-        $date = Carbon::parse($date);
-        
-        // Vérifier si c'est un week-end
-        if ($date->isWeekend()) {
-            return false;
-        }
-        
-        // Vérifier si c'est un jour férié
-        $regles = RegleConge::first();
-        if ($regles && $regles->jours_feries) {
-            $joursFeries = json_decode($regles->jours_feries, true);
-            if (is_array($joursFeries)) {
-                $dateStr = $date->format('m-d');
-                foreach ($joursFeries as $jour) {
-                    if (isset($jour['date']) && $jour['date'] === $dateStr) {
-                        return false;
-                    }
-                }
-            }
-        }
-        
-        return true;
+        // Week-ends + jours fériés (récurrents et propres à une année)
+        return JoursFeriesService::estJourOuvrable($date);
     }
-    
+
     public static function estPeriodeBloquee($date)
     {
         $regles = RegleConge::first();
@@ -67,20 +48,9 @@ class CongeHelper
     
     public static function calculerJoursOuvres($debut, $fin)
     {
-        $jours = 0;
-        $current = Carbon::parse($debut)->copy();
-        $fin = Carbon::parse($fin);
-        
-        while ($current->lte($fin)) {
-            if (self::estJourOuvrable($current)) {
-                $jours++;
-            }
-            $current->addDay();
-        }
-        
-        return $jours;
+        return JoursFeriesService::calculerJoursOuvres($debut, $fin);
     }
-    
+
     public static function prochainJourOuvrable($date)
     {
         $date = Carbon::parse($date)->copy();

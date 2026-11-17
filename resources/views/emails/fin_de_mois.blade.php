@@ -74,7 +74,7 @@
     {{-- Header --}}
     <div class="header">
         Rappel : validez vos feuilles de temps
-        <div class="sub">Mois {{ $mois }} — Clôture imminente</div>
+        <div class="sub">Mois {{ $mois }}  Clôture imminente</div>
     </div>
 
     {{-- Contenu --}}

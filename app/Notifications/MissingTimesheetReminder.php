@@ -28,7 +28,7 @@ class MissingTimesheetReminder extends Notification implements ShouldQueue
             ->implode(', ');
 
         return (new MailMessage)
-            ->subject('⏰ Rappel — Feuilles de temps manquantes')
+            ->subject('⏰ Rappel  Feuilles de temps manquantes')
             ->greeting("Bonjour {$notifiable->prenom},")
             ->line("Vous avez **" . count($this->missingDays) . " jour(s)** sans feuille de temps cette semaine :")
             ->line("**{$daysList}**")
