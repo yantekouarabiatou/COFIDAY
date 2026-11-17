@@ -13,6 +13,18 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap4.min.css">
     <style>
         #userSelect + .select2-container { width: 100% !important; }
+
+        /* Select2 aligné sur Bootstrap (même réglage que l'index des demandes de congés) */
+        .select2-container .select2-selection--single {
+            height: calc(1.5em + .75rem + 2px) !important;
+            border: 1px solid #ced4da; border-radius: .25rem;
+            padding: .375rem .75rem; font-size: 1rem; line-height: 1.5;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 1.5; padding-left: 0; color: #495057;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__arrow { height: 100%; }
+        .select2-container--default .select2-results__option--highlighted[aria-selected] { background-color: #4e73df; }
         .stat-box { border-radius: 8px; padding: 16px; color: #fff; }
         .stat-box h3 { margin: 0; font-weight: 700; color: #fff; }
         .stat-box small { opacity: .9; }
@@ -178,7 +190,10 @@
 <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
 <script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap4.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function () {
+// $(fn) et non DOMContentLoaded : on s'exécute APRÈS l'init globale du layout
+// ($('.select2').select2()), sinon celle-ci ré-initialise la boîte Select2 de
+// cette page (qui porte la classe « select2 ») et la masque.
+$(function () {
     if (typeof ApexCharts === 'undefined') {
         console.error('ApexCharts non chargé');
         return;
@@ -282,12 +297,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ── Select2 sur le choix d'utilisateur (recherche par nom) ──
     const select = document.getElementById('userSelect');
+    // thème par défaut : c'est celui que stylent select2.min.css + le template (le thème bootstrap4 n'est pas chargé)
     $(select).select2({
-        theme: 'bootstrap4',
         width: '100%',
         placeholder: '- Tous les utilisateurs -',
         allowClear: true,
-        language: { noResults: () => 'Aucun utilisateur trouvé' },
+        language: {
+            noResults: () => 'Aucun utilisateur trouvé',
+            searching: () => 'Recherche…',
+        },
     });
 
     // ── Sélection utilisateur : tout se met à jour sans rechargement ──
